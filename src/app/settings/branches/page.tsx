@@ -58,6 +58,9 @@ export default function BranchesPage() {
         employees: 0,
         status: "active",
         isHeadOffice: false,
+        lat: 0,
+        lng: 0,
+        radiusMeters: 200,
       };
       setList((prev) => [...prev, newBranch]);
     }

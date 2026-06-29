@@ -2,54 +2,10 @@
 
 // Branches
 export const branches = [
-  {
-    id: "BR-001",
-    code: "HQ",
-    name: "Head Office",
-    address: "88 Silom Rd, Bang Rak, Bangkok 10500",
-    phone: "02-100-1000",
-    email: "hq@ddk.co.th",
-    manager: "Prapas Chamnankit",
-    employees: 45,
-    status: "active" as const,
-    isHeadOffice: true,
-  },
-  {
-    id: "BR-002",
-    code: "CMI",
-    name: "Chiang Mai Branch",
-    address: "99 Nimman Rd, Suthep, Chiang Mai 50200",
-    phone: "053-200-2000",
-    email: "chiangmai@ddk.co.th",
-    manager: "Wichai Thongdee",
-    employees: 18,
-    status: "active" as const,
-    isHeadOffice: false,
-  },
-  {
-    id: "BR-003",
-    code: "PKT",
-    name: "Phuket Branch",
-    address: "12 Rassada Rd, Phuket Town 83000",
-    phone: "076-300-3000",
-    email: "phuket@ddk.co.th",
-    manager: "Kanokwan Srisuwan",
-    employees: 12,
-    status: "active" as const,
-    isHeadOffice: false,
-  },
-  {
-    id: "BR-004",
-    code: "KKN",
-    name: "Khon Kaen Branch",
-    address: "45 Mitraphap Rd, Muang, Khon Kaen 40000",
-    phone: "043-400-4000",
-    email: "khonkaen@ddk.co.th",
-    manager: "Thanachart Boonsri",
-    employees: 8,
-    status: "inactive" as const,
-    isHeadOffice: false,
-  },
+  { id:"BR-001", code:"HQ",  name:"Head Office",       address:"88 Silom Rd, Bang Rak, Bangkok 10500",          phone:"02-100-1000",  email:"hq@ddk.co.th",         manager:"Prapas Chamnankit", employees:45, status:"active" as const, isHeadOffice:true,  lat:13.7222, lng:100.5219, radiusMeters:200 },
+  { id:"BR-002", code:"CMI", name:"Chiang Mai Branch", address:"99 Nimman Rd, Suthep, Chiang Mai 50200",         phone:"053-200-2000", email:"chiangmai@ddk.co.th",  manager:"Wichai Thongdee",   employees:18, status:"active" as const, isHeadOffice:false, lat:18.7957, lng:98.9756,  radiusMeters:200 },
+  { id:"BR-003", code:"PKT", name:"Phuket Branch",     address:"12 Rassada Rd, Phuket Town 83000",              phone:"076-300-3000", email:"phuket@ddk.co.th",     manager:"Kanokwan Srisuwan", employees:12, status:"active" as const, isHeadOffice:false, lat:7.8804,  lng:98.3923,  radiusMeters:200 },
+  { id:"BR-004", code:"KKN", name:"Khon Kaen Branch",  address:"45 Mitraphap Rd, Muang, Khon Kaen 40000",       phone:"043-400-4000", email:"khonkaen@ddk.co.th",   manager:"Thanachart Boonsri",employees:8,  status:"inactive" as const,isHeadOffice:false, lat:16.4322, lng:102.8236, radiusMeters:200 },
 ];
 
 // Finance
@@ -163,6 +119,38 @@ export const leaveRequests = [
   { id: "LV-002", employee: "Ploy Jaidee", type: "Sick", from: "2026-06-20", to: "2026-06-25", days: 6, status: "approved" },
   { id: "LV-003", employee: "Kanokwan Srisuwan", type: "Annual", from: "2026-07-01", to: "2026-07-03", days: 3, status: "pending" },
   { id: "LV-004", employee: "Thanachart Boonsri", type: "Personal", from: "2026-07-05", to: "2026-07-05", days: 1, status: "pending" },
+];
+
+// Shifts
+export const shifts = [
+  { id:"SH-001", name:"Morning Shift",   code:"MOR", startTime:"08:00", endTime:"17:00", breakMinutes:60, color:"blue"    as const },
+  { id:"SH-002", name:"Afternoon Shift", code:"AFT", startTime:"13:00", endTime:"22:00", breakMinutes:60, color:"amber"   as const },
+  { id:"SH-003", name:"Night Shift",     code:"NGT", startTime:"22:00", endTime:"07:00", breakMinutes:60, color:"violet"  as const },
+  { id:"SH-004", name:"Half Day AM",     code:"HAM", startTime:"08:00", endTime:"12:00", breakMinutes:0,  color:"emerald" as const },
+];
+
+// daysOfWeek: 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
+export const employeeShifts = [
+  { id:"ES-001", employeeId:"EMP-001", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+  { id:"ES-002", employeeId:"EMP-002", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+  { id:"ES-003", employeeId:"EMP-003", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+  { id:"ES-004", employeeId:"EMP-004", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+  { id:"ES-005", employeeId:"EMP-005", shiftId:"SH-002", branchId:"BR-001", daysOfWeek:[1,2,3,4,5,6], effectiveFrom:"2026-01-01" },
+  { id:"ES-006", employeeId:"EMP-006", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+  { id:"ES-007", employeeId:"EMP-007", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+  { id:"ES-008", employeeId:"EMP-008", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+  { id:"ES-009", employeeId:"EMP-009", shiftId:"SH-003", branchId:"BR-001", daysOfWeek:[0,1,2,3,4,5,6], effectiveFrom:"2026-01-01" },
+  { id:"ES-010", employeeId:"EMP-010", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
+];
+
+const TODAY = "2026-06-29";
+export const attendanceRecords = [
+  { id:"ATT-001", employeeId:"EMP-001", branchId:"BR-001", date:TODAY, shiftId:"SH-001", clockIn:"07:58", clockInLat:13.7220, clockInLng:100.5218, clockInDistance:28,  clockOut:null, clockOutLat:null, clockOutLng:null, clockOutDistance:null, status:"clocked-in" as const, workMinutes:null },
+  { id:"ATT-002", employeeId:"EMP-002", branchId:"BR-001", date:TODAY, shiftId:"SH-001", clockIn:"08:03", clockInLat:13.7224, clockInLng:100.5220, clockInDistance:45,  clockOut:null, clockOutLat:null, clockOutLng:null, clockOutDistance:null, status:"clocked-in" as const, workMinutes:null },
+  { id:"ATT-003", employeeId:"EMP-003", branchId:"BR-001", date:TODAY, shiftId:"SH-001", clockIn:"08:22", clockInLat:13.7221, clockInLng:100.5219, clockInDistance:12,  clockOut:null, clockOutLat:null, clockOutLng:null, clockOutDistance:null, status:"late"       as const, workMinutes:null },
+  { id:"ATT-007", employeeId:"EMP-007", branchId:"BR-001", date:TODAY, shiftId:"SH-001", clockIn:"08:01", clockInLat:13.7222, clockInLng:100.5219, clockInDistance:5,   clockOut:"09:15", clockOutLat:13.7221, clockOutLng:100.5218, clockOutDistance:18, status:"completed"  as const, workMinutes:74 },
+  { id:"ATT-008", employeeId:"EMP-008", branchId:"BR-001", date:TODAY, shiftId:"SH-001", clockIn:"08:00", clockInLat:13.7223, clockInLng:100.5220, clockInDistance:32,  clockOut:null, clockOutLat:null, clockOutLng:null, clockOutDistance:null, status:"clocked-in" as const, workMinutes:null },
+  { id:"ATT-009", employeeId:"EMP-009", branchId:"BR-001", date:TODAY, shiftId:"SH-003", clockIn:"22:01", clockInLat:13.7222, clockInLng:100.5219, clockInDistance:8,   clockOut:null, clockOutLat:null, clockOutLng:null, clockOutDistance:null, status:"clocked-in" as const, workMinutes:null },
 ];
 
 // Dashboard KPIs

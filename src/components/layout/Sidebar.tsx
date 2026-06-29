@@ -22,6 +22,8 @@ import {
   Building2,
   Settings,
   GitBranch,
+  ScanLine,
+  CalendarClock,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -68,6 +70,8 @@ const navItems = [
       { label: "Employees", href: "/hr/employees", icon: Users },
       { label: "Payroll", href: "/hr/payroll", icon: CreditCard },
       { label: "Leave", href: "/hr/leave", icon: CalendarDays },
+      { label: "Attendance", href: "/hr/attendance", icon: ScanLine },
+      { label: "Shifts", href: "/hr/shifts", icon: CalendarClock },
     ],
   },
   {
