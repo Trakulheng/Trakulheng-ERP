@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git)",
+      "Bash(npm --version)",
+      "Bash(find /usr /opt /home -name \"node\" -type f 2>/dev/null | head -5; ls /usr/local/bin/ 2>/dev/null | head -20; ls ~/.nvm/versions/ 2>/dev/null)",
+      "Read(//usr/local/**)",
+      "Read(//opt/homebrew/**)",
+      "Bash(ls /opt/pmk/env/global/bin/ | grep -E \"node|npm|npx\" 2>/dev/null)",
+      "Read(//opt/**)",
+      "Bash(find /Users/korrakotk -name \"node\" -type f 2>/dev/null | head -5)",
+      "Bash(ls /Users/korrakotk/ 2>/dev/null)",
+      "Bash(curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh)",
+      "Bash(bash)",
+      "Bash(ls /tmp/ddk-erp-build/src/app/)",
+      "Bash(mkdir -p /tmp/ddk-erp-build/src/components/layout)",
+      "Bash(mkdir -p /tmp/ddk-erp-build/src/components/dashboard)",
+      "Bash(mkdir -p /tmp/ddk-erp-build/src/components/finance)",
+      "Bash(mkdir -p /tmp/ddk-erp-build/src/components/inventory)",
+      "Bash(mkdir -p /tmp/ddk-erp-build/src/components/sales)",
+      "Bash(mkdir -p \"/tmp/ddk-erp-build/src/app/inventory/suppliers\")",
+      "Bash(mkdir -p \"/tmp/ddk-erp-build/src/app/hr/leave\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(ls /tmp/ddk-erp-build/ 2>/dev/null && echo \"EXISTS\" || echo \"NOT_FOUND\")",
+      "Bash(npm run *)",
+      "Bash(which node *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  name       String
+  contact    String?
+  email      String?
+  phone      String?
+  type       String   @default("SME")
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  invoices   Invoice[]
+  salesOrders SalesOrder[]
+}
+
+model Invoice {
+  id         String   @id @default(cuid())
+  number     String   @unique
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  date       DateTime
+  dueDate    DateTime
+  amount     Float
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String
+  description String
+  date        DateTime
+  amount      Float
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  sku       String   @unique
+  name      String
+  category  String
+  stock     Int      @default(0)
+  minStock  Int      @default(10)
+  unitPrice Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id       String  @id @default(cuid())
+  name     String
+  contact  String?
+  email    String?
+  phone    String?
+  category String?
+  rating   Float   @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id           String   @id @default(cuid())
+  number       String   @unique
+  supplierId   String
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  date         DateTime
+  expectedDate DateTime
+  items        Int
+  total        Float
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SalesOrder {
+  id          String   @id @default(cuid())
+  number      String   @unique
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  date        DateTime
+  items       Int
+  amount      Float
+  stage       String   @default("prospect")
+  probability Int      @default(50)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Employee {
+  id         String   @id @default(cuid())
+  employeeId String   @unique
+  name       String
+  department String
+  position   String
+  hireDate   DateTime
+  salary     Float
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  leaveRequests LeaveRequest[]
+}
+
+model LeaveRequest {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  type       String
+  fromDate   DateTime
+  toDate     DateTime
+  days       Int
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PayrollRun {
+  id          String   @id @default(cuid())
+  period      String
+  employees   Int
+  grossPay    Float
+  deductions  Float
+  netPay      Float
+  status      String   @default("draft")
+  processedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

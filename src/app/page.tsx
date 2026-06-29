@@ -1,101 +1,162 @@
-import Image from "next/image";
+import { Header } from "@/components/layout/Header";
+import { StatsCard } from "@/components/dashboard/StatsCard";
+import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock } from "lucide-react";
+import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
+import { formatCurrency } from "@/lib/utils";
 
-export default function Home() {
+const statusColors: Record<string, string> = {
+  paid: "bg-emerald-100 text-emerald-700",
+  pending: "bg-amber-100 text-amber-700",
+  overdue: "bg-red-100 text-red-700",
+};
+
+const stockColors: Record<string, string> = {
+  ok: "bg-emerald-100 text-emerald-700",
+  low: "bg-amber-100 text-amber-700",
+  out: "bg-red-100 text-red-700",
+};
+
+export default function DashboardPage() {
+  const recentInvoices = invoices.slice(0, 5);
+  const lowStockProducts = products.filter((p) => p.status !== "ok").slice(0, 5);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div>
+      <Header title="Dashboard" subtitle="Welcome back — here's what's happening today." />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="p-6 space-y-6">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCard
+            title="Monthly Revenue"
+            value={formatCurrency(kpiData.totalRevenue)}
+            change={kpiData.revenueChange}
+            subtitle="vs last month"
+            icon={DollarSign}
+            iconColor="blue"
+          />
+          <StatsCard
+            title="Monthly Expenses"
+            value={formatCurrency(kpiData.totalExpenses)}
+            change={kpiData.expensesChange}
+            subtitle="vs last month"
+            icon={TrendingDown}
+            iconColor="red"
+          />
+          <StatsCard
+            title="Inventory Value"
+            value={formatCurrency(kpiData.inventoryValue)}
+            change={kpiData.inventoryChange}
+            subtitle="vs last month"
+            icon={Package}
+            iconColor="orange"
+          />
+          <StatsCard
+            title="Headcount"
+            value={kpiData.headcount.toString()}
+            change={kpiData.headcountChange}
+            subtitle="employees"
+            icon={Users}
+            iconColor="purple"
+          />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Revenue Chart */}
+        <RevenueChart />
+
+        {/* Bottom row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Invoices */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 className="text-base font-semibold text-slate-900">Recent Invoices</h3>
+              <a href="/finance/invoices" className="text-sm text-blue-600 hover:underline">View all</a>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {recentInvoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{inv.id}</p>
+                    <p className="text-xs text-slate-500">{inv.customer}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-slate-800">{formatCurrency(inv.amount)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColors[inv.status]}`}>
+                      {inv.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Low Stock Alerts */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-amber-500" />
+                <h3 className="text-base font-semibold text-slate-900">Stock Alerts</h3>
+              </div>
+              <a href="/inventory/products" className="text-sm text-blue-600 hover:underline">View all</a>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {lowStockProducts.map((prod) => (
+                <div key={prod.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{prod.name}</p>
+                    <p className="text-xs text-slate-500">{prod.id} • {prod.category}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-600">{prod.stock} units</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${stockColors[prod.status]}`}>
+                      {prod.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming Payroll */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+            <Clock size={16} className="text-blue-500" />
+            <h3 className="text-base font-semibold text-slate-900">Upcoming Payroll</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Period</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Employees</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Gross Pay</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Net Pay</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {payrollRuns.slice(0, 3).map((run, i) => (
+                  <tr key={run.id} className={i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/50 hover:bg-slate-50"}>
+                    <td className="px-5 py-3 font-medium text-slate-800">{run.period}</td>
+                    <td className="px-5 py-3 text-slate-600">{run.employees}</td>
+                    <td className="px-5 py-3 text-right text-slate-800">{formatCurrency(run.grossPay)}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(run.netPay)}</td>
+                    <td className="px-5 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
+                        run.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {run.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
