@@ -20,6 +20,8 @@ import {
   ChevronDown,
   ChevronRight,
   Building2,
+  Settings,
+  GitBranch,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -66,6 +68,13 @@ const navItems = [
       { label: "Employees", href: "/hr/employees", icon: Users },
       { label: "Payroll", href: "/hr/payroll", icon: CreditCard },
       { label: "Leave", href: "/hr/leave", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    children: [
+      { label: "Branches", href: "/settings/branches", icon: GitBranch },
     ],
   },
 ];

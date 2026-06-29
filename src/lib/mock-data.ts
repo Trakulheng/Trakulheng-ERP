@@ -1,5 +1,57 @@
 // Mock data for DDK ERP - frontend demo
 
+// Branches
+export const branches = [
+  {
+    id: "BR-001",
+    code: "HQ",
+    name: "Head Office",
+    address: "88 Silom Rd, Bang Rak, Bangkok 10500",
+    phone: "02-100-1000",
+    email: "hq@ddk.co.th",
+    manager: "Prapas Chamnankit",
+    employees: 45,
+    status: "active" as const,
+    isHeadOffice: true,
+  },
+  {
+    id: "BR-002",
+    code: "CMI",
+    name: "Chiang Mai Branch",
+    address: "99 Nimman Rd, Suthep, Chiang Mai 50200",
+    phone: "053-200-2000",
+    email: "chiangmai@ddk.co.th",
+    manager: "Wichai Thongdee",
+    employees: 18,
+    status: "active" as const,
+    isHeadOffice: false,
+  },
+  {
+    id: "BR-003",
+    code: "PKT",
+    name: "Phuket Branch",
+    address: "12 Rassada Rd, Phuket Town 83000",
+    phone: "076-300-3000",
+    email: "phuket@ddk.co.th",
+    manager: "Kanokwan Srisuwan",
+    employees: 12,
+    status: "active" as const,
+    isHeadOffice: false,
+  },
+  {
+    id: "BR-004",
+    code: "KKN",
+    name: "Khon Kaen Branch",
+    address: "45 Mitraphap Rd, Muang, Khon Kaen 40000",
+    phone: "043-400-4000",
+    email: "khonkaen@ddk.co.th",
+    manager: "Thanachart Boonsri",
+    employees: 8,
+    status: "inactive" as const,
+    isHeadOffice: false,
+  },
+];
+
 // Finance
 export const invoices = [
   { id: "INV-001", customer: "Acme Corporation", date: "2026-06-01", dueDate: "2026-06-30", amount: 12500, status: "paid" },
