@@ -164,3 +164,74 @@ export const kpiData = {
   headcount: 10,
   headcountChange: 0,
 };
+
+// ── CRM ──────────────────────────────────────────────────────────────
+
+export type Tier = "bronze" | "silver" | "gold" | "platinum";
+
+export function getTier(points: number): Tier {
+  if (points >= 10000) return "platinum";
+  if (points >= 5000)  return "gold";
+  if (points >= 1000)  return "silver";
+  return "bronze";
+}
+
+export const tierColors: Record<Tier, { bg: string; text: string; border: string }> = {
+  bronze:   { bg: "bg-orange-100",  text: "text-orange-700",  border: "border-orange-300" },
+  silver:   { bg: "bg-slate-100",   text: "text-slate-600",   border: "border-slate-400" },
+  gold:     { bg: "bg-amber-100",   text: "text-amber-700",   border: "border-amber-400" },
+  platinum: { bg: "bg-violet-100",  text: "text-violet-700",  border: "border-violet-400" },
+};
+
+export const tierThresholds: Record<Tier, { min: number; max: number | null; multiplier: number }> = {
+  bronze:   { min: 0,     max: 999,   multiplier: 1.0 },
+  silver:   { min: 1000,  max: 4999,  multiplier: 1.5 },
+  gold:     { min: 5000,  max: 9999,  multiplier: 2.0 },
+  platinum: { min: 10000, max: null,  multiplier: 3.0 },
+};
+
+export const pointsSettings = {
+  earnRate: 1,       // points earned
+  earnPer: 100,      // per this many THB
+  minPurchase: 500,  // minimum purchase to earn points
+  expiryMonths: 24,
+};
+
+export const crmCustomers = [
+  { id:"CRM-001", firstName:"John",       lastName:"Smith",      phone:"02-111-2345",  email:"john@acme.com",           address:"123 Sukhumvit Rd, Bangkok",      birthDate:"1985-03-15", joinDate:"2024-01-10", pointsBalance:8750,  totalPointsEarned:9200,  totalPointsRedeemed:450,  totalSpend:485000, lastVisit:"2026-06-20", branchId:"BR-001", notes:"VIP customer" },
+  { id:"CRM-002", firstName:"Sara",        lastName:"Lee",        phone:"02-222-3456",  email:"sara@techstart.io",        address:"456 Rama IV Rd, Bangkok",        birthDate:"1990-07-22", joinDate:"2024-03-05", pointsBalance:2340,  totalPointsEarned:2340,  totalPointsRedeemed:0,    totalSpend:125000, lastVisit:"2026-06-18", branchId:"BR-001", notes:"" },
+  { id:"CRM-003", firstName:"Ahmed",       lastName:"Hassan",     phone:"02-333-4567",  email:"ahmed@gtraders.com",       address:"789 Silom Rd, Bangkok",          birthDate:"1978-11-08", joinDate:"2023-08-20", pointsBalance:12500, totalPointsEarned:14200, totalPointsRedeemed:1700, totalSpend:892000, lastVisit:"2026-06-25", branchId:"BR-001", notes:"Platinum — handle with care" },
+  { id:"CRM-004", firstName:"Malee",       lastName:"Prasert",    phone:"02-444-5678",  email:"malee@sunrisefoods.co.th", address:"22 Charoen Krung Rd, Bangkok",   birthDate:"1992-05-30", joinDate:"2025-01-12", pointsBalance:675,   totalPointsEarned:675,   totalPointsRedeemed:0,    totalSpend:67500,  lastVisit:"2026-06-10", branchId:"BR-001", notes:"" },
+  { id:"CRM-005", firstName:"Tom",         lastName:"Richards",   phone:"02-555-6789",  email:"tom@metrobuilding.com",    address:"55 Ratchadaphisek Rd, Bangkok",  birthDate:"1980-09-14", joinDate:"2023-05-01", pointsBalance:15200, totalPointsEarned:16000, totalPointsRedeemed:800,  totalSpend:1250000,lastVisit:"2026-06-28", branchId:"BR-001", notes:"Enterprise account" },
+  { id:"CRM-006", firstName:"Kanokwan",    lastName:"Thong",      phone:"02-666-7890",  email:"kanokwan@paclog.co.th",    address:"10 Lat Phrao Rd, Bangkok",       birthDate:"1995-02-18", joinDate:"2025-04-20", pointsBalance:980,   totalPointsEarned:1200,  totalPointsRedeemed:220,  totalSpend:98000,  lastVisit:"2026-05-30", branchId:"BR-001", notes:"" },
+];
+
+export const pointsTransactions = [
+  { id:"PTX-001", customerId:"CRM-001", type:"earn"   as const, points: 500,  description:"Purchase ฿50,000 — INV-005",       date:"2026-06-20", balanceAfter:8750,  processedBy:"Admin" },
+  { id:"PTX-002", customerId:"CRM-001", type:"redeem" as const, points:-450,  description:"Redeemed: Premium Tool Set",        date:"2026-06-15", balanceAfter:8250,  processedBy:"Admin" },
+  { id:"PTX-003", customerId:"CRM-001", type:"earn"   as const, points: 342,  description:"Purchase ฿34,200 — INV-005",       date:"2026-05-20", balanceAfter:8700,  processedBy:"System" },
+  { id:"PTX-004", customerId:"CRM-003", type:"earn"   as const, points:1250,  description:"Purchase ฿125,000 — SO-003",       date:"2026-06-25", balanceAfter:12500, processedBy:"Admin" },
+  { id:"PTX-005", customerId:"CRM-003", type:"redeem" as const, points:-500,  description:"Redeemed: 10% Discount Voucher",   date:"2026-06-10", balanceAfter:11250, processedBy:"Admin" },
+  { id:"PTX-006", customerId:"CRM-005", type:"earn"   as const, points:1562,  description:"Purchase ฿156,200 — SO-001",       date:"2026-06-28", balanceAfter:15200, processedBy:"System" },
+  { id:"PTX-007", customerId:"CRM-002", type:"earn"   as const, points: 234,  description:"Purchase ฿23,400",                 date:"2026-06-18", balanceAfter:2340,  processedBy:"Admin" },
+  { id:"PTX-008", customerId:"CRM-004", type:"earn"   as const, points: 100,  description:"Purchase ฿10,000",                 date:"2026-06-10", balanceAfter:675,   processedBy:"Admin" },
+  { id:"PTX-009", customerId:"CRM-006", type:"redeem" as const, points:-220,  description:"Redeemed: DDK Branded Mug",        date:"2026-05-30", balanceAfter:980,   processedBy:"Admin" },
+];
+
+export const giftItems = [
+  { id:"GIFT-001", name:"DDK Branded Mug",           category:"Merchandise",  pointsRequired:200,  stock:50,  status:"active"   as const, color:"blue"    },
+  { id:"GIFT-002", name:"Safety Gloves (Premium)",   category:"Safety",       pointsRequired:350,  stock:30,  status:"active"   as const, color:"emerald" },
+  { id:"GIFT-003", name:"10% Discount Voucher",      category:"Voucher",      pointsRequired:500,  stock:999, status:"active"   as const, color:"amber"   },
+  { id:"GIFT-004", name:"Free Delivery (1 Order)",   category:"Voucher",      pointsRequired:300,  stock:999, status:"active"   as const, color:"violet"  },
+  { id:"GIFT-005", name:"Premium Tool Set",          category:"Tools",        pointsRequired:2000, stock:10,  status:"active"   as const, color:"red"     },
+  { id:"GIFT-006", name:"DDK Cap & T-Shirt Set",    category:"Merchandise",  pointsRequired:800,  stock:25,  status:"active"   as const, color:"slate"   },
+  { id:"GIFT-007", name:"Birthday Bonus (500 pts)", category:"Bonus",        pointsRequired:0,    stock:999, status:"inactive" as const, color:"pink"    },
+  { id:"GIFT-008", name:"VIP Event Ticket",         category:"Experience",   pointsRequired:5000, stock:20,  status:"active"   as const, color:"indigo"  },
+];
+
+export const redemptions = [
+  { id:"RD-001", customerId:"CRM-001", customerName:"John Smith",    rewardId:"GIFT-005", rewardName:"Premium Tool Set",        pointsUsed:2000, date:"2026-06-15", status:"completed" as const, processedBy:"Admin" },
+  { id:"RD-002", customerId:"CRM-003", customerName:"Ahmed Hassan",  rewardId:"GIFT-003", rewardName:"10% Discount Voucher",    pointsUsed:500,  date:"2026-06-10", status:"completed" as const, processedBy:"Admin" },
+  { id:"RD-003", customerId:"CRM-006", customerName:"Kanokwan Thong",rewardId:"GIFT-001", rewardName:"DDK Branded Mug",         pointsUsed:200,  date:"2026-05-30", status:"completed" as const, processedBy:"Admin" },
+  { id:"RD-004", customerId:"CRM-005", customerName:"Tom Richards",  rewardId:"GIFT-004", rewardName:"Free Delivery (1 Order)", pointsUsed:300,  date:"2026-06-01", status:"completed" as const, processedBy:"System" },
+];

@@ -24,6 +24,9 @@ import {
   GitBranch,
   ScanLine,
   CalendarClock,
+  HeartHandshake,
+  Gift,
+  TicketCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -72,6 +75,16 @@ const navItems = [
       { label: "Leave", href: "/hr/leave", icon: CalendarDays },
       { label: "Attendance", href: "/hr/attendance", icon: ScanLine },
       { label: "Shifts", href: "/hr/shifts", icon: CalendarClock },
+    ],
+  },
+  {
+    label: "CRM",
+    icon: HeartHandshake,
+    children: [
+      { label: "Overview",    href: "/crm",               icon: BarChart3 },
+      { label: "Customers",   href: "/crm/customers",     icon: Users },
+      { label: "Rewards",     href: "/crm/rewards",       icon: Gift },
+      { label: "Redemptions", href: "/crm/redemptions",   icon: TicketCheck },
     ],
   },
   {
