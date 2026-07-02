@@ -235,3 +235,67 @@ export const redemptions = [
   { id:"RD-003", customerId:"CRM-006", customerName:"Kanokwan Thong",rewardId:"GIFT-001", rewardName:"DDK Branded Mug",         pointsUsed:200,  date:"2026-05-30", status:"completed" as const, processedBy:"Admin" },
   { id:"RD-004", customerId:"CRM-005", customerName:"Tom Richards",  rewardId:"GIFT-004", rewardName:"Free Delivery (1 Order)", pointsUsed:300,  date:"2026-06-01", status:"completed" as const, processedBy:"System" },
 ];
+
+// ── Campaigns ─────────────────────────────────────────────────────────
+
+export const campaigns = [
+  { id:"CAMP-001", name:"Summer Double Points",    description:"Earn 2× points on all purchases during summer",         type:"multiplier" as const, value:2,   startDate:"2026-06-01", endDate:"2026-08-31", status:"active"    as const, eligibleTiers:["bronze","silver","gold","platinum"] as Tier[], participantCount:45, pointsIssued:12500, createdBy:"Admin" },
+  { id:"CAMP-002", name:"Platinum Welcome Bonus",  description:"500 bonus points awarded when customer reaches Platinum",type:"bonus"      as const, value:500, startDate:"2026-01-01", endDate:"2026-12-31", status:"active"    as const, eligibleTiers:["platinum"] as Tier[],                          participantCount:3,  pointsIssued:1500,  createdBy:"Admin" },
+  { id:"CAMP-003", name:"New Member Kickstart",    description:"200 bonus points on first purchase",                    type:"bonus"      as const, value:200, startDate:"2026-03-01", endDate:"2026-06-30", status:"ended"     as const, eligibleTiers:["bronze"] as Tier[],                            participantCount:28, pointsIssued:5600,  createdBy:"Admin" },
+  { id:"CAMP-004", name:"Q3 Gold Rush",            description:"Triple points for Gold & Platinum members in Q3",       type:"multiplier" as const, value:3,   startDate:"2026-07-01", endDate:"2026-09-30", status:"scheduled" as const, eligibleTiers:["gold","platinum"] as Tier[],                   participantCount:0,  pointsIssued:0,     createdBy:"Admin" },
+  { id:"CAMP-005", name:"Birthday Month Bonus",    description:"Double points during the customer's birthday month",    type:"multiplier" as const, value:2,   startDate:"2026-01-01", endDate:"2026-12-31", status:"active"    as const, eligibleTiers:["silver","gold","platinum"] as Tier[],          participantCount:12, pointsIssued:3200,  createdBy:"Admin" },
+];
+
+// ── System Users ──────────────────────────────────────────────────────
+
+export type UserRole = "admin" | "manager" | "staff" | "viewer";
+
+export const systemUsers = [
+  { id:"USR-001", name:"Prapas Chamnankit",  email:"prapas@ddk.co.th",      role:"admin"   as UserRole, branchId:"BR-001", status:"active"   as const, lastLogin:"2026-07-02T09:15:00", createdAt:"2023-01-01" },
+  { id:"USR-002", name:"Nattaporn Srisuk",   email:"nattaporn@ddk.co.th",   role:"manager" as UserRole, branchId:"BR-001", status:"active"   as const, lastLogin:"2026-07-02T08:30:00", createdAt:"2023-01-15" },
+  { id:"USR-003", name:"Wichai Thongdee",    email:"wichai@ddk.co.th",      role:"manager" as UserRole, branchId:"BR-002", status:"active"   as const, lastLogin:"2026-07-01T14:22:00", createdAt:"2023-03-01" },
+  { id:"USR-004", name:"Kanokwan Srisuwan",  email:"kanokwan@ddk.co.th",    role:"staff"   as UserRole, branchId:"BR-003", status:"active"   as const, lastLogin:"2026-06-30T11:45:00", createdAt:"2023-06-01" },
+  { id:"USR-005", name:"Thanachart Boonsri", email:"thanachart@ddk.co.th",  role:"staff"   as UserRole, branchId:"BR-001", status:"active"   as const, lastLogin:"2026-07-01T16:10:00", createdAt:"2023-06-15" },
+  { id:"USR-006", name:"Siriporn Naknoi",    email:"siriporn@ddk.co.th",    role:"viewer"  as UserRole, branchId:"BR-001", status:"inactive" as const, lastLogin:"2026-06-15T10:00:00", createdAt:"2024-01-10" },
+];
+
+// ── Company Settings ──────────────────────────────────────────────────
+
+export const companySettings = {
+  name:            "บริษัท ดีดีเค เอ็นเตอร์ไพรส์ จำกัด",
+  nameEn:          "DDK Enterprise Co., Ltd.",
+  taxId:           "0105562001234",
+  address:         "88 Silom Rd, Bang Rak, Bangkok 10500",
+  phone:           "02-100-1000",
+  email:           "info@ddk.co.th",
+  website:         "www.ddk.co.th",
+  currency:        "THB",
+  timezone:        "Asia/Bangkok",
+  language:        "th",
+  fiscalYearStart: "January",
+};
+
+// ── Notification Settings ─────────────────────────────────────────────
+
+export const notificationSettings = {
+  email: { newOrder:true,  orderStatusChange:true,  lowStock:true,  payrollProcessed:true,  leaveRequest:true,  pointsEarned:false, redemption:true,  campaignAlert:true  },
+  sms:   { newOrder:false, orderStatusChange:true,  lowStock:false, payrollProcessed:false, leaveRequest:true,  pointsEarned:false, redemption:false, campaignAlert:false },
+  inApp: { newOrder:true,  orderStatusChange:true,  lowStock:true,  payrollProcessed:true,  leaveRequest:true,  pointsEarned:true,  redemption:true,  campaignAlert:true  },
+};
+
+// ── CRM Monthly Analytics Data ────────────────────────────────────────
+
+export const crmMonthlyData = [
+  { month:"Jul", newMembers:8,  pointsEarned:12400, pointsRedeemed:2200 },
+  { month:"Aug", newMembers:12, pointsEarned:15800, pointsRedeemed:3100 },
+  { month:"Sep", newMembers:9,  pointsEarned:11200, pointsRedeemed:1800 },
+  { month:"Oct", newMembers:15, pointsEarned:18500, pointsRedeemed:4200 },
+  { month:"Nov", newMembers:22, pointsEarned:24000, pointsRedeemed:5800 },
+  { month:"Dec", newMembers:31, pointsEarned:32000, pointsRedeemed:7500 },
+  { month:"Jan", newMembers:11, pointsEarned:14200, pointsRedeemed:3200 },
+  { month:"Feb", newMembers:14, pointsEarned:16800, pointsRedeemed:3800 },
+  { month:"Mar", newMembers:18, pointsEarned:20100, pointsRedeemed:4600 },
+  { month:"Apr", newMembers:16, pointsEarned:19500, pointsRedeemed:4100 },
+  { month:"May", newMembers:20, pointsEarned:22800, pointsRedeemed:5200 },
+  { month:"Jun", newMembers:24, pointsEarned:28500, pointsRedeemed:6800 },
+];

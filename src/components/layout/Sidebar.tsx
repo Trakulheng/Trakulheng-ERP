@@ -27,6 +27,11 @@ import {
   HeartHandshake,
   Gift,
   TicketCheck,
+  Zap,
+  PieChart,
+  Shield,
+  Bell,
+  Sliders,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -81,17 +86,23 @@ const navItems = [
     label: "CRM",
     icon: HeartHandshake,
     children: [
-      { label: "Overview",    href: "/crm",               icon: BarChart3 },
-      { label: "Customers",   href: "/crm/customers",     icon: Users },
-      { label: "Rewards",     href: "/crm/rewards",       icon: Gift },
-      { label: "Redemptions", href: "/crm/redemptions",   icon: TicketCheck },
+      { label: "Overview",    href: "/crm",                 icon: BarChart3 },
+      { label: "Customers",   href: "/crm/customers",       icon: Users },
+      { label: "Campaigns",   href: "/crm/campaigns",       icon: Zap },
+      { label: "Rewards",     href: "/crm/rewards",         icon: Gift },
+      { label: "Redemptions", href: "/crm/redemptions",     icon: TicketCheck },
+      { label: "Analytics",   href: "/crm/analytics",       icon: PieChart },
     ],
   },
   {
     label: "Settings",
     icon: Settings,
     children: [
-      { label: "Branches", href: "/settings/branches", icon: GitBranch },
+      { label: "General",       href: "/settings/general",       icon: Settings },
+      { label: "Branches",      href: "/settings/branches",      icon: GitBranch },
+      { label: "Users",         href: "/settings/users",         icon: Shield },
+      { label: "Points Config", href: "/settings/points",        icon: Sliders },
+      { label: "Notifications", href: "/settings/notifications", icon: Bell },
     ],
   },
 ];
