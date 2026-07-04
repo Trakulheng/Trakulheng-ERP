@@ -287,17 +287,71 @@ export const soLineItems = [
 ];
 
 // HR
-export const employees = [
-  { id: "EMP-001", name: "Somchai Wannasuk", department: "Engineering", position: "Senior Engineer", hireDate: "2020-03-15", salary: 85000, status: "active" },
-  { id: "EMP-002", name: "Nattaporn Srisuk", department: "Finance", position: "Finance Manager", hireDate: "2019-08-01", salary: 95000, status: "active" },
-  { id: "EMP-003", name: "Prapas Chamnankit", department: "Sales", position: "Sales Director", hireDate: "2018-05-10", salary: 120000, status: "active" },
-  { id: "EMP-004", name: "Pornpimol Kittipat", department: "HR", position: "HR Manager", hireDate: "2021-01-20", salary: 88000, status: "active" },
-  { id: "EMP-005", name: "Wichai Thongdee", department: "Operations", position: "Operations Supervisor", hireDate: "2020-11-05", salary: 72000, status: "active" },
-  { id: "EMP-006", name: "Kanokwan Srisuwan", department: "Sales", position: "Sales Representative", hireDate: "2022-06-15", salary: 55000, status: "active" },
-  { id: "EMP-007", name: "Thanachart Boonsri", department: "Engineering", position: "Junior Engineer", hireDate: "2023-02-01", salary: 45000, status: "active" },
-  { id: "EMP-008", name: "Siriporn Naknoi", department: "Finance", position: "Accountant", hireDate: "2021-09-10", salary: 52000, status: "active" },
-  { id: "EMP-009", name: "Ratchanon Pimpa", department: "IT", position: "IT Administrator", hireDate: "2022-03-28", salary: 60000, status: "active" },
-  { id: "EMP-010", name: "Ploy Jaidee", department: "Marketing", position: "Marketing Specialist", hireDate: "2023-07-01", salary: 48000, status: "on-leave" },
+export type EmployeeStatus     = "active" | "on-leave" | "inactive";
+export type EmploymentType     = "full-time" | "part-time" | "contract" | "intern";
+export type EmployeeGender     = "male" | "female" | "other";
+
+export const DEPARTMENTS       = ["Engineering", "Finance", "Sales", "HR", "Operations", "IT", "Marketing", "Procurement"] as const;
+export const BANKS             = ["SCB", "Kbank", "BBL", "KTB", "TMBThanachart", "Krungthai", "Bangkok Bank", "Other"] as const;
+export const EMPLOYMENT_TYPES: { id: EmploymentType; label: string }[] = [
+  { id: "full-time", label: "Full-time" },
+  { id: "part-time", label: "Part-time" },
+  { id: "contract",  label: "Contract"  },
+  { id: "intern",    label: "Intern"    },
+];
+
+export interface Employee {
+  id:                string;
+  // Name
+  firstName:         string;
+  lastName:          string;
+  firstNameTh?:      string;
+  lastNameTh?:       string;
+  nickname?:         string;
+  name:              string; // firstName + " " + lastName
+  gender:            EmployeeGender;
+  dob?:              string;
+  nationalId?:       string;
+  // Contact
+  phone?:            string;
+  personalEmail?:    string;
+  workEmail?:        string;
+  // Employment
+  department:        string;
+  position:          string;
+  employmentType:    EmploymentType;
+  branchId?:         string;
+  hireDate:          string;
+  probationEndDate?: string;
+  managerId?:        string;
+  // Compensation
+  salary:            number;
+  bankName?:         string;
+  bankAccount?:      string;
+  bankAccountName?:  string;
+  ssn?:              string;
+  // Emergency
+  emergencyName?:    string;
+  emergencyRelation?:string;
+  emergencyPhone?:   string;
+  // Documents / photo
+  photo?:            string;
+  documents?:        string[];
+  // Status
+  status:            EmployeeStatus;
+}
+
+export const employees: Employee[] = [
+  { id:"EMP-001", firstName:"Somchai",    lastName:"Wannasuk",   firstNameTh:"สมชาย",    lastNameTh:"วรรณสุข",    nickname:"Chai",   name:"Somchai Wannasuk",    gender:"male",   dob:"1990-05-14", nationalId:"1-1001-00001-00-0", phone:"081-111-0001", personalEmail:"somchai.w@gmail.com",   workEmail:"somchai@ddk.co.th",   department:"Engineering", position:"Senior Engineer",         employmentType:"full-time", branchId:"BR-001", hireDate:"2020-03-15", probationEndDate:"2020-06-15", managerId:"EMP-003", salary:85000,  bankName:"SCB",           bankAccount:"123-4-56789-0", bankAccountName:"Somchai Wannasuk",    ssn:"01234-56789", emergencyName:"Malee Wannasuk",     emergencyRelation:"Spouse",  emergencyPhone:"081-111-9999", status:"active"   },
+  { id:"EMP-002", firstName:"Nattaporn",  lastName:"Srisuk",     firstNameTh:"ณัฐพร",    lastNameTh:"ศรีสุข",      nickname:"Nat",    name:"Nattaporn Srisuk",    gender:"female", dob:"1988-11-22", nationalId:"1-1001-00002-00-0", phone:"082-222-0002", personalEmail:"nattaporn.s@gmail.com", workEmail:"nattaporn@ddk.co.th", department:"Finance",      position:"Finance Manager",         employmentType:"full-time", branchId:"BR-001", hireDate:"2019-08-01", probationEndDate:"2019-11-01", managerId:"EMP-003", salary:95000,  bankName:"Kbank",         bankAccount:"234-5-67890-1", bankAccountName:"Nattaporn Srisuk",    ssn:"02345-67890", emergencyName:"Prasit Srisuk",       emergencyRelation:"Father",  emergencyPhone:"082-222-8888", status:"active"   },
+  { id:"EMP-003", firstName:"Prapas",     lastName:"Chamnankit", firstNameTh:"ประภาส",   lastNameTh:"ชำนาญกิจ",   nickname:"Boss",   name:"Prapas Chamnankit",   gender:"male",   dob:"1985-03-08", nationalId:"1-1001-00003-00-0", phone:"083-333-0003", personalEmail:"prapas.c@gmail.com",   workEmail:"prapas@ddk.co.th",    department:"Sales",        position:"Sales Director",          employmentType:"full-time", branchId:"BR-001", hireDate:"2018-05-10", probationEndDate:"2018-08-10", managerId:undefined,  salary:120000, bankName:"BBL",           bankAccount:"345-6-78901-2", bankAccountName:"Prapas Chamnankit",   ssn:"03456-78901", emergencyName:"Siripat Chamnankit",  emergencyRelation:"Spouse",  emergencyPhone:"083-333-7777", status:"active"   },
+  { id:"EMP-004", firstName:"Pornpimol",  lastName:"Kittipat",   firstNameTh:"พรพิมล",   lastNameTh:"กิตติพัฒน์", nickname:"Pim",    name:"Pornpimol Kittipat",  gender:"female", dob:"1992-07-30", nationalId:"1-1001-00004-00-0", phone:"084-444-0004", personalEmail:"pornpimol.k@gmail.com", workEmail:"pornpimol@ddk.co.th", department:"HR",           position:"HR Manager",              employmentType:"full-time", branchId:"BR-001", hireDate:"2021-01-20", probationEndDate:"2021-04-20", managerId:"EMP-003", salary:88000,  bankName:"KTB",           bankAccount:"456-7-89012-3", bankAccountName:"Pornpimol Kittipat",  ssn:"04567-89012", emergencyName:"Kittipat Chaiya",     emergencyRelation:"Spouse",  emergencyPhone:"084-444-6666", status:"active"   },
+  { id:"EMP-005", firstName:"Wichai",     lastName:"Thongdee",   firstNameTh:"วิชัย",    lastNameTh:"ทองดี",       nickname:"Chai",   name:"Wichai Thongdee",     gender:"male",   dob:"1991-09-12", nationalId:"1-1001-00005-00-0", phone:"085-555-0005", personalEmail:"wichai.t@gmail.com",   workEmail:"wichai@ddk.co.th",    department:"Operations",   position:"Operations Supervisor",   employmentType:"full-time", branchId:"BR-002", hireDate:"2020-11-05", probationEndDate:"2021-02-05", managerId:"EMP-003", salary:72000,  bankName:"SCB",           bankAccount:"567-8-90123-4", bankAccountName:"Wichai Thongdee",     ssn:"05678-90123", emergencyName:"Somjai Thongdee",     emergencyRelation:"Mother",  emergencyPhone:"085-555-5555", status:"active"   },
+  { id:"EMP-006", firstName:"Kanokwan",   lastName:"Srisuwan",   firstNameTh:"กนกวรรณ",  lastNameTh:"ศรีสุวรรณ",  nickname:"Nok",    name:"Kanokwan Srisuwan",   gender:"female", dob:"1995-02-18", nationalId:"1-1001-00006-00-0", phone:"086-666-0006", personalEmail:"kanokwan.s@gmail.com",  workEmail:"kanokwan@ddk.co.th",  department:"Sales",        position:"Sales Representative",    employmentType:"full-time", branchId:"BR-003", hireDate:"2022-06-15", probationEndDate:"2022-09-15", managerId:"EMP-003", salary:55000,  bankName:"Kbank",         bankAccount:"678-9-01234-5", bankAccountName:"Kanokwan Srisuwan",   ssn:"06789-01234", emergencyName:"Manat Srisuwan",      emergencyRelation:"Father",  emergencyPhone:"086-666-4444", status:"active"   },
+  { id:"EMP-007", firstName:"Thanachart", lastName:"Boonsri",    firstNameTh:"ธนชาติ",   lastNameTh:"บุญศรี",      nickname:"Tana",   name:"Thanachart Boonsri",  gender:"male",   dob:"1998-06-05", nationalId:"1-1001-00007-00-0", phone:"087-777-0007", personalEmail:"thanachart.b@gmail.com",workEmail:"thanachart@ddk.co.th", department:"Engineering", position:"Junior Engineer",          employmentType:"full-time", branchId:"BR-001", hireDate:"2023-02-01", probationEndDate:"2023-05-01", managerId:"EMP-001", salary:45000,  bankName:"BBL",           bankAccount:"789-0-12345-6", bankAccountName:"Thanachart Boonsri",  ssn:"07890-12345", emergencyName:"Boonsri Decha",       emergencyRelation:"Father",  emergencyPhone:"087-777-3333", status:"active"   },
+  { id:"EMP-008", firstName:"Siriporn",   lastName:"Naknoi",     firstNameTh:"ศิริพร",   lastNameTh:"นาคน้อย",    nickname:"Sri",    name:"Siriporn Naknoi",     gender:"female", dob:"1993-12-25", nationalId:"1-1001-00008-00-0", phone:"088-888-0008", personalEmail:"siriporn.n@gmail.com",  workEmail:"siriporn@ddk.co.th",  department:"Finance",      position:"Accountant",              employmentType:"full-time", branchId:"BR-001", hireDate:"2021-09-10", probationEndDate:"2021-12-10", managerId:"EMP-002", salary:52000,  bankName:"KTB",           bankAccount:"890-1-23456-7", bankAccountName:"Siriporn Naknoi",     ssn:"08901-23456", emergencyName:"Naknoi Suwan",        emergencyRelation:"Mother",  emergencyPhone:"088-888-2222", status:"active"   },
+  { id:"EMP-009", firstName:"Ratchanon",  lastName:"Pimpa",      firstNameTh:"รัชนนท์",  lastNameTh:"พิมพ์พา",    nickname:"Non",    name:"Ratchanon Pimpa",     gender:"male",   dob:"1996-04-11", nationalId:"1-1001-00009-00-0", phone:"089-999-0009", personalEmail:"ratchanon.p@gmail.com", workEmail:"ratchanon@ddk.co.th", department:"IT",           position:"IT Administrator",        employmentType:"full-time", branchId:"BR-001", hireDate:"2022-03-28", probationEndDate:"2022-06-28", managerId:"EMP-003", salary:60000,  bankName:"SCB",           bankAccount:"901-2-34567-8", bankAccountName:"Ratchanon Pimpa",     ssn:"09012-34567", emergencyName:"Amporn Pimpa",        emergencyRelation:"Mother",  emergencyPhone:"089-999-1111", status:"active"   },
+  { id:"EMP-010", firstName:"Ploy",       lastName:"Jaidee",     firstNameTh:"พลอย",     lastNameTh:"ใจดี",        nickname:"Ploy",   name:"Ploy Jaidee",         gender:"female", dob:"1997-08-20", nationalId:"1-1001-00010-00-0", phone:"090-000-0010", personalEmail:"ploy.j@gmail.com",      workEmail:"ploy@ddk.co.th",      department:"Marketing",    position:"Marketing Specialist",    employmentType:"full-time", branchId:"BR-001", hireDate:"2023-07-01", probationEndDate:"2023-10-01", managerId:"EMP-003", salary:48000,  bankName:"Kbank",         bankAccount:"012-3-45678-9", bankAccountName:"Ploy Jaidee",         ssn:"00123-45678", emergencyName:"Jaidee Somkid",       emergencyRelation:"Father",  emergencyPhone:"090-000-0000", status:"on-leave" },
 ];
 
 export const payrollRuns = [
