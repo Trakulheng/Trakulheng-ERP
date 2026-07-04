@@ -4,22 +4,28 @@ import { useState, useMemo, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import {
   employees as initialEmployees, branches,
-  Employee, EmployeeStatus, EmploymentType,
-  DEPARTMENTS, BANKS, EMPLOYMENT_TYPES,
+  Employee, EmployeeStatus, EmploymentType, BankAccount, SsfStatus,
+  DEPARTMENTS, BANKS, EMPLOYMENT_TYPES, SSF_FUND_TYPES, SSF_HOSPITALS,
 } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
   Plus, Search, X, Check, ChevronLeft, ChevronRight,
   User, Briefcase, CreditCard, FileUp,
-  Phone, Mail, MapPin, Calendar, Building2,
+  Phone, Mail, Calendar, Building2,
   Pencil, Trash2, Upload, FileText, Eye,
-  Users, TrendingUp, Clock, UserX,
+  Users, TrendingUp, Clock, UserX, Star,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3 | 4;
+
+type BankAccountEntry = Omit<BankAccount, "id"> & { id: string };
+
+const emptyBankAccount = (id: string, accountName = ""): BankAccountEntry => ({
+  id, bankName: "SCB", branch: "", accountNumber: "", accountName, isMain: false,
+});
 
 interface EmpForm {
   firstName: string; lastName: string;
@@ -31,8 +37,13 @@ interface EmpForm {
   employmentType: EmploymentType;
   branchId: string; hireDate: string; probationEndDate: string;
   managerId: string; workEmail: string;
-  salary: number | ""; bankName: string;
-  bankAccount: string; bankAccountName: string; ssn: string;
+  salary: number | "";
+  bankAccounts: BankAccountEntry[];
+  ssn: string;
+  ssfFundType: "33" | "39" | "40";
+  ssfEnrollmentDate: string;
+  ssfHospital: string;
+  ssfStatus: SsfStatus;
   emergencyName: string; emergencyRelation: string; emergencyPhone: string;
   photo: string; documents: string[];
   status: EmployeeStatus;
@@ -46,8 +57,9 @@ const EMPTY_FORM: EmpForm = {
   employmentType: "full-time",
   branchId: "", hireDate: "", probationEndDate: "",
   managerId: "", workEmail: "",
-  salary: "", bankName: "SCB",
-  bankAccount: "", bankAccountName: "", ssn: "",
+  salary: "",
+  bankAccounts: [{ ...emptyBankAccount("ba-0"), isMain: true }],
+  ssn: "", ssfFundType: "33", ssfEnrollmentDate: "", ssfHospital: "", ssfStatus: "active",
   emergencyName: "", emergencyRelation: "", emergencyPhone: "",
   photo: "", documents: [], status: "active",
 };
@@ -156,17 +168,21 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
     managerId:        initial.managerId         ?? "",
     workEmail:        initial.workEmail         ?? "",
     salary:           initial.salary,
-    bankName:         initial.bankName          ?? "SCB",
-    bankAccount:      initial.bankAccount       ?? "",
-    bankAccountName:  initial.bankAccountName   ?? "",
+    bankAccounts:     initial.bankAccounts?.length
+                        ? initial.bankAccounts
+                        : [{ ...emptyBankAccount("ba-0"), isMain: true }],
     ssn:              initial.ssn               ?? "",
+    ssfFundType:      initial.ssfFundType       ?? "33",
+    ssfEnrollmentDate:initial.ssfEnrollmentDate ?? "",
+    ssfHospital:      initial.ssfHospital       ?? "",
+    ssfStatus:        initial.ssfStatus         ?? "active",
     emergencyName:    initial.emergencyName     ?? "",
     emergencyRelation:initial.emergencyRelation ?? "",
     emergencyPhone:   initial.emergencyPhone    ?? "",
     photo:            initial.photo             ?? "",
     documents:        initial.documents         ?? [],
     status:           initial.status,
-  } : { ...EMPTY_FORM });
+  } : { ...EMPTY_FORM, bankAccounts: [{ ...emptyBankAccount("ba-0"), isMain: true }] });
 
   const set = <K extends keyof EmpForm>(k: K, v: EmpForm[K]) =>
     setForm(f => ({ ...f, [k]: v }));
@@ -180,19 +196,41 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
     const name = `${form.firstName.trim()} ${form.lastName.trim()}`;
     const saved: Employee = {
       ...form,
-      id:     initial?.id ?? nextId,
+      id:           initial?.id ?? nextId,
       name,
-      salary: typeof form.salary === "number" ? form.salary : 0,
+      salary:       typeof form.salary === "number" ? form.salary : 0,
+      bankAccounts: form.bankAccounts,
     } as Employee;
     onSave(saved);
   };
 
-  // Auto-fill bankAccountName when name changes
-  const syncBankName = () => {
-    if (!form.bankAccountName) {
-      const full = `${form.firstName.trim()} ${form.lastName.trim()}`;
-      if (full.trim()) set("bankAccountName", full.trim());
-    }
+  // Helpers for bankAccounts array
+  const updateBankAccount = (id: string, patch: Partial<BankAccountEntry>) =>
+    set("bankAccounts", form.bankAccounts.map(a => a.id === id ? { ...a, ...patch } : a));
+
+  const setMain = (id: string) =>
+    set("bankAccounts", form.bankAccounts.map(a => ({ ...a, isMain: a.id === id })));
+
+  const addBankAccount = () => {
+    const newId = `ba-${Date.now()}`;
+    const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
+    set("bankAccounts", [...form.bankAccounts, emptyBankAccount(newId, fullName)]);
+  };
+
+  const removeBankAccount = (id: string) => {
+    const next = form.bankAccounts.filter(a => a.id !== id);
+    // Ensure one remains main
+    if (next.length && !next.some(a => a.isMain)) next[0].isMain = true;
+    set("bankAccounts", next);
+  };
+
+  // Auto-fill account name on new accounts when first/last name is typed
+  const syncAccountNames = () => {
+    const full = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
+    if (!full) return;
+    set("bankAccounts", form.bankAccounts.map(a =>
+      a.accountName ? a : { ...a, accountName: full }
+    ));
   };
 
   return (
@@ -218,11 +256,11 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
               <div className="grid grid-cols-2 gap-3">
                 <Field label="First Name (EN)" required>
                   <input value={form.firstName} onChange={e => set("firstName", e.target.value)}
-                    onBlur={syncBankName} placeholder="e.g. Somchai" className={INPUT} />
+                    onBlur={syncAccountNames} placeholder="e.g. Somchai" className={INPUT} />
                 </Field>
                 <Field label="Last Name (EN)" required>
                   <input value={form.lastName} onChange={e => set("lastName", e.target.value)}
-                    onBlur={syncBankName} placeholder="e.g. Wannasuk" className={INPUT} />
+                    onBlur={syncAccountNames} placeholder="e.g. Wannasuk" className={INPUT} />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -357,33 +395,182 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
                     placeholder="0" className={cn(INPUT, "pl-7")} />
                 </div>
               </Field>
-              <Field label="Social Security Number (SSN)">
-                <input value={form.ssn} onChange={e => set("ssn", e.target.value)}
-                  placeholder="XXXXX-XXXXX" className={INPUT} />
-              </Field>
+
+              {/* ── Social Security Fund ── */}
               <div className="pt-2 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Bank Account for Payroll</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                  Social Security Fund — ประกันสังคม
+                </p>
                 <div className="space-y-3">
-                  <Field label="Bank">
-                    <select value={form.bankName} onChange={e => set("bankName", e.target.value)} className={SELECT}>
-                      {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
+                  {/* Status toggle */}
+                  <Field label="SSF Status">
+                    <div className="flex gap-2">
+                      {([
+                        { id: "active",       label: "Active",       cls: "bg-emerald-50 border-emerald-400 text-emerald-700" },
+                        { id: "inactive",     label: "Inactive",     cls: "bg-slate-50 border-slate-300 text-slate-500"     },
+                        { id: "not-enrolled", label: "Not Enrolled", cls: "bg-amber-50 border-amber-400 text-amber-700"     },
+                      ] as { id: SsfStatus; label: string; cls: string }[]).map(s => (
+                        <button key={s.id} type="button" onClick={() => set("ssfStatus", s.id)}
+                          className={cn("flex-1 py-1.5 text-xs font-medium rounded-lg border-2 transition-all",
+                            form.ssfStatus === s.id ? s.cls : "border-slate-200 text-slate-400 hover:border-slate-300")}>
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
                   </Field>
+
+                  {/* Fund type */}
+                  <Field label="Fund Type (มาตรา)">
+                    <div className="space-y-2">
+                      {SSF_FUND_TYPES.map(ft => (
+                        <label key={ft.id}
+                          className={cn("flex items-start gap-3 p-2.5 rounded-lg border-2 cursor-pointer transition-all",
+                            form.ssfFundType === ft.id
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-slate-200 hover:border-slate-300")}>
+                          <input type="radio" name="ssfFundType" value={ft.id}
+                            checked={form.ssfFundType === ft.id}
+                            onChange={() => set("ssfFundType", ft.id)}
+                            className="mt-0.5 accent-blue-600" />
+                          <div>
+                            <p className={cn("text-sm font-semibold", form.ssfFundType === ft.id ? "text-blue-700" : "text-slate-700")}>
+                              {ft.label}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-0.5">{ft.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </Field>
+
+                  {/* SSN + Enrollment Date */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Account Number">
-                      <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value)}
-                        placeholder="XXX-X-XXXXX-X" className={INPUT} />
+                    <Field label="SSN / เลขที่ผู้ประกันตน">
+                      <input value={form.ssn} onChange={e => set("ssn", e.target.value)}
+                        placeholder="13-digit number" className={INPUT} />
                     </Field>
-                    <Field label="Account Name">
-                      <input value={form.bankAccountName} onChange={e => set("bankAccountName", e.target.value)}
-                        placeholder="Full name as on bank book" className={INPUT} />
+                    <Field label="Enrollment Date">
+                      <input type="date" value={form.ssfEnrollmentDate}
+                        onChange={e => set("ssfEnrollmentDate", e.target.value)} className={INPUT} />
                     </Field>
                   </div>
+
+                  {/* Hospital */}
+                  <Field label="Selected Hospital (โรงพยาบาลที่เลือก)">
+                    <select value={form.ssfHospital} onChange={e => set("ssfHospital", e.target.value)} className={SELECT}>
+                      <option value="">— Select hospital —</option>
+                      {SSF_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </Field>
+
+                  {/* Contribution summary */}
+                  {form.ssfFundType === "33" && form.salary !== "" && (
+                    <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                      <div className="space-y-1">
+                        <p className="text-slate-400 font-medium">Employee contribution</p>
+                        <p className="text-slate-800 font-bold text-sm">
+                          ฿{Math.min(Math.round(Number(form.salary) * 0.05), 750).toLocaleString()}/mo
+                        </p>
+                        <p className="text-slate-400">5% of salary, max ฿750</p>
+                      </div>
+                      <div className="space-y-1 border-l border-slate-200 pl-2">
+                        <p className="text-slate-400 font-medium">Employer contribution</p>
+                        <p className="text-slate-800 font-bold text-sm">
+                          ฿{Math.min(Math.round(Number(form.salary) * 0.05), 750).toLocaleString()}/mo
+                        </p>
+                        <p className="text-slate-400">5% of salary, max ฿750</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* ── Bank accounts ── */}
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Bank Accounts for Payroll
+                  </p>
+                  <button type="button" onClick={addBankAccount}
+                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                    <Plus size={12} /> Add Account
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {form.bankAccounts.map((acct, idx) => (
+                    <div key={acct.id}
+                      className={cn("rounded-xl border-2 p-3 space-y-2.5 transition-colors",
+                        acct.isMain ? "border-blue-400 bg-blue-50/40" : "border-slate-200 bg-white")}>
+                      {/* Card header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-500">
+                            Account {idx + 1}
+                          </span>
+                          {acct.isMain && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                              <Star size={9} fill="currentColor" /> Main
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!acct.isMain && (
+                            <button type="button" onClick={() => setMain(acct.id)}
+                              className="text-xs text-slate-500 hover:text-blue-600 font-medium px-2 py-0.5 rounded hover:bg-blue-50 transition-colors">
+                              Set as main
+                            </button>
+                          )}
+                          {form.bankAccounts.length > 1 && (
+                            <button type="button" onClick={() => removeBankAccount(acct.id)}
+                              className="text-slate-300 hover:text-red-500 transition-colors">
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bank + Branch */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] text-slate-500 mb-1">Bank</label>
+                          <select value={acct.bankName}
+                            onChange={e => updateBankAccount(acct.id, { bankName: e.target.value })}
+                            className={cn(SELECT, "text-xs py-1.5")}>
+                            {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-500 mb-1">Branch</label>
+                          <input value={acct.branch}
+                            onChange={e => updateBankAccount(acct.id, { branch: e.target.value })}
+                            placeholder="e.g. Silom" className={cn(INPUT, "text-xs py-1.5")} />
+                        </div>
+                      </div>
+
+                      {/* Account number + name */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] text-slate-500 mb-1">Account Number</label>
+                          <input value={acct.accountNumber}
+                            onChange={e => updateBankAccount(acct.id, { accountNumber: e.target.value })}
+                            placeholder="XXX-X-XXXXX-X" className={cn(INPUT, "text-xs py-1.5")} />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-500 mb-1">Account Name</label>
+                          <input value={acct.accountName}
+                            onChange={e => updateBankAccount(acct.id, { accountName: e.target.value })}
+                            placeholder="Name as on bank book" className={cn(INPUT, "text-xs py-1.5")} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-700 flex items-start gap-2">
                 <CreditCard size={13} className="mt-0.5 shrink-0" />
-                Salary will be transferred to this bank account on each payroll run. Ensure the name matches the bank book exactly.
+                Salary is transferred to the <strong>main</strong> account each payroll run. Account names must match the bank book exactly.
               </div>
             </>
           )}
@@ -465,8 +652,8 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
                   <span>{form.hireDate || "—"}</span>
                   <span className="text-slate-400">Salary</span>
                   <span>{form.salary ? formatCurrency(Number(form.salary)) : "—"}/mo</span>
-                  <span className="text-slate-400">Bank</span>
-                  <span>{form.bankName} {form.bankAccount || "—"}</span>
+                  <span className="text-slate-400">Main Bank</span>
+                  <span>{(() => { const m = form.bankAccounts.find(a => a.isMain); return m ? `${m.bankName} ${m.accountNumber || "—"}` : "—"; })()}</span>
                 </div>
               </div>
             </>
@@ -593,9 +780,73 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
               <span className="text-sm text-slate-600">Monthly Salary</span>
               <span className="text-lg font-bold text-emerald-700">{formatCurrency(emp.salary)}</span>
             </div>
-            <InfoRow icon={CreditCard} label="Bank"           value={emp.bankName} />
-            <InfoRow icon={CreditCard} label="Account"        value={emp.bankAccount ? `${emp.bankAccount} · ${emp.bankAccountName}` : undefined} />
-            <InfoRow icon={FileText}   label="SSN"            value={emp.ssn} />
+            {/* Social Security */}
+            {(emp.ssn || emp.ssfStatus) && (
+              <div className={cn("p-3 rounded-xl border space-y-2",
+                emp.ssfStatus === "active"       ? "bg-emerald-50 border-emerald-200" :
+                emp.ssfStatus === "inactive"     ? "bg-slate-50 border-slate-200" :
+                                                   "bg-amber-50 border-amber-200")}>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-slate-600">Social Security Fund</p>
+                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full capitalize",
+                    emp.ssfStatus === "active"       ? "bg-emerald-100 text-emerald-700" :
+                    emp.ssfStatus === "inactive"     ? "bg-slate-100 text-slate-500" :
+                                                       "bg-amber-100 text-amber-700")}>
+                    {emp.ssfStatus?.replace("-", " ") ?? "—"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  {emp.ssfFundType && <>
+                    <span className="text-slate-400">Fund Type</span>
+                    <span className="font-medium text-slate-700">มาตรา {emp.ssfFundType}</span>
+                  </>}
+                  {emp.ssn && <>
+                    <span className="text-slate-400">SSN</span>
+                    <span className="font-mono text-slate-700">{emp.ssn}</span>
+                  </>}
+                  {emp.ssfEnrollmentDate && <>
+                    <span className="text-slate-400">Enrolled</span>
+                    <span className="text-slate-700">{emp.ssfEnrollmentDate}</span>
+                  </>}
+                  {emp.ssfHospital && <>
+                    <span className="text-slate-400">Hospital</span>
+                    <span className="text-slate-700">{emp.ssfHospital}</span>
+                  </>}
+                  {emp.ssfFundType === "33" && <>
+                    <span className="text-slate-400">Contribution</span>
+                    <span className="text-slate-700">฿{Math.min(Math.round(emp.salary * 0.05), 750).toLocaleString()}/mo each</span>
+                  </>}
+                </div>
+              </div>
+            )}
+            {emp.bankAccounts && emp.bankAccounts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400 font-medium">Bank Accounts</p>
+                {emp.bankAccounts.map(acct => (
+                  <div key={acct.id}
+                    className={cn("flex items-start gap-3 p-3 rounded-xl border",
+                      acct.isMain ? "bg-blue-50 border-blue-200" : "bg-slate-50 border-slate-200")}>
+                    <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                      acct.isMain ? "bg-blue-100" : "bg-slate-100")}>
+                      <CreditCard size={13} className={acct.isMain ? "text-blue-600" : "text-slate-500"} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-800">{acct.bankName}</span>
+                        {acct.branch && <span className="text-xs text-slate-400">· {acct.branch}</span>}
+                        {acct.isMain && (
+                          <span className="flex items-center gap-0.5 text-[10px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full">
+                            <Star size={8} fill="currentColor" /> Main
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 font-mono mt-0.5">{acct.accountNumber || "—"}</p>
+                      <p className="text-xs text-slate-400">{acct.accountName}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Emergency */}
