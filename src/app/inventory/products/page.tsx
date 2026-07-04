@@ -6,6 +6,7 @@ import {
   products as initialProducts,
   stockMovements as initialMovements,
   suppliers, branches,
+  poLineItems, purchaseOrders,
   PRODUCT_CATEGORIES, PRODUCT_BRANDS,
   StockStatus, StockMovementType,
 } from "@/lib/mock-data";
@@ -429,7 +430,59 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
             )}
           </div>
 
-          <div className="col-span-2">
+          <div className="col-span-2 space-y-6">
+            {/* Purchase Orders for this product */}
+            {(() => {
+              const myPOLines = poLineItems.filter((l) => l.productId === product.id);
+              if (myPOLines.length === 0) return null;
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-sm font-semibold text-slate-700">Purchase Orders</h3>
+                    <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{myPOLines.length}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="text-left px-3 py-2.5 font-semibold text-slate-500">PO #</th>
+                          <th className="text-left px-3 py-2.5 font-semibold text-slate-500">Supplier</th>
+                          <th className="text-left px-3 py-2.5 font-semibold text-slate-500">Date</th>
+                          <th className="text-right px-3 py-2.5 font-semibold text-slate-500">Qty</th>
+                          <th className="text-right px-3 py-2.5 font-semibold text-slate-500">Unit Cost</th>
+                          <th className="text-left px-3 py-2.5 font-semibold text-slate-500">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {myPOLines.map((pl) => {
+                          const po = purchaseOrders.find((p) => p.id === pl.poId);
+                          if (!po) return null;
+                          return (
+                            <tr key={pl.id} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 font-mono text-blue-600 font-semibold">{po.id}</td>
+                              <td className="px-3 py-2 text-slate-700">{po.supplier}</td>
+                              <td className="px-3 py-2 text-slate-500">{po.date}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-slate-800">{pl.qty}</td>
+                              <td className="px-3 py-2 text-right text-slate-700">{formatCurrency(pl.unitPrice)}</td>
+                              <td className="px-3 py-2">
+                                <span className={cn("px-1.5 py-0.5 rounded-full font-medium capitalize",
+                                  po.status === "received"   ? "bg-emerald-100 text-emerald-700" :
+                                  po.status === "in-transit" ? "bg-blue-100 text-blue-700" :
+                                  po.status === "pending"    ? "bg-amber-100 text-amber-700" :
+                                  "bg-slate-100 text-slate-500"
+                                )}>{po.status}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div>
             <div className="flex items-center gap-2 mb-3"><BarChart2 size={15} className="text-slate-400" /><h3 className="text-sm font-semibold text-slate-700">Stock Movement History</h3></div>
             {myMovements.length === 0 ? (
               <div className="text-center py-10 text-sm text-slate-400">No movements recorded yet.</div>
@@ -460,6 +513,7 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
                 ))}
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>

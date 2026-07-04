@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
-import { customerProfiles, salesOrders } from "@/lib/mock-data";
+import { customerProfiles, salesOrders, invoices, crmCustomers, getTier, tierColors } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
   Plus, Search, Eye, Pencil, Trash2, X, User, Building2,
   Phone, Mail, MapPin, Calendar, Tag, CreditCard, FileText,
-  XCircle,
+  XCircle, Star, Receipt, Gift,
 } from "lucide-react";
 
 // ── Explicit types (avoids Extract<> returning never on inferred union) ─
@@ -363,14 +363,25 @@ interface DetailModalProps {
 
 function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
   const isInd = profile.customerType === "individual";
+  const displayedName = isInd
+    ? `${(profile as IndividualProfile).firstName} ${(profile as IndividualProfile).lastName}`
+    : (profile as CorporateProfile).companyName;
+
+  // Match orders by customer name (best available link without customerId on profiles)
   const relatedOrders = salesOrders.filter((o) =>
-    o.customer.toLowerCase().includes(
-      (isInd
-        ? (profile as IndividualProfile).firstName
-        : (profile as CorporateProfile).companyName
-      ).toLowerCase().split(" ")[0]
-    )
+    o.customer.toLowerCase().includes(displayedName.toLowerCase().split(" ")[0])
   );
+
+  // Match invoices similarly
+  const relatedInvoices = invoices.filter((inv) =>
+    inv.customer.toLowerCase().includes(displayedName.toLowerCase().split(" ")[0])
+  );
+
+  // CRM — match by email
+  const crmRecord = crmCustomers.find(
+    (c) => c.email.toLowerCase() === (profile.email ?? "").toLowerCase()
+  );
+  const crmTier = crmRecord ? getTier(crmRecord.pointsBalance) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -408,13 +419,15 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
 
         <div className="p-6 space-y-6">
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-3">
             {[
               { label: "Total Spend",  value: formatCurrency(profile.totalSpend), icon: <CreditCard size={16} className="text-blue-600" />,   bg: "bg-blue-50" },
               { label: "Orders",       value: String(relatedOrders.length),       icon: <FileText  size={16} className="text-violet-600" />,  bg: "bg-violet-50" },
-              { label: "Member Since", value: profile.joinDate,                   icon: <Calendar  size={16} className="text-emerald-600" />, bg: "bg-emerald-50" },
+              { label: "Invoices",     value: String(relatedInvoices.length),     icon: <Receipt   size={16} className="text-amber-600" />,   bg: "bg-amber-50" },
+              { label: "CRM Points",   value: crmRecord ? crmRecord.pointsBalance.toLocaleString() : "—",
+                icon: <Star size={16} className="text-emerald-600" />, bg: "bg-emerald-50" },
             ].map(({ label, value, icon, bg }) => (
-              <div key={label} className={cn("rounded-xl p-4 flex items-center gap-3", bg)}>
+              <div key={label} className={cn("rounded-xl p-3 flex items-center gap-2.5", bg)}>
                 {icon}
                 <div>
                   <p className="text-xs text-slate-500">{label}</p>
@@ -423,6 +436,21 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
               </div>
             ))}
           </div>
+          {/* CRM Tier badge */}
+          {crmRecord && crmTier && (
+            <div className={cn("flex items-center gap-3 rounded-xl px-4 py-3 border", tierColors[crmTier].bg, tierColors[crmTier].border)}>
+              <Star size={14} className={tierColors[crmTier].text} />
+              <div className="flex-1">
+                <p className={cn("text-xs font-bold uppercase tracking-wider", tierColors[crmTier].text)}>
+                  {crmTier.charAt(0).toUpperCase() + crmTier.slice(1)} Member
+                </p>
+                <p className="text-xs text-slate-500">
+                  {crmRecord.pointsBalance.toLocaleString()} pts balance · {crmRecord.totalPointsEarned.toLocaleString()} earned · {crmRecord.totalPointsRedeemed.toLocaleString()} redeemed
+                </p>
+              </div>
+              <Gift size={14} className="text-slate-400" />
+            </div>
+          )}
 
           {/* Info grids */}
           <div className="grid grid-cols-2 gap-4">
@@ -488,13 +516,14 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
           {/* Related orders */}
           {relatedOrders.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Related Sales Orders</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Sales Orders</p>
               <div className="rounded-xl border border-slate-200 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Order #</th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Date</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Delivery</th>
                       <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500">Amount</th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Stage</th>
                     </tr>
@@ -503,7 +532,8 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
                     {relatedOrders.map((o) => (
                       <tr key={o.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2.5 font-mono text-blue-600 font-semibold text-xs">{o.id}</td>
-                        <td className="px-4 py-2.5 text-slate-600">{o.date}</td>
+                        <td className="px-4 py-2.5 text-slate-600 text-xs">{o.date}</td>
+                        <td className="px-4 py-2.5 text-slate-600 text-xs">{o.deliveryDate}</td>
                         <td className="px-4 py-2.5 text-right font-semibold text-slate-900">{formatCurrency(o.amount)}</td>
                         <td className="px-4 py-2.5">
                           <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">{o.stage}</span>
@@ -511,6 +541,62 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot className="border-t border-slate-200 bg-slate-50">
+                    <tr>
+                      <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-slate-600">Total</td>
+                      <td className="px-4 py-2 text-right font-bold text-slate-800 text-sm">
+                        {formatCurrency(relatedOrders.reduce((s, o) => s + o.amount, 0))}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Related invoices */}
+          {relatedInvoices.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Invoices</p>
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Invoice #</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Date</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Due</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500">Amount</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {relatedInvoices.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-2.5 font-mono text-violet-600 font-semibold text-xs">{inv.id}</td>
+                        <td className="px-4 py-2.5 text-slate-600 text-xs">{inv.date}</td>
+                        <td className="px-4 py-2.5 text-slate-600 text-xs">{inv.dueDate}</td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-slate-900">{formatCurrency(inv.amount)}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full capitalize font-medium",
+                            inv.status === "paid"     ? "bg-emerald-100 text-emerald-700" :
+                            inv.status === "overdue"  ? "bg-red-100 text-red-700" :
+                            inv.status === "sent"     ? "bg-blue-100 text-blue-700" :
+                            "bg-slate-100 text-slate-600"
+                          )}>{inv.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t border-slate-200 bg-slate-50">
+                    <tr>
+                      <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-slate-600">Total Invoiced</td>
+                      <td className="px-4 py-2 text-right font-bold text-slate-800 text-sm">
+                        {formatCurrency(relatedInvoices.reduce((s, i) => s + i.amount, 0))}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
