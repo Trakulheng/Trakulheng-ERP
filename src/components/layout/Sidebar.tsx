@@ -116,7 +116,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { theme } = useTheme();
-  const [openSections, setOpenSections] = useState<string[]>(["Finance", "Inventory", "Sales & CRM", "HR & Payroll"]);
+  const [openSections, setOpenSections] = useState<string[]>(["Finance", "Inventory", "Sales & CRM", "HR & Payroll", "CRM", "Settings"]);
 
   // Style tokens per sidebar variant
   const S = {

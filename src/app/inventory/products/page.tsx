@@ -265,6 +265,7 @@ function AdjustModal({ product, onClose, onConfirm }: AdjustModalProps) {
     adjustment: { label:"Adjustment",      color:"amber",   hint:"Correct stock count after physical count" },
     return:     { label:"Return / Refund", color:"blue",    hint:"Stock returned from customer or site" },
   };
+  const typeKeys = Object.keys(typeConfig) as StockMovementType[];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -280,7 +281,7 @@ function AdjustModal({ product, onClose, onConfirm }: AdjustModalProps) {
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-2">Movement Type</label>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(typeConfig) as StockMovementType[]).map((t) => (
+              {typeKeys.map((t) => (
                 <button key={t} onClick={() => setType(t)}
                   className={cn("px-3 py-2.5 text-sm font-medium rounded-lg border-2 transition-all text-left",
                     type === t
@@ -355,7 +356,8 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
   const myMovements = movements.filter((m) => m.productId === product.id).sort((a, b) => b.date.localeCompare(a.date));
   const supplier    = suppliers.find((s) => s.id === product.supplierId);
   const stockPct    = product.minStock > 0 ? Math.min(100, (product.stock / (product.minStock * 3)) * 100) : product.stock > 0 ? 100 : 0;
-  const prodBranches = branches.filter((b) => (product as any).branchIds?.includes(b.id));
+  const anyProduct = product as Record<string, unknown>;
+  const prodBranches = branches.filter((b) => Array.isArray(anyProduct.branchIds) && (anyProduct.branchIds as string[]).includes(b.id));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
