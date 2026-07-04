@@ -30,7 +30,8 @@
       "Bash(read \"/private/tmp/claude-501/-Users-korrakotk-Desktop-DDK-ERP/7a259a99-cf13-4298-bcc5-af9c195633b7/tasks/b1cqig7d3.output\")",
       "Bash(sleep 12 && cat /tmp/nextdev.log)",
       "Bash(curl -s http://localhost:3000/inventory/purchase-orders -o /dev/null -w \"%{http_code}\")",
-      "Bash(kill 91556 64873)"
+      "Bash(kill 91556 64873)",
+      "Bash(npx tsc *)"
     ]
   }
 }
