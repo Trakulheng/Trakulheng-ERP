@@ -31,7 +31,9 @@
       "Bash(sleep 12 && cat /tmp/nextdev.log)",
       "Bash(curl -s http://localhost:3000/inventory/purchase-orders -o /dev/null -w \"%{http_code}\")",
       "Bash(kill 91556 64873)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('@anthropic-ai/sdk'\\); console.log\\('ok'\\)\")"
     ]
   }
 }
