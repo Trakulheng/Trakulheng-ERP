@@ -15,6 +15,7 @@ import {
   Phone, Mail, Calendar, Building2,
   Pencil, Trash2, Upload, FileText, Eye,
   Users, TrendingUp, Clock, UserX, Star,
+  ScanLine, Sparkles, AlertCircle, CheckCircle2,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -22,6 +23,17 @@ import {
 type Step = 1 | 2 | 3 | 4;
 
 type BankAccountEntry = Omit<BankAccount, "id"> & { id: string };
+
+interface ScanResult {
+  firstName?:   string;
+  lastName?:    string;
+  firstNameTh?: string;
+  lastNameTh?:  string;
+  nationalId?:  string;
+  dob?:         string;
+  gender?:      "male" | "female" | "other";
+  nationality?: string;
+}
 
 const emptyBankAccount = (id: string, accountName = ""): BankAccountEntry => ({
   id, bankName: "SCB", branch: "", accountNumber: "", accountName, isMain: false,
@@ -47,6 +59,8 @@ interface EmpForm {
   emergencyName: string; emergencyRelation: string; emergencyPhone: string;
   photo: string; documents: string[];
   status: EmployeeStatus;
+  verified: boolean;
+  verifiedDate: string;
 }
 
 const EMPTY_FORM: EmpForm = {
@@ -62,6 +76,7 @@ const EMPTY_FORM: EmpForm = {
   ssn: "", ssfFundType: "33", ssfEnrollmentDate: "", ssfHospital: "", ssfStatus: "active",
   emergencyName: "", emergencyRelation: "", emergencyPhone: "",
   photo: "", documents: [], status: "active",
+  verified: false, verifiedDate: "",
 };
 
 const STATUS_CFG: Record<EmployeeStatus, { label: string; cls: string }> = {
@@ -145,8 +160,63 @@ interface ModalProps {
 function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: ModalProps) {
   const isEdit = !!initial;
   const [step, setStep] = useState<Step>(1);
-  const photoRef = useRef<HTMLInputElement>(null);
-  const docRef   = useRef<HTMLInputElement>(null);
+  const photoRef  = useRef<HTMLInputElement>(null);
+  const docRef    = useRef<HTMLInputElement>(null);
+  const scanIdRef = useRef<HTMLInputElement>(null);
+
+  // ── OCR scanner state ──
+  const [scanOpen,    setScanOpen]    = useState(false);
+  const [scanPreview, setScanPreview] = useState<string>("");
+  const [scanning,    setScanning]    = useState(false);
+  const [scanResult,  setScanResult]  = useState<ScanResult | null>(null);
+  const [scanError,   setScanError]   = useState<string>("");
+
+  const handleScanFile = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => setScanPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+
+    setScanning(true);
+    setScanResult(null);
+    setScanError("");
+
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res  = await fetch("/api/ocr", { method: "POST", body: fd });
+      const json = await res.json();
+      if (json.success) {
+        setScanResult(json.data as ScanResult);
+      } else {
+        setScanError(json.error ?? "Scan failed — please try again.");
+      }
+    } catch {
+      setScanError("Network error — please try again.");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const applyScanResult = () => {
+    if (!scanResult) return;
+    if (scanResult.firstName)   set("firstName",   scanResult.firstName);
+    if (scanResult.lastName)    set("lastName",    scanResult.lastName);
+    if (scanResult.firstNameTh) set("firstNameTh", scanResult.firstNameTh);
+    if (scanResult.lastNameTh)  set("lastNameTh",  scanResult.lastNameTh);
+    if (scanResult.nationalId)  set("nationalId",  scanResult.nationalId);
+    if (scanResult.dob)         set("dob",         scanResult.dob);
+    if (scanResult.gender)      set("gender",      scanResult.gender);
+    setScanOpen(false);
+    setScanPreview("");
+    setScanResult(null);
+  };
+
+  const resetScanner = () => {
+    setScanPreview("");
+    setScanResult(null);
+    setScanError("");
+    if (scanIdRef.current) scanIdRef.current.value = "";
+  };
 
   const [form, setForm] = useState<EmpForm>(() => initial ? {
     firstName:        initial.firstName,
@@ -182,6 +252,8 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
     photo:            initial.photo             ?? "",
     documents:        initial.documents         ?? [],
     status:           initial.status,
+    verified:         initial.verified          ?? false,
+    verifiedDate:     initial.verifiedDate      ?? "",
   } : { ...EMPTY_FORM, bankAccounts: [{ ...emptyBankAccount("ba-0"), isMain: true }] });
 
   const set = <K extends keyof EmpForm>(k: K, v: EmpForm[K]) =>
@@ -253,6 +325,114 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
           {/* ── Step 1: Personal ─────────────────────────── */}
           {step === 1 && (
             <>
+              {/* ── AI OCR Scanner ── */}
+              <input ref={scanIdRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleScanFile(f); }} />
+
+              {!scanOpen ? (
+                <button type="button" onClick={() => { setScanOpen(true); resetScanner(); }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 text-sm font-medium hover:border-blue-500 hover:bg-blue-100 transition-colors">
+                  <Sparkles size={15} />
+                  Scan ID Card / Passport with AI OCR
+                </button>
+              ) : (
+                <div className="rounded-xl border-2 border-blue-300 bg-blue-50/40 overflow-hidden">
+                  {/* Scanner header */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
+                    <div className="flex items-center gap-2 text-white text-sm font-semibold">
+                      <ScanLine size={15} /> AI OCR — ID / Passport Scanner
+                    </div>
+                    <button type="button" onClick={() => { setScanOpen(false); resetScanner(); }}
+                      className="text-white/70 hover:text-white"><X size={15} /></button>
+                  </div>
+
+                  <div className="p-4 space-y-3">
+                    {/* Upload zone */}
+                    {!scanPreview ? (
+                      <div
+                        onClick={() => scanIdRef.current?.click()}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={e => {
+                          e.preventDefault();
+                          const f = e.dataTransfer.files[0];
+                          if (f) handleScanFile(f);
+                        }}
+                        className="flex flex-col items-center justify-center gap-2 py-8 border-2 border-dashed border-blue-300 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors text-center">
+                        <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                          <ScanLine size={22} className="text-blue-600" />
+                        </div>
+                        <p className="text-sm font-medium text-slate-700">Click or drag an image here</p>
+                        <p className="text-xs text-slate-400">Thai ID card or international passport · JPG, PNG, WebP</p>
+                      </div>
+                    ) : (
+                      /* Preview + scan animation */
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={scanPreview} alt="ID preview" className="w-full object-contain max-h-52" />
+                        {scanning && (
+                          <>
+                            {/* Dark overlay */}
+                            <div className="absolute inset-0 bg-black/20" />
+                            {/* Scan line */}
+                            <div className="absolute left-0 right-0 h-0.5 bg-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.8)] animate-scan-sweep" />
+                            {/* Label */}
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-blue-300 font-medium bg-black/50 px-3 py-1 rounded-full flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                              Scanning…
+                            </div>
+                          </>
+                        )}
+                        {/* Re-upload button */}
+                        {!scanning && (
+                          <button type="button" onClick={() => { resetScanner(); }}
+                            className="absolute top-2 right-2 p-1 bg-black/50 hover:bg-black/70 rounded-lg text-white/80 hover:text-white">
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Error */}
+                    {scanError && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+                        <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                        {scanError}
+                      </div>
+                    )}
+
+                    {/* Results */}
+                    {scanResult && !scanning && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 size={13} /> Extracted — review and apply
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 p-3 bg-white rounded-xl border border-emerald-200 text-xs">
+                          {([
+                            ["First Name",    scanResult.firstName],
+                            ["Last Name",     scanResult.lastName],
+                            ["ชื่อ (TH)",      scanResult.firstNameTh],
+                            ["นามสกุล (TH)",  scanResult.lastNameTh],
+                            ["National ID",   scanResult.nationalId],
+                            ["Date of Birth", scanResult.dob],
+                            ["Gender",        scanResult.gender],
+                            ["Nationality",   scanResult.nationality],
+                          ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
+                            <div key={label}>
+                              <p className="text-slate-400">{label}</p>
+                              <p className="font-semibold text-slate-800">{value}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <button type="button" onClick={applyScanResult}
+                          className="w-full py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors">
+                          <Check size={14} /> Apply to form
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <Field label="First Name (EN)" required>
                   <input value={form.firstName} onChange={e => set("firstName", e.target.value)}
@@ -638,6 +818,52 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
 
               <p className="text-xs text-slate-400">PDF, JPG, PNG, DOC — multiple files allowed</p>
 
+              {/* ── Verification ── */}
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Identity Verification</p>
+                <div className={cn(
+                  "rounded-xl border-2 p-4 space-y-3 transition-colors",
+                  form.verified ? "border-emerald-400 bg-emerald-50/40" : "border-slate-200 bg-white"
+                )}>
+                  {/* Checkbox row */}
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div onClick={() => {
+                      const next = !form.verified;
+                      set("verified", next);
+                      if (next && !form.verifiedDate) set("verifiedDate", new Date().toISOString().slice(0, 10));
+                      if (!next) set("verifiedDate", "");
+                    }}
+                      className={cn(
+                        "w-5 h-5 rounded flex items-center justify-center border-2 shrink-0 transition-colors cursor-pointer",
+                        form.verified ? "bg-emerald-500 border-emerald-500" : "bg-white border-slate-300 hover:border-emerald-400"
+                      )}>
+                      {form.verified && <Check size={12} className="text-white" strokeWidth={3} />}
+                    </div>
+                    <div>
+                      <p className={cn("text-sm font-semibold", form.verified ? "text-emerald-700" : "text-slate-600")}>
+                        {form.verified ? "Verified" : "Mark as Verified"}
+                      </p>
+                      <p className="text-xs text-slate-400">Documents and identity have been checked</p>
+                    </div>
+                    {form.verified && (
+                      <span className="ml-auto text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle2 size={11} /> Verified
+                      </span>
+                    )}
+                  </label>
+
+                  {/* Date picker — only shown when verified */}
+                  {form.verified && (
+                    <div className="pl-8">
+                      <label className="block text-xs text-slate-500 mb-1">Date of Verification</label>
+                      <input type="date" value={form.verifiedDate}
+                        onChange={e => set("verifiedDate", e.target.value)}
+                        className={cn(INPUT, "max-w-xs")} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Review summary */}
               <div className="mt-2 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs text-slate-600">
                 <p className="font-semibold text-slate-700 text-sm">Summary</p>
@@ -727,7 +953,7 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
               <p className="text-blue-200 text-xs mt-0.5">{emp.position} · {emp.department}</p>
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4">
             <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", STATUS_CFG[emp.status].cls)}>
               {STATUS_CFG[emp.status].label}
             </span>
@@ -737,6 +963,15 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/20 text-white font-mono">
               {emp.id}
             </span>
+            {emp.verified ? (
+              <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-400/30 text-emerald-100">
+                <CheckCircle2 size={11} /> Verified {emp.verifiedDate && `· ${emp.verifiedDate}`}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-400/20 text-amber-200">
+                <AlertCircle size={11} /> Not Verified
+              </span>
+            )}
           </div>
         </div>
 
@@ -1012,6 +1247,7 @@ export default function EmployeesPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Hire Date</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Salary</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Verified</th>
                   <th className="px-4 py-3 w-20"></th>
                 </tr>
               </thead>
@@ -1049,6 +1285,37 @@ export default function EmployeesPage() {
                       <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", STATUS_CFG[emp.status].cls)}>
                         {STATUS_CFG[emp.status].label}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                      <button
+                        title={emp.verified ? `Verified ${emp.verifiedDate ?? ""}` : "Click to verify"}
+                        onClick={() => {
+                          const today = new Date().toISOString().slice(0, 10);
+                          setList(prev => prev.map(e => e.id === emp.id
+                            ? { ...e, verified: !e.verified, verifiedDate: !e.verified ? today : undefined }
+                            : e
+                          ));
+                        }}
+                        className="flex flex-col items-center gap-0.5 mx-auto group">
+                        <div className={cn(
+                          "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                          emp.verified
+                            ? "bg-emerald-500 border-emerald-500"
+                            : "bg-white border-slate-300 group-hover:border-emerald-400"
+                        )}>
+                          {emp.verified && <Check size={11} className="text-white" strokeWidth={3} />}
+                        </div>
+                        {emp.verified && emp.verifiedDate && (
+                          <span className="text-[10px] text-emerald-600 font-medium leading-none">
+                            {emp.verifiedDate}
+                          </span>
+                        )}
+                        {!emp.verified && (
+                          <span className="text-[10px] text-slate-400 leading-none opacity-0 group-hover:opacity-100 transition-opacity">
+                            verify
+                          </span>
+                        )}
+                      </button>
                     </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-1 justify-end">
