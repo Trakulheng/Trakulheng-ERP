@@ -1138,6 +1138,165 @@ function RequestsTab({
   );
 }
 
+// ─── Date Range Picker ────────────────────────────────────────────────────────
+
+function DateRangePickerPopup({
+  initialFrom,
+  initialTo,
+  onApply,
+  onClose,
+}: {
+  initialFrom: string;
+  initialTo: string;
+  onApply: (from: string, to: string) => void;
+  onClose: () => void;
+}) {
+  const [fromVal, setFromVal] = useState(initialFrom);
+  const [toVal, setToVal] = useState(initialTo);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState<"from" | "to">("from");
+  const initDate = parseDate(initialFrom);
+  const [pickerYear, setPickerYear] = useState(initDate.getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(initDate.getMonth());
+
+  const rightYear = pickerMonth === 11 ? pickerYear + 1 : pickerYear;
+  const rightMonth = pickerMonth === 11 ? 0 : pickerMonth + 1;
+
+  const prevPicker = () => {
+    if (pickerMonth === 0) { setPickerYear((y) => y - 1); setPickerMonth(11); }
+    else setPickerMonth((m) => m - 1);
+  };
+  const nextPicker = () => {
+    if (pickerMonth === 11) { setPickerYear((y) => y + 1); setPickerMonth(0); }
+    else setPickerMonth((m) => m + 1);
+  };
+
+  function handleDayClick(ds: string) {
+    if (selecting === "from") {
+      setFromVal(ds); setToVal(""); setSelecting("to");
+    } else if (ds < fromVal) {
+      setFromVal(ds); setToVal("");
+    } else {
+      setToVal(ds); setSelecting("from");
+    }
+  }
+
+  function renderCalGrid(year: number, month: number, side: "left" | "right") {
+    const label = new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const firstDow = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (string | null)[] = [];
+    for (let i = 0; i < firstDow; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++)
+      cells.push(`${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    return (
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-3">
+          {side === "left"
+            ? <button onClick={prevPicker} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500"><ChevronLeft size={14} /></button>
+            : <div className="w-7" />}
+          <p className="text-sm font-semibold text-slate-800">{label}</p>
+          {side === "right"
+            ? <button onClick={nextPicker} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500"><ChevronRight size={14} /></button>
+            : <div className="w-7" />}
+        </div>
+        <div className="grid grid-cols-7 gap-y-0.5">
+          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+            <div key={d} className="text-center text-[11px] text-slate-400 py-1 font-medium">{d}</div>
+          ))}
+          {cells.map((ds, i) => {
+            if (!ds) return <div key={`e-${i}`} />;
+            const isFrom = ds === fromVal;
+            const isTo = ds === toVal;
+            const inRange = fromVal && toVal && ds > fromVal && ds < toVal;
+            const isHov = fromVal && !toVal && hovered && ds > fromVal && ds <= hovered;
+            const isToday = ds === TODAY;
+            return (
+              <button
+                key={ds}
+                onClick={() => handleDayClick(ds)}
+                onMouseEnter={() => setHovered(ds)}
+                onMouseLeave={() => setHovered(null)}
+                className={cn(
+                  "text-xs py-1.5 font-medium transition-colors cursor-pointer",
+                  isFrom ? "bg-blue-600 text-white rounded-l-full" :
+                  isTo   ? "bg-blue-600 text-white rounded-r-full" :
+                  (inRange || isHov) ? "bg-blue-100 text-blue-700" :
+                  isToday ? "text-blue-600 font-bold rounded-full ring-1 ring-blue-400" :
+                  "text-slate-700 hover:bg-slate-100 rounded-full"
+                )}
+              >
+                {parseInt(ds.split("-")[2], 10)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const setPreset = (f: string, t: string) => { setFromVal(f); setToVal(t); setSelecting("from"); };
+
+  return (
+    <>
+      {/* Click-away overlay */}
+      <div className="fixed inset-0 z-50" onClick={onClose} />
+      {/* Picker panel */}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[60] p-5 w-[620px]">
+        {/* Date inputs */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1">
+            <p className="text-xs text-slate-500 mb-1 font-medium">From</p>
+            <input type="date" value={fromVal}
+              onChange={(e) => { setFromVal(e.target.value); setSelecting("to"); }}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <ArrowLeftRight size={14} className="text-slate-400 mt-5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs text-slate-500 mb-1 font-medium">To</p>
+            <input type="date" value={toVal}
+              onChange={(e) => { setToVal(e.target.value); setSelecting("from"); }}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        {/* Dual calendar */}
+        <div className="flex gap-6 border-t border-slate-100 pt-4">
+          {renderCalGrid(pickerYear, pickerMonth, "left")}
+          <div className="w-px bg-slate-100" />
+          {renderCalGrid(rightYear, rightMonth, "right")}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-slate-100 mt-4 pt-3">
+          <div className="flex gap-1">
+            {([
+              ["Today",      () => setPreset(TODAY, TODAY)],
+              ["This week",  () => { const m = getMondayOf(parseDate(TODAY)); setPreset(toStr(m), toStr(addDays(m, 6))); }],
+              ["This month", () => { const d = parseDate(TODAY); setPreset(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`, toStr(new Date(d.getFullYear(), d.getMonth()+1, 0))); }],
+              ["Next week",  () => { const m = getMondayOf(addDays(parseDate(TODAY), 7)); setPreset(toStr(m), toStr(addDays(m, 6))); }],
+            ] as [string, () => void][]).map(([label, fn]) => (
+              <button key={label} onClick={fn}
+                className="text-xs text-slate-600 hover:text-blue-600 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+            <button onClick={() => { onApply(fromVal, toVal || fromVal); onClose(); }} disabled={!fromVal}
+              className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+              Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShiftsPage() {
@@ -1157,6 +1316,7 @@ export default function ShiftsPage() {
   const [cellModal, setCellModal] = useState<{ empId: string; date: string; currentShiftId: string | null; isOverride: boolean; entry?: CalendarEntry } | null>(null);
   const [reqChangeModal, setReqChangeModal] = useState<{ empId: string; date: string; currentShiftId: string } | null>(null);
   const [empViewId, setEmpViewId] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const branchEmps = useMemo(() => allEmployees.filter((e) => e.branchId === activeBranch.id), [activeBranch.id]);
   const branchPatterns = useMemo(() => patterns.filter((p) => p.branchId === activeBranch.id), [patterns, activeBranch.id]);
@@ -1399,9 +1559,29 @@ export default function ShiftsPage() {
                 <button onClick={viewMode === "week" ? prevWeek : prevMonth} className="p-2 hover:bg-slate-100 rounded-l-lg transition-colors">
                   <ChevronLeft size={16} className="text-slate-600" />
                 </button>
-                <span className="px-4 py-2 text-sm font-semibold text-slate-800 min-w-[200px] text-center">
-                  {viewMode === "week" ? fmtWeekRange(monday) : fmtMonthYear(new Date(calMonth.year, calMonth.month, 1))}
-                </span>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDatePicker((v) => !v)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-800 min-w-[220px] justify-center hover:bg-slate-50 transition-colors"
+                  >
+                    <CalendarDays size={14} className="text-slate-400 shrink-0" />
+                    {viewMode === "week"
+                      ? fmtWeekRange(monday)
+                      : fmtMonthYear(new Date(calMonth.year, calMonth.month, 1))}
+                  </button>
+                  {showDatePicker && (
+                    <DateRangePickerPopup
+                      initialFrom={viewMode === "week" ? toStr(monday) : `${calMonth.year}-${String(calMonth.month + 1).padStart(2, "0")}-01`}
+                      initialTo={viewMode === "week" ? toStr(addDays(monday, 6)) : toStr(new Date(calMonth.year, calMonth.month + 1, 0))}
+                      onApply={(from) => {
+                        const d = parseDate(from);
+                        setMonday(getMondayOf(d));
+                        setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
+                      }}
+                      onClose={() => setShowDatePicker(false)}
+                    />
+                  )}
+                </div>
                 <button onClick={viewMode === "week" ? nextWeek : nextMonth} className="p-2 hover:bg-slate-100 rounded-r-lg transition-colors">
                   <ChevronRight size={16} className="text-slate-600" />
                 </button>
