@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default function FinancePage() {
   const totalRevenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.amount, 0);
-  const totalPending = invoices.filter(i => i.status === "pending").reduce((s, i) => s + i.amount, 0);
+  const totalPending = invoices.filter(i => i.status === "sent").reduce((s, i) => s + i.amount, 0);
   const totalOverdue = invoices.filter(i => i.status === "overdue").reduce((s, i) => s + i.amount, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 

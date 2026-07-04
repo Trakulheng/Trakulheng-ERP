@@ -1,32 +1,102 @@
 // Mock data for DDK ERP - frontend demo
 
 // Branches
+export type BranchEmployeeRole = "manager" | "staff" | "viewer";
+export interface BranchEmployee { id: string; role: BranchEmployeeRole; }
+
 export const branches = [
-  { id:"BR-001", code:"HQ",  name:"Head Office",       address:"88 Silom Rd, Bang Rak, Bangkok 10500",          phone:"02-100-1000",  email:"hq@ddk.co.th",         manager:"Prapas Chamnankit", employees:45, status:"active" as const, isHeadOffice:true,  lat:13.7222, lng:100.5219, radiusMeters:200 },
-  { id:"BR-002", code:"CMI", name:"Chiang Mai Branch", address:"99 Nimman Rd, Suthep, Chiang Mai 50200",         phone:"053-200-2000", email:"chiangmai@ddk.co.th",  manager:"Wichai Thongdee",   employees:18, status:"active" as const, isHeadOffice:false, lat:18.7957, lng:98.9756,  radiusMeters:200 },
-  { id:"BR-003", code:"PKT", name:"Phuket Branch",     address:"12 Rassada Rd, Phuket Town 83000",              phone:"076-300-3000", email:"phuket@ddk.co.th",     manager:"Kanokwan Srisuwan", employees:12, status:"active" as const, isHeadOffice:false, lat:7.8804,  lng:98.3923,  radiusMeters:200 },
-  { id:"BR-004", code:"KKN", name:"Khon Kaen Branch",  address:"45 Mitraphap Rd, Muang, Khon Kaen 40000",       phone:"043-400-4000", email:"khonkaen@ddk.co.th",   manager:"Thanachart Boonsri",employees:8,  status:"inactive" as const,isHeadOffice:false, lat:16.4322, lng:102.8236, radiusMeters:200 },
+  { id:"BR-001", code:"HQ",  name:"Head Office",       brand:"DDK Enterprise", address:"88 Silom Rd, Bang Rak, Bangkok 10500",      googleMapsUrl:"https://maps.google.com/?q=13.7222,100.5219", location:"Bang Rak, Bangkok",       floor:"G-8", sizeSqm:850, phone:"02-100-1000",  email:"hq@ddk.co.th",         lineId:"@ddkHQ",  managerId:"EMP-003", manager:"Prapas Chamnankit",  startDate:"2018-01-01", assignedEmployeeIds:["EMP-001","EMP-002","EMP-003","EMP-004","EMP-005","EMP-006","EMP-007","EMP-008","EMP-009","EMP-010"], assignedEmployees:[{id:"EMP-001",role:"staff"},{id:"EMP-002",role:"manager"},{id:"EMP-003",role:"manager"},{id:"EMP-004",role:"staff"},{id:"EMP-005",role:"staff"},{id:"EMP-006",role:"staff"},{id:"EMP-007",role:"staff"},{id:"EMP-008",role:"staff"},{id:"EMP-009",role:"staff"},{id:"EMP-010",role:"viewer"}] as BranchEmployee[], employees:45, status:"active"   as const, isHeadOffice:true,  lat:13.7222, lng:100.5219, radiusMeters:200 },
+  { id:"BR-002", code:"CMI", name:"Chiang Mai Branch", brand:"DDK Express",    address:"99 Nimman Rd, Suthep, Chiang Mai 50200",     googleMapsUrl:"https://maps.google.com/?q=18.7957,98.9756",  location:"Nimman, Chiang Mai",       floor:"G-2", sizeSqm:320, phone:"053-200-2000", email:"chiangmai@ddk.co.th",  lineId:"@ddkCMI", managerId:"EMP-005", manager:"Wichai Thongdee",    startDate:"2020-06-01", assignedEmployeeIds:["EMP-005","EMP-006"],                                                                                       assignedEmployees:[{id:"EMP-005",role:"manager"},{id:"EMP-006",role:"staff"}] as BranchEmployee[], employees:18, status:"active"   as const, isHeadOffice:false, lat:18.7957, lng:98.9756,  radiusMeters:200 },
+  { id:"BR-003", code:"PKT", name:"Phuket Branch",     brand:"DDK Express",    address:"12 Rassada Rd, Phuket Town 83000",           googleMapsUrl:"https://maps.google.com/?q=7.8804,98.3923",   location:"Phuket Town, Phuket",      floor:"G",   sizeSqm:245, phone:"076-300-3000", email:"phuket@ddk.co.th",     lineId:"@ddkPKT", managerId:"EMP-006", manager:"Kanokwan Srisuwan",  startDate:"2021-03-01", assignedEmployeeIds:["EMP-006"],                                                                                                assignedEmployees:[{id:"EMP-006",role:"manager"}] as BranchEmployee[], employees:12, status:"active"   as const, isHeadOffice:false, lat:7.8804,  lng:98.3923,  radiusMeters:200 },
+  { id:"BR-004", code:"KKN", name:"Khon Kaen Branch",  brand:"DDK Express",    address:"45 Mitraphap Rd, Muang, Khon Kaen 40000",   googleMapsUrl:"https://maps.google.com/?q=16.4322,102.8236", location:"Muang, Khon Kaen",         floor:"G",   sizeSqm:180, phone:"043-400-4000", email:"khonkaen@ddk.co.th",   lineId:"@ddkKKN", managerId:"EMP-007", manager:"Thanachart Boonsri", startDate:"2022-09-01", assignedEmployeeIds:["EMP-007"],                                                                                                assignedEmployees:[{id:"EMP-007",role:"manager"}] as BranchEmployee[], employees:8,  status:"inactive" as const, isHeadOffice:false, lat:16.4322, lng:102.8236, radiusMeters:200 },
 ];
 
 // Finance
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
+export const INVOICE_PAYMENT_TERMS = ["Due on Receipt", "Net 15", "Net 30", "Net 45", "Net 60"] as const;
+
 export const invoices = [
-  { id: "INV-001", customer: "Acme Corporation", date: "2026-06-01", dueDate: "2026-06-30", amount: 12500, status: "paid" },
-  { id: "INV-002", customer: "TechStart Inc.", date: "2026-06-05", dueDate: "2026-07-05", amount: 8750, status: "pending" },
-  { id: "INV-003", customer: "Global Traders Ltd.", date: "2026-05-15", dueDate: "2026-06-15", amount: 21300, status: "overdue" },
-  { id: "INV-004", customer: "Sunrise Foods Co.", date: "2026-06-10", dueDate: "2026-07-10", amount: 5600, status: "pending" },
-  { id: "INV-005", customer: "Metro Building Supplies", date: "2026-06-12", dueDate: "2026-07-12", amount: 34200, status: "paid" },
-  { id: "INV-006", customer: "Pacific Logistics", date: "2026-05-28", dueDate: "2026-06-28", amount: 9800, status: "overdue" },
-  { id: "INV-007", customer: "Crown Retail Group", date: "2026-06-15", dueDate: "2026-07-15", amount: 15600, status: "pending" },
-  { id: "INV-008", customer: "Elite Services Co.", date: "2026-06-18", dueDate: "2026-07-18", amount: 7200, status: "paid" },
+  { id:"INV-001", customerId:"CUST-001", customer:"Acme Corporation",       branchId:"BR-001", date:"2026-06-01", dueDate:"2026-06-30", amount:12500,  tax:875,   discount:0,     status:"paid"     as InvoiceStatus, paymentTerms:"Net 30", notes:"",                                  paidDate:"2026-06-28", createdBy:"EMP-003" },
+  { id:"INV-002", customerId:"CUST-002", customer:"TechStart Inc.",          branchId:"BR-001", date:"2026-06-05", dueDate:"2026-07-05", amount:8750,   tax:612.5, discount:500,   status:"sent"     as InvoiceStatus, paymentTerms:"Net 30", notes:"Awaiting approval from client.",      paidDate:null as string|null, createdBy:"EMP-003" },
+  { id:"INV-003", customerId:"CUST-003", customer:"Global Traders Ltd.",     branchId:"BR-001", date:"2026-05-15", dueDate:"2026-06-15", amount:21300,  tax:1491,  discount:0,     status:"overdue"  as InvoiceStatus, paymentTerms:"Net 30", notes:"Follow up on payment.",              paidDate:null as string|null, createdBy:"EMP-008" },
+  { id:"INV-004", customerId:"CUST-004", customer:"Sunrise Foods Co.",       branchId:"BR-002", date:"2026-06-10", dueDate:"2026-07-10", amount:5600,   tax:392,   discount:0,     status:"sent"     as InvoiceStatus, paymentTerms:"Net 30", notes:"",                                  paidDate:null as string|null, createdBy:"EMP-006" },
+  { id:"INV-005", customerId:"CUST-005", customer:"Metro Building Supplies", branchId:"BR-001", date:"2026-06-12", dueDate:"2026-07-12", amount:34200,  tax:2394,  discount:2000,  status:"paid"     as InvoiceStatus, paymentTerms:"Net 30", notes:"Bulk order discount applied.",       paidDate:"2026-07-01", createdBy:"EMP-003" },
+  { id:"INV-006", customerId:"CUST-006", customer:"Pacific Logistics",       branchId:"BR-003", date:"2026-05-28", dueDate:"2026-06-28", amount:9800,   tax:686,   discount:0,     status:"overdue"  as InvoiceStatus, paymentTerms:"Net 30", notes:"Account on hold.",                   paidDate:null as string|null, createdBy:"EMP-006" },
+  { id:"INV-007", customerId:"CUST-007", customer:"Crown Retail Group",      branchId:"BR-001", date:"2026-06-15", dueDate:"2026-07-15", amount:15600,  tax:1092,  discount:600,   status:"sent"     as InvoiceStatus, paymentTerms:"Net 30", notes:"",                                  paidDate:null as string|null, createdBy:"EMP-003" },
+  { id:"INV-008", customerId:"CUST-008", customer:"Elite Services Co.",      branchId:"BR-001", date:"2026-06-18", dueDate:"2026-07-18", amount:7200,   tax:504,   discount:0,     status:"paid"     as InvoiceStatus, paymentTerms:"Net 30", notes:"Repeat customer, priority service.", paidDate:"2026-07-03", createdBy:"EMP-008" },
 ];
 
+export const invoiceItems = [
+  { id:"IVI-001", invoiceId:"INV-001", productId:"SKU-002", description:"Hydraulic Pump 5HP",      qty:1,  unitPrice:12000, total:12000 },
+  { id:"IVI-002", invoiceId:"INV-001", productId:"SKU-004", description:"Pressure Gauge 100psi",   qty:8,  unitPrice:625,   total:5000  },
+  { id:"IVI-003", invoiceId:"INV-002", productId:"SKU-001", description:'Industrial Valve 2"',     qty:5,  unitPrice:950,   total:4750  },
+  { id:"IVI-004", invoiceId:"INV-002", productId:"SKU-010", description:"Bearing 6205",            qty:12, unitPrice:333,   total:4000  },
+  { id:"IVI-005", invoiceId:"INV-003", productId:"SKU-005", description:"Electric Motor 10kW",    qty:2,  unitPrice:44000, total:88000 },
+  { id:"IVI-006", invoiceId:"INV-003", productId:"SKU-008", description:"Safety Helmet",           qty:25, unitPrice:520,   total:13000 },
+  { id:"IVI-007", invoiceId:"INV-004", productId:"SKU-006", description:'Copper Fitting 1"',       qty:45, unitPrice:125,   total:5625  },
+  { id:"IVI-008", invoiceId:"INV-005", productId:"SKU-005", description:"Electric Motor 10kW",    qty:5,  unitPrice:45000, total:225000},
+  { id:"IVI-009", invoiceId:"INV-005", productId:"SKU-002", description:"Hydraulic Pump 5HP",     qty:3,  unitPrice:16000, total:48000 },
+  { id:"IVI-010", invoiceId:"INV-006", productId:"SKU-007", description:'Ball Valve 3"',           qty:5,  unitPrice:2100,  total:10500 },
+  { id:"IVI-011", invoiceId:"INV-007", productId:"SKU-001", description:'Industrial Valve 2"',    qty:10, unitPrice:900,   total:9000  },
+  { id:"IVI-012", invoiceId:"INV-007", productId:"SKU-004", description:"Pressure Gauge 100psi",  qty:10, unitPrice:700,   total:7000  },
+  { id:"IVI-013", invoiceId:"INV-008", productId:"SKU-006", description:'Copper Fitting 1"',      qty:60, unitPrice:120,   total:7200  },
+];
+
+export type ExpenseStatus = "draft" | "pending" | "approved" | "rejected" | "reimbursed";
+export const EXPENSE_CATEGORIES = ["Office Supplies", "Travel", "Utilities", "Marketing", "Software", "Maintenance", "Meals", "Training", "Equipment", "Other"] as const;
+
+export interface ExpenseRequestItem { name: string; qty: number; unitPrice: number; }
+export interface ExpenseAttachment  { name: string; type: "receipt" | "invoice" | "other"; url: string; }
+
 export const expenses = [
-  { id: "EXP-001", category: "Office Supplies", description: "Stationery and paper", date: "2026-06-02", amount: 450, status: "approved" },
-  { id: "EXP-002", category: "Travel", description: "Client visit - Bangkok", date: "2026-06-05", amount: 12500, status: "approved" },
-  { id: "EXP-003", category: "Utilities", description: "Electricity bill - June", date: "2026-06-10", amount: 8200, status: "approved" },
-  { id: "EXP-004", category: "Marketing", description: "Social media ads", date: "2026-06-12", amount: 25000, status: "pending" },
-  { id: "EXP-005", category: "Software", description: "SaaS subscriptions", date: "2026-06-15", amount: 5800, status: "approved" },
-  { id: "EXP-006", category: "Maintenance", description: "Office equipment repair", date: "2026-06-18", amount: 3200, status: "pending" },
+  {
+    id:"EXP-001", category:"Office Supplies", description:"Stationery and paper for Q3",
+    date:"2026-06-02", amount:450, status:"reimbursed" as ExpenseStatus,
+    employeeId:"EMP-007", employeeName:"Thanachart Boonsri", branchId:"BR-001",
+    requestItems:[{ name:"A4 Paper (ream)", qty:10, unitPrice:30 }, { name:"Pens box", qty:2, unitPrice:120 }, { name:"Stapler", qty:1, unitPrice:180 }] as ExpenseRequestItem[],
+    attachments:[{ name:"receipt_stationery.jpg", type:"receipt" as const, url:"" }] as ExpenseAttachment[],
+    notes:"Monthly office supplies top-up.", approvedBy:"EMP-005", approvedAt:"2026-06-03", reimbursedInPayroll:"PAY-002",
+  },
+  {
+    id:"EXP-002", category:"Travel", description:"Client visit to Chiang Mai — taxi + hotel",
+    date:"2026-06-05", amount:12500, status:"reimbursed" as ExpenseStatus,
+    employeeId:"EMP-006", employeeName:"Kanokwan Srisuwan", branchId:"BR-002",
+    requestItems:[{ name:"Taxi (BKK-Airport)", qty:1, unitPrice:400 }, { name:"Flight BKK-CNX", qty:1, unitPrice:4200 }, { name:"Hotel (2 nights)", qty:2, unitPrice:2500 }, { name:"Meals", qty:2, unitPrice:500 }, { name:"Taxi local", qty:4, unitPrice:150 }] as ExpenseRequestItem[],
+    attachments:[{ name:"flight_ticket.pdf", type:"invoice" as const, url:"" }, { name:"hotel_receipt.jpg", type:"receipt" as const, url:"" }] as ExpenseAttachment[],
+    notes:"Client meeting at CMI office.", approvedBy:"EMP-003", approvedAt:"2026-06-06", reimbursedInPayroll:"PAY-002",
+  },
+  {
+    id:"EXP-003", category:"Utilities", description:"Electricity bill — June 2026",
+    date:"2026-06-10", amount:8200, status:"approved" as ExpenseStatus,
+    employeeId:"EMP-008", employeeName:"Siriporn Naknoi", branchId:"BR-001",
+    requestItems:[{ name:"Electricity (June)", qty:1, unitPrice:8200 }] as ExpenseRequestItem[],
+    attachments:[{ name:"electricity_june.pdf", type:"invoice" as const, url:"" }] as ExpenseAttachment[],
+    notes:"", approvedBy:"EMP-003", approvedAt:"2026-06-11", reimbursedInPayroll:null as string|null,
+  },
+  {
+    id:"EXP-004", category:"Marketing", description:"Social media ad campaign — Facebook",
+    date:"2026-06-12", amount:25000, status:"pending" as ExpenseStatus,
+    employeeId:"EMP-010", employeeName:"Ploy Jaidee", branchId:"BR-001",
+    requestItems:[{ name:"Facebook Ads June budget", qty:1, unitPrice:25000 }] as ExpenseRequestItem[],
+    attachments:[{ name:"fb_invoice.pdf", type:"invoice" as const, url:"" }] as ExpenseAttachment[],
+    notes:"Q3 awareness campaign — approved in plan.", approvedBy:null as string|null, approvedAt:null as string|null, reimbursedInPayroll:null as string|null,
+  },
+  {
+    id:"EXP-005", category:"Software", description:"SaaS tools — Figma, Notion, Slack",
+    date:"2026-06-15", amount:5800, status:"approved" as ExpenseStatus,
+    employeeId:"EMP-009", employeeName:"Ratchanon Pimpa", branchId:"BR-001",
+    requestItems:[{ name:"Figma (annual)", qty:1, unitPrice:3200 }, { name:"Notion (team)", qty:1, unitPrice:1600 }, { name:"Slack (monthly)", qty:1, unitPrice:1000 }] as ExpenseRequestItem[],
+    attachments:[{ name:"software_receipts.pdf", type:"receipt" as const, url:"" }] as ExpenseAttachment[],
+    notes:"Annual renewal.", approvedBy:"EMP-003", approvedAt:"2026-06-16", reimbursedInPayroll:null as string|null,
+  },
+  {
+    id:"EXP-006", category:"Maintenance", description:"Office printer repair",
+    date:"2026-06-18", amount:3200, status:"pending" as ExpenseStatus,
+    employeeId:"EMP-001", employeeName:"Somchai Wannasuk", branchId:"BR-001",
+    requestItems:[{ name:"Technician service fee", qty:1, unitPrice:1800 }, { name:"Spare parts", qty:1, unitPrice:1400 }] as ExpenseRequestItem[],
+    attachments:[] as ExpenseAttachment[],
+    notes:"Printer broken mid-print job. Required same-day fix.", approvedBy:null as string|null, approvedAt:null as string|null, reimbursedInPayroll:null as string|null,
+  },
 ];
 
 export const revenueData = [
@@ -45,52 +115,175 @@ export const revenueData = [
 ];
 
 // Inventory
+export type StockStatus = "ok" | "low" | "out";
+export type StockMovementType = "receive" | "issue" | "adjustment" | "return";
+
+export const PRODUCT_CATEGORIES = ["Fittings","Equipment","Materials","Instruments","Safety","Electrical","Mechanical"] as const;
+
+export const PRODUCT_BRANDS = ["DDK Pro", "DDK Express", "OEM", "Unbranded"] as const;
+
 export const products = [
-  { id: "SKU-001", name: "Industrial Valve 2\"", category: "Fittings", stock: 145, minStock: 50, unitPrice: 850, status: "ok" },
-  { id: "SKU-002", name: "Hydraulic Pump 5HP", category: "Equipment", stock: 12, minStock: 20, unitPrice: 15500, status: "low" },
-  { id: "SKU-003", name: "Steel Pipe 6m", category: "Materials", stock: 0, minStock: 30, unitPrice: 1200, status: "out" },
-  { id: "SKU-004", name: "Pressure Gauge 100psi", category: "Instruments", stock: 68, minStock: 25, unitPrice: 650, status: "ok" },
-  { id: "SKU-005", name: "Electric Motor 10kW", category: "Equipment", stock: 8, minStock: 15, unitPrice: 42000, status: "low" },
-  { id: "SKU-006", name: "Copper Fitting 1\"", category: "Fittings", stock: 320, minStock: 100, unitPrice: 125, status: "ok" },
-  { id: "SKU-007", name: "Ball Valve 3\"", category: "Fittings", stock: 5, minStock: 40, unitPrice: 2100, status: "low" },
-  { id: "SKU-008", name: "Safety Helmet", category: "Safety", stock: 85, minStock: 30, unitPrice: 480, status: "ok" },
-  { id: "SKU-009", name: "Cable 16mm 100m", category: "Electrical", stock: 0, minStock: 20, unitPrice: 8500, status: "out" },
-  { id: "SKU-010", name: "Bearing 6205", category: "Mechanical", stock: 250, minStock: 80, unitPrice: 320, status: "ok" },
+  { id:"SKU-001", name:'Industrial Valve 2"',    category:"Fittings",    stock:145, minStock:50,  unitPrice:850,   status:"ok"  as StockStatus, description:'Heavy-duty industrial gate valve, 2 inch, PN16 rated. Suitable for water and oil systems up to 180°C.',       barcode:"8850001000010", supplierId:"SUP-004", size:'2"',    leadTime:7,  brand:"DDK Pro",     branchIds:["BR-001","BR-002"] },
+  { id:"SKU-002", name:"Hydraulic Pump 5HP",     category:"Equipment",   stock:12,  minStock:20,  unitPrice:15500, status:"low" as StockStatus, description:"5 horsepower hydraulic pump with 250 bar max pressure, direct drive, includes mounting bracket.",                barcode:"8850001000027", supplierId:"SUP-002", size:"5HP",   leadTime:21, brand:"OEM",         branchIds:["BR-001"] },
+  { id:"SKU-003", name:"Steel Pipe 6m",          category:"Materials",   stock:0,   minStock:30,  unitPrice:1200,  status:"out" as StockStatus, description:"Schedule 40 carbon steel pipe, 6 metre length, 2 inch OD. Suitable for gas and water installations.",           barcode:"8850001000034", supplierId:"SUP-001", size:"6m",    leadTime:10, brand:"OEM",         branchIds:["BR-001","BR-003"] },
+  { id:"SKU-004", name:"Pressure Gauge 100psi",  category:"Instruments", stock:68,  minStock:25,  unitPrice:650,   status:"ok"  as StockStatus, description:"Stainless steel bourdon tube pressure gauge, 100 psi / 7 bar, 2.5 inch dial, bottom connection.",              barcode:"8850001000041", supplierId:"SUP-004", size:"2.5\"", leadTime:14, brand:"DDK Pro",     branchIds:["BR-001","BR-002","BR-003"] },
+  { id:"SKU-005", name:"Electric Motor 10kW",    category:"Equipment",   stock:8,   minStock:15,  unitPrice:42000, status:"low" as StockStatus, description:"Three-phase AC induction motor, 10kW / 13.4HP, IE3 efficiency class, 1450 RPM, B3 foot mounting.",             barcode:"8850001000058", supplierId:"SUP-002", size:"10kW",  leadTime:28, brand:"OEM",         branchIds:["BR-001"] },
+  { id:"SKU-006", name:'Copper Fitting 1"',      category:"Fittings",    stock:320, minStock:100, unitPrice:125,   status:"ok"  as StockStatus, description:"Compression copper elbow fitting, 1 inch, suitable for hot and cold water plumbing up to 10 bar.",              barcode:"8850001000065", supplierId:"SUP-004", size:'1"',    leadTime:5,  brand:"DDK Express", branchIds:["BR-001","BR-002","BR-003","BR-004"] },
+  { id:"SKU-007", name:'Ball Valve 3"',          category:"Fittings",    stock:5,   minStock:40,  unitPrice:2100,  status:"low" as StockStatus, description:"Full-bore stainless steel ball valve, 3 inch flanged ends, PN16, lever operated, bidirectional.",              barcode:"8850001000072", supplierId:"SUP-004", size:'3"',    leadTime:14, brand:"DDK Pro",     branchIds:["BR-001","BR-002"] },
+  { id:"SKU-008", name:"Safety Helmet",          category:"Safety",      stock:85,  minStock:30,  unitPrice:480,   status:"ok"  as StockStatus, description:"Hard hat class E, ABS shell, 6-point suspension, adjustable ratchet, meets ANSI Z89.1 and EN 397.",            barcode:"8850001000089", supplierId:"SUP-001", size:"M/L",   leadTime:7,  brand:"DDK Express", branchIds:["BR-001","BR-002","BR-003","BR-004"] },
+  { id:"SKU-009", name:"Cable 16mm 100m",        category:"Electrical",  stock:0,   minStock:20,  unitPrice:8500,  status:"out" as StockStatus, description:"PVC insulated copper cable, 16mm² single core, 100m drum, rated 450/750V, suitable for power distribution.",  barcode:"8850001000096", supplierId:"SUP-001", size:"16mm",  leadTime:10, brand:"OEM",         branchIds:["BR-001"] },
+  { id:"SKU-010", name:"Bearing 6205",           category:"Mechanical",  stock:250, minStock:80,  unitPrice:320,   status:"ok"  as StockStatus, description:"Deep groove ball bearing 6205-2RS, 25×52×15mm, rubber sealed, C3 clearance, grease lubricated.",               barcode:"8850001000102", supplierId:"SUP-002", size:"6205",  leadTime:14, brand:"DDK Express", branchIds:["BR-001","BR-002","BR-004"] },
 ];
 
+export const stockMovements = [
+  { id:"SM-001", productId:"SKU-001", type:"receive"    as StockMovementType, qty:50,   refNo:"PO-005", date:"2026-05-28", note:"Regular restock from Global Fittings",          processedBy:"Admin",  balanceAfter:145 },
+  { id:"SM-002", productId:"SKU-001", type:"issue"      as StockMovementType, qty:20,   refNo:"SO-001", date:"2026-06-01", note:"Issued for Metro Building Supplies order",      processedBy:"System", balanceAfter:125 },
+  { id:"SM-003", productId:"SKU-001", type:"receive"    as StockMovementType, qty:40,   refNo:"PO-001", date:"2026-06-15", note:"Emergency top-up order",                        processedBy:"Admin",  balanceAfter:165 },
+  { id:"SM-004", productId:"SKU-001", type:"issue"      as StockMovementType, qty:20,   refNo:"SO-003", date:"2026-06-20", note:"Issued for Global Traders order",               processedBy:"System", balanceAfter:145 },
+  { id:"SM-005", productId:"SKU-002", type:"receive"    as StockMovementType, qty:10,   refNo:"PO-002", date:"2026-06-08", note:"In-transit from Asia Pacific Equipment",         processedBy:"Admin",  balanceAfter:22  },
+  { id:"SM-006", productId:"SKU-002", type:"issue"      as StockMovementType, qty:10,   refNo:"SO-002", date:"2026-06-10", note:"Sold to Acme Corporation",                      processedBy:"System", balanceAfter:12  },
+  { id:"SM-007", productId:"SKU-003", type:"issue"      as StockMovementType, qty:15,   refNo:"SO-003", date:"2026-06-05", note:"Issued for project — stock now depleted",       processedBy:"Admin",  balanceAfter:0   },
+  { id:"SM-008", productId:"SKU-004", type:"receive"    as StockMovementType, qty:30,   refNo:"PO-003", date:"2026-06-15", note:"Received from Bangkok Parts Co.",               processedBy:"Admin",  balanceAfter:68  },
+  { id:"SM-009", productId:"SKU-005", type:"issue"      as StockMovementType, qty:2,    refNo:"SO-001", date:"2026-06-01", note:"Sold to Metro Building Supplies",               processedBy:"System", balanceAfter:8   },
+  { id:"SM-010", productId:"SKU-006", type:"receive"    as StockMovementType, qty:200,  refNo:"PO-004", date:"2026-06-20", note:"Bulk order from Global Fittings",               processedBy:"Admin",  balanceAfter:320 },
+  { id:"SM-011", productId:"SKU-007", type:"issue"      as StockMovementType, qty:10,   refNo:"SO-004", date:"2026-06-12", note:"Sold to TechStart Inc.",                        processedBy:"System", balanceAfter:5   },
+  { id:"SM-012", productId:"SKU-009", type:"adjustment" as StockMovementType, qty:-5,   refNo:"ADJ-001",date:"2026-06-01", note:"Stock count variance — damaged cables",         processedBy:"Admin",  balanceAfter:0   },
+  { id:"SM-013", productId:"SKU-010", type:"receive"    as StockMovementType, qty:100,  refNo:"PO-005", date:"2026-05-30", note:"Received from KL Mechanical Supplies",          processedBy:"Admin",  balanceAfter:250 },
+  { id:"SM-014", productId:"SKU-008", type:"issue"      as StockMovementType, qty:15,   refNo:"SO-001", date:"2026-06-01", note:"Safety equipment for Metro project",            processedBy:"System", balanceAfter:85  },
+];
+
+export type POStatus         = "pending" | "in-transit" | "received" | "cancelled";
+export type POApprovalStatus = "draft" | "pending_approval" | "approved" | "rejected";
+export type POSendMethod     = "email" | "line" | "none";
+
 export const purchaseOrders = [
-  { id: "PO-001", supplier: "Thai Industrial Supply", date: "2026-06-01", expectedDate: "2026-06-15", items: 5, total: 125000, status: "received" },
-  { id: "PO-002", supplier: "Asia Pacific Equipment", date: "2026-06-08", expectedDate: "2026-06-25", items: 3, total: 285000, status: "in-transit" },
-  { id: "PO-003", supplier: "Bangkok Parts Co.", date: "2026-06-15", expectedDate: "2026-07-01", items: 8, total: 45600, status: "pending" },
-  { id: "PO-004", supplier: "Global Fittings Ltd.", date: "2026-06-20", expectedDate: "2026-07-10", items: 12, total: 78900, status: "pending" },
-  { id: "PO-005", supplier: "KL Mechanical Supplies", date: "2026-05-28", expectedDate: "2026-06-12", items: 6, total: 192000, status: "received" },
+  { id:"PO-001", supplierId:"SUP-001", supplier:"Thai Industrial Supply",  date:"2026-06-01", expectedDate:"2026-06-15", items:5,  total:125000, status:"received"   as POStatus, approvalStatus:"approved"          as POApprovalStatus, approvalRequestedAt:"2026-06-01T08:00:00", sendMethod:"email" as POSendMethod, notes:"Regular monthly restock. Deliver to warehouse dock B." },
+  { id:"PO-002", supplierId:"SUP-002", supplier:"Asia Pacific Equipment",  date:"2026-06-08", expectedDate:"2026-06-25", items:3,  total:285000, status:"in-transit"  as POStatus, approvalStatus:"approved"          as POApprovalStatus, approvalRequestedAt:"2026-06-08T09:00:00", sendMethod:"line"  as POSendMethod, notes:"Urgent — motors needed for Acme project. Expedited shipping." },
+  { id:"PO-003", supplierId:"SUP-003", supplier:"Bangkok Parts Co.",       date:"2026-06-15", expectedDate:"2026-07-01", items:8,  total:45600,  status:"pending"     as POStatus, approvalStatus:"pending_approval"  as POApprovalStatus, approvalRequestedAt:"2026-07-04T07:00:00", sendMethod:"none"  as POSendMethod, notes:"Awaiting supplier confirmation." },
+  { id:"PO-004", supplierId:"SUP-004", supplier:"Global Fittings Ltd.",    date:"2026-06-20", expectedDate:"2026-07-10", items:12, total:78900,  status:"pending"     as POStatus, approvalStatus:"pending_approval"  as POApprovalStatus, approvalRequestedAt:"2026-07-04T08:30:00", sendMethod:"none"  as POSendMethod, notes:"Bulk order to restock low-stock fittings." },
+  { id:"PO-005", supplierId:"SUP-001", supplier:"KL Mechanical Supplies",  date:"2026-05-28", expectedDate:"2026-06-12", items:6,  total:192000, status:"received"   as POStatus, approvalStatus:"approved"          as POApprovalStatus, approvalRequestedAt:"2026-05-28T10:00:00", sendMethod:"email" as POSendMethod, notes:"" },
+];
+
+export const poLineItems = [
+  { id:"PLI-001", poId:"PO-001", productId:"SKU-008", productName:"Safety Helmet",          qty:50,  unitPrice:460,   total:23000  },
+  { id:"PLI-002", poId:"PO-001", productId:"SKU-003", productName:"Steel Pipe 6m",           qty:30,  unitPrice:1100,  total:33000  },
+  { id:"PLI-003", poId:"PO-001", productId:"SKU-009", productName:"Cable 16mm 100m",         qty:5,   unitPrice:8000,  total:40000  },
+  { id:"PLI-004", poId:"PO-001", productId:"SKU-004", productName:"Pressure Gauge 100psi",   qty:20,  unitPrice:600,   total:12000  },
+  { id:"PLI-005", poId:"PO-001", productId:"SKU-010", productName:"Bearing 6205",            qty:100, unitPrice:170,   total:17000  },
+  { id:"PLI-006", poId:"PO-002", productId:"SKU-005", productName:"Electric Motor 10kW",    qty:5,   unitPrice:40000, total:200000 },
+  { id:"PLI-007", poId:"PO-002", productId:"SKU-002", productName:"Hydraulic Pump 5HP",      qty:5,   unitPrice:14000, total:70000  },
+  { id:"PLI-008", poId:"PO-002", productId:"SKU-004", productName:"Pressure Gauge 100psi",   qty:15,  unitPrice:600,   total:9000   },  // padding to sum=285000 approx
+  { id:"PLI-009", poId:"PO-003", productId:"SKU-001", productName:'Industrial Valve 2"',     qty:20,  unitPrice:800,   total:16000  },
+  { id:"PLI-010", poId:"PO-003", productId:"SKU-006", productName:'Copper Fitting 1"',       qty:150, unitPrice:110,   total:16500  },
+  { id:"PLI-011", poId:"PO-003", productId:"SKU-007", productName:'Ball Valve 3"',           qty:6,   unitPrice:2000,  total:12000  },
+  { id:"PLI-012", poId:"PO-004", productId:"SKU-001", productName:'Industrial Valve 2"',     qty:40,  unitPrice:800,   total:32000  },
+  { id:"PLI-013", poId:"PO-004", productId:"SKU-006", productName:'Copper Fitting 1"',       qty:200, unitPrice:110,   total:22000  },
+  { id:"PLI-014", poId:"PO-004", productId:"SKU-007", productName:'Ball Valve 3"',           qty:12,  unitPrice:2000,  total:24000  },
+  { id:"PLI-015", poId:"PO-005", productId:"SKU-010", productName:"Bearing 6205",            qty:200, unitPrice:280,   total:56000  },
+  { id:"PLI-016", poId:"PO-005", productId:"SKU-008", productName:"Safety Helmet",          qty:30,  unitPrice:450,   total:13500  },
+  { id:"PLI-017", poId:"PO-005", productId:"SKU-004", productName:"Pressure Gauge 100psi",   qty:30,  unitPrice:600,   total:18000  },
 ];
 
 export const suppliers = [
-  { id: "SUP-001", name: "Thai Industrial Supply", contact: "Somchai Jaidee", email: "somchai@tis.co.th", phone: "02-555-1234", category: "General", rating: 4.5 },
-  { id: "SUP-002", name: "Asia Pacific Equipment", contact: "David Lim", email: "david@ape.com.sg", phone: "+65-6789-0123", category: "Equipment", rating: 4.2 },
-  { id: "SUP-003", name: "Bangkok Parts Co.", contact: "Nidnoy Sukjai", email: "info@bkparts.co.th", phone: "02-666-5678", category: "Parts", rating: 3.8 },
-  { id: "SUP-004", name: "Global Fittings Ltd.", contact: "James Wong", email: "james@gfl.com.hk", phone: "+852-2345-6789", category: "Fittings", rating: 4.7 },
+  { id:"SUP-001", name:"Thai Industrial Supply", contact:"Somchai Jaidee",  email:"somchai@tis.co.th",    phone:"02-555-1234",    category:"General",   rating:4.5, address:"123 Industrial Estate Rd, Samut Prakan 10280", country:"Thailand",  paymentTerms:"Net 30", taxId:"0105553001234", notes:"Reliable local supplier. Volume discounts above ฿100k. Lead time 5–7 days.", status:"active"   as const },
+  { id:"SUP-002", name:"Asia Pacific Equipment", contact:"David Lim",        email:"david@ape.com.sg",      phone:"+65-6789-0123",  category:"Equipment", rating:4.2, address:"45 Tuas South Ave 2, Singapore 637534",       country:"Singapore", paymentTerms:"Net 45", taxId:"SG201234567A",  notes:"Specialises in heavy machinery. Minimum order SGD 5,000. 3–4 week lead time.", status:"active"   as const },
+  { id:"SUP-003", name:"Bangkok Parts Co.",       contact:"Nidnoy Sukjai",   email:"info@bkparts.co.th",    phone:"02-666-5678",    category:"Parts",     rating:3.8, address:"56/7 Lat Krabang Industrial, Bangkok 10520",  country:"Thailand",  paymentTerms:"Net 15", taxId:"0105554005678", notes:"Good for small parts and fasteners. Occasional delays. Prefer COD.",           status:"active"   as const },
+  { id:"SUP-004", name:"Global Fittings Ltd.",    contact:"James Wong",       email:"james@gfl.com.hk",      phone:"+852-2345-6789", category:"Fittings",  rating:4.7, address:"Unit 8, Kwai Chung Industrial, Hong Kong",    country:"Hong Kong", paymentTerms:"Net 60", taxId:"HK12345678",    notes:"Premium fittings, ISO certified. Best pricing for orders >฿50k. 2 week lead.", status:"active"   as const },
+  { id:"SUP-005", name:"KL Mechanical Supplies",  contact:"Ahmad Razif",      email:"ahmad@klmech.com.my",   phone:"+60-3-7890-1234",category:"Mechanical",rating:4.1, address:"Lot 22, Shah Alam Industrial Park, Selangor",  country:"Malaysia",  paymentTerms:"Net 30", taxId:"MY201987654",   notes:"Bearings and mechanical parts specialist. Good quality, competitive pricing.",   status:"inactive" as const },
 ];
 
 // Sales
+export type SalesOrderStage = "prospect" | "quoted" | "negotiation" | "confirmed" | "invoiced" | "delivered";
+export type CustomerType   = "individual" | "corporate";
+export type CustomerGender = "male" | "female" | "other";
+
 export const customers = [
-  { id: "CUST-001", name: "Acme Corporation", contact: "John Smith", email: "john@acme.com", phone: "02-111-2345", type: "Enterprise", totalSpend: 485000, status: "active" },
-  { id: "CUST-002", name: "TechStart Inc.", contact: "Sara Lee", email: "sara@techstart.io", phone: "02-222-3456", type: "SME", totalSpend: 125000, status: "active" },
-  { id: "CUST-003", name: "Global Traders Ltd.", contact: "Ahmed Hassan", email: "ahmed@gtraders.com", phone: "02-333-4567", type: "Enterprise", totalSpend: 892000, status: "active" },
-  { id: "CUST-004", name: "Sunrise Foods Co.", contact: "Malee Prasert", email: "malee@sunrisefoods.co.th", phone: "02-444-5678", type: "SME", totalSpend: 67500, status: "active" },
-  { id: "CUST-005", name: "Metro Building Supplies", contact: "Tom Richards", email: "tom@metrobuilding.com", phone: "02-555-6789", type: "Enterprise", totalSpend: 1250000, status: "active" },
-  { id: "CUST-006", name: "Pacific Logistics", contact: "Kanokwan Thong", email: "kanokwan@paclog.co.th", phone: "02-666-7890", type: "SME", totalSpend: 98000, status: "inactive" },
+  { id: "CUST-001", name: "Acme Corporation",       contact: "John Smith",      email: "john@acme.com",           phone: "02-111-2345", type: "Enterprise", totalSpend: 485000,  status: "active",   address: "22 Sathorn Rd, Bangkok 10120" },
+  { id: "CUST-002", name: "TechStart Inc.",          contact: "Sara Lee",        email: "sara@techstart.io",       phone: "02-222-3456", type: "SME",        totalSpend: 125000,  status: "active",   address: "88 Rama 9 Rd, Bangkok 10310" },
+  { id: "CUST-003", name: "Global Traders Ltd.",     contact: "Ahmed Hassan",    email: "ahmed@gtraders.com",      phone: "02-333-4567", type: "Enterprise", totalSpend: 892000,  status: "active",   address: "55 Surawong Rd, Bangkok 10500" },
+  { id: "CUST-004", name: "Sunrise Foods Co.",       contact: "Malee Prasert",   email: "malee@sunrisefoods.co.th",phone: "02-444-5678", type: "SME",        totalSpend: 67500,   status: "active",   address: "9 Ladprao Rd, Bangkok 10900" },
+  { id: "CUST-005", name: "Metro Building Supplies", contact: "Tom Richards",    email: "tom@metrobuilding.com",   phone: "02-555-6789", type: "Enterprise", totalSpend: 1250000, status: "active",   address: "100 Bangna-Trad Rd, Bangkok 10260" },
+  { id: "CUST-006", name: "Pacific Logistics",       contact: "Kanokwan Thong",  email: "kanokwan@paclog.co.th",   phone: "02-666-7890", type: "SME",        totalSpend: 98000,   status: "inactive", address: "77 Ratchadapisek Rd, Bangkok 10400" },
+  { id: "CUST-007", name: "Crown Retail Group",      contact: "James Crawford",  email: "james@crownretail.co.th", phone: "02-777-8901", type: "Enterprise", totalSpend: 340000,  status: "active",   address: "34 Phaholyothin Rd, Bangkok 10400" },
+  { id: "CUST-008", name: "Elite Services Co.",      contact: "Priya Sharma",    email: "priya@eliteservices.com", phone: "02-888-9012", type: "SME",        totalSpend: 52000,   status: "active",   address: "18 Wireless Rd, Bangkok 10330" },
+];
+
+// Rich customer profiles (Individual + Corporate)
+export const customerProfiles = [
+  // ── Individuals ──
+  { id:"CP-001", customerType:"individual" as CustomerType, firstName:"Somchai",  lastName:"Jaidee",    gender:"male"   as CustomerGender, dob:"1985-03-15", nationalId:"1100100234567", phone:"081-234-5678",  email:"somchai.j@gmail.com",           address:"123/45 Sukhumvit Soi 11, Klongtoey, Bangkok 10110",         totalSpend:285000, status:"active"   as const, joinDate:"2024-01-15", notes:"VIP — prefers cash on delivery. Long-term buyer.",   tags:["vip","repeat"] },
+  { id:"CP-002", customerType:"individual" as CustomerType, firstName:"Ploy",     lastName:"Srichan",   gender:"female" as CustomerGender, dob:"1992-07-22", nationalId:"3100200345678", phone:"089-345-6789",  email:"ploy.s@hotmail.com",             address:"56/7 Rama IV Rd, Klong Toei, Bangkok 10120",                totalSpend:89500,  status:"active"   as const, joinDate:"2024-03-05", notes:"",                                                   tags:["regular"] },
+  { id:"CP-003", customerType:"individual" as CustomerType, firstName:"James",    lastName:"Crawford",  gender:"male"   as CustomerGender, dob:"1978-11-08", nationalId:"",             phone:"090-456-7890",  email:"james.c@outlook.com",            address:"18/9 Wireless Rd, Lumphini, Bangkok 10330",                 totalSpend:425000, status:"active"   as const, joinDate:"2023-08-20", notes:"Expat — requires English invoice.",                  tags:["vip","english"] },
+  { id:"CP-004", customerType:"individual" as CustomerType, firstName:"Malee",    lastName:"Wongkham",  gender:"female" as CustomerGender, dob:"1990-05-30", nationalId:"2300400567890", phone:"082-567-8901",  email:"malee.w@yahoo.com",              address:"22 Charoen Krung Soi 38, Bang Rak, Bangkok 10500",          totalSpend:52000,  status:"active"   as const, joinDate:"2025-01-12", notes:"",                                                   tags:[] },
+  { id:"CP-005", customerType:"individual" as CustomerType, firstName:"Thanida",  lastName:"Poolsub",   gender:"female" as CustomerGender, dob:"1995-02-18", nationalId:"3100500678901", phone:"094-678-9012",  email:"thanida.p@gmail.com",            address:"10/3 Lat Phrao Rd, Chatuchak, Bangkok 10900",               totalSpend:38000,  status:"inactive" as const, joinDate:"2025-04-20", notes:"Inactive since Q2 2026.",                            tags:[] },
+  // ── Corporate ──
+  { id:"CP-006", customerType:"corporate" as CustomerType, companyName:"Acme Corporation",          taxId:"0105554001234", registrationNo:"BC-2548-001234", contactPerson:"John Smith",     contactTitle:"Procurement Director", businessType:"Manufacturing", phone:"02-111-2345",  email:"procurement@acme.com",          address:"22 Sathorn Rd, Sathorn, Bangkok 10120",           website:"www.acme.com",            totalSpend:485000,  status:"active"   as const, joinDate:"2023-05-01", notes:"Enterprise account. Net 30 payment.",            tags:["enterprise","net30"] },
+  { id:"CP-007", customerType:"corporate" as CustomerType, companyName:"TechStart Inc.",            taxId:"0105556002345", registrationNo:"BC-2556-002345", contactPerson:"Sara Lee",        contactTitle:"Operations Manager",   businessType:"Technology",    phone:"02-222-3456",  email:"sara@techstart.io",             address:"88 Rama 9 Rd, Huai Khwang, Bangkok 10310",       website:"www.techstart.io",        totalSpend:125000,  status:"active"   as const, joinDate:"2024-01-10", notes:"Startup — flexible payment preferred.",          tags:["sme","startup"] },
+  { id:"CP-008", customerType:"corporate" as CustomerType, companyName:"Global Traders Ltd.",       taxId:"0105558003456", registrationNo:"BC-2558-003456", contactPerson:"Ahmed Hassan",    contactTitle:"CEO",                  businessType:"Trading",       phone:"02-333-4567",  email:"ahmed@gtraders.com",            address:"55 Surawong Rd, Bang Rak, Bangkok 10500",         website:"www.gtraders.com",        totalSpend:892000,  status:"active"   as const, joinDate:"2023-03-15", notes:"Largest account. Priority service. VIP pricing.", tags:["enterprise","priority","vip"] },
+  { id:"CP-009", customerType:"corporate" as CustomerType, companyName:"Metro Building Supplies",   taxId:"0105560004567", registrationNo:"BC-2560-004567", contactPerson:"Tom Richards",    contactTitle:"Purchasing Manager",   businessType:"Construction",  phone:"02-555-6789",  email:"tom@metrobuilding.com",         address:"100 Bangna-Trad Rd, Bangna, Bangkok 10260",      website:"www.metrobuilding.com",   totalSpend:1250000, status:"active"   as const, joinDate:"2022-11-01", notes:"Top customer. Special pricing applies.",         tags:["enterprise","vip","discount"] },
+  { id:"CP-010", customerType:"corporate" as CustomerType, companyName:"Pacific Logistics Co., Ltd.",taxId:"0105562005678",registrationNo:"BC-2562-005678", contactPerson:"Kanokwan Thong",  contactTitle:"Operations Director",  businessType:"Logistics",     phone:"02-666-7890",  email:"kanokwan@paclog.co.th",         address:"77 Ratchadapisek Rd, Din Daeng, Bangkok 10400",  website:"www.paclog.co.th",        totalSpend:98000,   status:"inactive" as const, joinDate:"2023-07-20", notes:"Account suspended pending payment.",             tags:["inactive"] },
+  { id:"CP-011", customerType:"corporate" as CustomerType, companyName:"Crown Retail Group",        taxId:"0105564006789", registrationNo:"BC-2564-006789", contactPerson:"James Crawford",  contactTitle:"Procurement VP",       businessType:"Retail",        phone:"02-777-8901",  email:"james@crownretail.co.th",       address:"34 Phaholyothin Rd, Phaya Thai, Bangkok 10400",  website:"www.crownretail.co.th",   totalSpend:340000,  status:"active"   as const, joinDate:"2024-06-01", notes:"New enterprise prospect. High growth potential.", tags:["enterprise","prospect"] },
+  { id:"CP-012", customerType:"corporate" as CustomerType, companyName:"Elite Services Co.",         taxId:"0105566007890", registrationNo:"BC-2566-007890", contactPerson:"Priya Sharma",    contactTitle:"General Manager",      businessType:"Services",      phone:"02-888-9012",  email:"priya@eliteservices.com",       address:"18 Wireless Rd, Pathumwan, Bangkok 10330",       website:"www.eliteservices.com",   totalSpend:52000,   status:"active"   as const, joinDate:"2025-02-14", notes:"Regular repeat customer.",                       tags:["sme","repeat"] },
 ];
 
 export const salesOrders = [
-  { id: "SO-001", customer: "Metro Building Supplies", date: "2026-06-01", items: 8, amount: 342000, stage: "delivered", probability: 100 },
-  { id: "SO-002", customer: "Acme Corporation", date: "2026-06-05", items: 5, amount: 125000, stage: "invoiced", probability: 95 },
-  { id: "SO-003", customer: "Global Traders Ltd.", date: "2026-06-10", items: 12, amount: 580000, stage: "confirmed", probability: 90 },
-  { id: "SO-004", customer: "TechStart Inc.", date: "2026-06-12", items: 3, amount: 87500, stage: "quoted", probability: 60 },
-  { id: "SO-005", customer: "Sunrise Foods Co.", date: "2026-06-15", items: 6, amount: 56000, stage: "negotiation", probability: 75 },
-  { id: "SO-006", customer: "Crown Retail Group", date: "2026-06-18", items: 4, amount: 215000, stage: "prospect", probability: 30 },
-  { id: "SO-007", customer: "Elite Services Co.", date: "2026-06-20", items: 2, amount: 42000, stage: "confirmed", probability: 90 },
+  { id:"SO-001", customerId:"CUST-005", customer:"Metro Building Supplies", date:"2026-06-01", deliveryDate:"2026-06-14", items:8,  amount:342000, stage:"delivered"   as SalesOrderStage, probability:100, notes:"Priority delivery to site 3. Dock 2 at rear entrance." },
+  { id:"SO-002", customerId:"CUST-001", customer:"Acme Corporation",        date:"2026-06-05", deliveryDate:"2026-06-20", items:5,  amount:125000, stage:"invoiced"    as SalesOrderStage, probability:95,  notes:"Invoice sent. Awaiting payment NET30." },
+  { id:"SO-003", customerId:"CUST-003", customer:"Global Traders Ltd.",     date:"2026-06-10", deliveryDate:"2026-07-05", items:12, amount:580000, stage:"confirmed"   as SalesOrderStage, probability:90,  notes:"Large order confirmed. Coordinate with logistics for split delivery." },
+  { id:"SO-004", customerId:"CUST-002", customer:"TechStart Inc.",          date:"2026-06-12", deliveryDate:"2026-06-30", items:3,  amount:87500,  stage:"quoted"      as SalesOrderStage, probability:60,  notes:"Quote sent. Client comparing with 2 other vendors." },
+  { id:"SO-005", customerId:"CUST-004", customer:"Sunrise Foods Co.",       date:"2026-06-15", deliveryDate:"2026-07-10", items:6,  amount:56000,  stage:"negotiation" as SalesOrderStage, probability:75,  notes:"Negotiating bulk discount on Safety items. Target close by 20 Jun." },
+  { id:"SO-006", customerId:"CUST-007", customer:"Crown Retail Group",      date:"2026-06-18", deliveryDate:"2026-07-15", items:4,  amount:215000, stage:"prospect"    as SalesOrderStage, probability:30,  notes:"Prospect from trade show. Follow-up call scheduled 25 Jun." },
+  { id:"SO-007", customerId:"CUST-008", customer:"Elite Services Co.",      date:"2026-06-20", deliveryDate:"2026-07-08", items:2,  amount:42000,  stage:"confirmed"   as SalesOrderStage, probability:90,  notes:"Repeat customer. Confirmed via email. Standard terms apply." },
+];
+
+export const soLineItems = [
+  // SO-001 Metro Building Supplies (8 lines)
+  { id:"SOL-001", soId:"SO-001", productId:"SKU-005", productName:"Electric Motor 10kW",    qty:5,   unitPrice:46000, total:230000 },
+  { id:"SOL-002", soId:"SO-001", productId:"SKU-002", productName:"Hydraulic Pump 5HP",     qty:3,   unitPrice:16500, total:49500  },
+  { id:"SOL-003", soId:"SO-001", productId:"SKU-001", productName:'Industrial Valve 2"',    qty:15,  unitPrice:950,   total:14250  },
+  { id:"SOL-004", soId:"SO-001", productId:"SKU-008", productName:"Safety Helmet",          qty:40,  unitPrice:550,   total:22000  },
+  { id:"SOL-005", soId:"SO-001", productId:"SKU-006", productName:'Copper Fitting 1"',      qty:80,  unitPrice:150,   total:12000  },
+  { id:"SOL-006", soId:"SO-001", productId:"SKU-010", productName:"Bearing 6205",           qty:30,  unitPrice:360,   total:10800  },
+  { id:"SOL-007", soId:"SO-001", productId:"SKU-004", productName:"Pressure Gauge 100psi",  qty:10,  unitPrice:750,   total:7500   },
+  { id:"SOL-008", soId:"SO-001", productId:"SKU-007", productName:'Ball Valve 3"',          qty:1,   unitPrice:2400,  total:2400   },
+  // SO-002 Acme Corporation (5 lines)
+  { id:"SOL-009", soId:"SO-002", productId:"SKU-002", productName:"Hydraulic Pump 5HP",     qty:4,   unitPrice:16000, total:64000  },
+  { id:"SOL-010", soId:"SO-002", productId:"SKU-004", productName:"Pressure Gauge 100psi",  qty:25,  unitPrice:700,   total:17500  },
+  { id:"SOL-011", soId:"SO-002", productId:"SKU-001", productName:'Industrial Valve 2"',    qty:15,  unitPrice:900,   total:13500  },
+  { id:"SOL-012", soId:"SO-002", productId:"SKU-010", productName:"Bearing 6205",           qty:60,  unitPrice:360,   total:21600  },
+  { id:"SOL-013", soId:"SO-002", productId:"SKU-006", productName:'Copper Fitting 1"',      qty:55,  unitPrice:150,   total:8250   },
+  // SO-003 Global Traders (12 lines)
+  { id:"SOL-014", soId:"SO-003", productId:"SKU-005", productName:"Electric Motor 10kW",    qty:8,   unitPrice:46000, total:368000 },
+  { id:"SOL-015", soId:"SO-003", productId:"SKU-002", productName:"Hydraulic Pump 5HP",     qty:4,   unitPrice:16500, total:66000  },
+  { id:"SOL-016", soId:"SO-003", productId:"SKU-007", productName:'Ball Valve 3"',          qty:10,  unitPrice:2400,  total:24000  },
+  { id:"SOL-017", soId:"SO-003", productId:"SKU-001", productName:'Industrial Valve 2"',    qty:35,  unitPrice:950,   total:33250  },
+  { id:"SOL-018", soId:"SO-003", productId:"SKU-004", productName:"Pressure Gauge 100psi",  qty:20,  unitPrice:750,   total:15000  },
+  { id:"SOL-019", soId:"SO-003", productId:"SKU-009", productName:"Cable 16mm 100m",        qty:3,   unitPrice:9200,  total:27600  },
+  { id:"SOL-020", soId:"SO-003", productId:"SKU-006", productName:'Copper Fitting 1"',      qty:80,  unitPrice:150,   total:12000  },
+  { id:"SOL-021", soId:"SO-003", productId:"SKU-008", productName:"Safety Helmet",          qty:20,  unitPrice:550,   total:11000  },
+  { id:"SOL-022", soId:"SO-003", productId:"SKU-010", productName:"Bearing 6205",           qty:25,  unitPrice:360,   total:9000   },
+  { id:"SOL-023", soId:"SO-003", productId:"SKU-003", productName:"Steel Pipe 6m",          qty:5,   unitPrice:1400,  total:7000   },
+  { id:"SOL-024", soId:"SO-003", productId:"SKU-004", productName:"Pressure Gauge 100psi",  qty:10,  unitPrice:750,   total:7500   },
+  { id:"SOL-025", soId:"SO-003", productId:"SKU-002", productName:"Hydraulic Pump 5HP",     qty:1,   unitPrice:16500, total:16500  },
+  // SO-004 TechStart (3 lines)
+  { id:"SOL-026", soId:"SO-004", productId:"SKU-002", productName:"Hydraulic Pump 5HP",     qty:3,   unitPrice:16000, total:48000  },
+  { id:"SOL-027", soId:"SO-004", productId:"SKU-005", productName:"Electric Motor 10kW",    qty:1,   unitPrice:46000, total:46000  },
+  { id:"SOL-028", soId:"SO-004", productId:"SKU-010", productName:"Bearing 6205",           qty:20,  unitPrice:360,   total:7200   },
+  // SO-005 Sunrise Foods (6 lines)
+  { id:"SOL-029", soId:"SO-005", productId:"SKU-001", productName:'Industrial Valve 2"',    qty:10,  unitPrice:950,   total:9500   },
+  { id:"SOL-030", soId:"SO-005", productId:"SKU-006", productName:'Copper Fitting 1"',      qty:100, unitPrice:150,   total:15000  },
+  { id:"SOL-031", soId:"SO-005", productId:"SKU-008", productName:"Safety Helmet",          qty:20,  unitPrice:550,   total:11000  },
+  { id:"SOL-032", soId:"SO-005", productId:"SKU-004", productName:"Pressure Gauge 100psi",  qty:8,   unitPrice:750,   total:6000   },
+  { id:"SOL-033", soId:"SO-005", productId:"SKU-010", productName:"Bearing 6205",           qty:20,  unitPrice:360,   total:7200   },
+  { id:"SOL-034", soId:"SO-005", productId:"SKU-003", productName:"Steel Pipe 6m",          qty:5,   unitPrice:1400,  total:7000   },
+  // SO-006 Crown Retail Group (4 lines)
+  { id:"SOL-035", soId:"SO-006", productId:"SKU-005", productName:"Electric Motor 10kW",    qty:3,   unitPrice:46000, total:138000 },
+  { id:"SOL-036", soId:"SO-006", productId:"SKU-002", productName:"Hydraulic Pump 5HP",     qty:3,   unitPrice:16500, total:49500  },
+  { id:"SOL-037", soId:"SO-006", productId:"SKU-004", productName:"Pressure Gauge 100psi",  qty:20,  unitPrice:750,   total:15000  },
+  { id:"SOL-038", soId:"SO-006", productId:"SKU-007", productName:'Ball Valve 3"',          qty:5,   unitPrice:2400,  total:12000  },
+  // SO-007 Elite Services (2 lines)
+  { id:"SOL-039", soId:"SO-007", productId:"SKU-001", productName:'Industrial Valve 2"',    qty:25,  unitPrice:950,   total:23750  },
+  { id:"SOL-040", soId:"SO-007", productId:"SKU-010", productName:"Bearing 6205",           qty:50,  unitPrice:360,   total:18000  },
 ];
 
 // HR
@@ -251,12 +444,12 @@ export const campaigns = [
 export type UserRole = "admin" | "manager" | "staff" | "viewer";
 
 export const systemUsers = [
-  { id:"USR-001", name:"Prapas Chamnankit",  email:"prapas@ddk.co.th",      role:"admin"   as UserRole, branchId:"BR-001", status:"active"   as const, lastLogin:"2026-07-02T09:15:00", createdAt:"2023-01-01" },
-  { id:"USR-002", name:"Nattaporn Srisuk",   email:"nattaporn@ddk.co.th",   role:"manager" as UserRole, branchId:"BR-001", status:"active"   as const, lastLogin:"2026-07-02T08:30:00", createdAt:"2023-01-15" },
-  { id:"USR-003", name:"Wichai Thongdee",    email:"wichai@ddk.co.th",      role:"manager" as UserRole, branchId:"BR-002", status:"active"   as const, lastLogin:"2026-07-01T14:22:00", createdAt:"2023-03-01" },
-  { id:"USR-004", name:"Kanokwan Srisuwan",  email:"kanokwan@ddk.co.th",    role:"staff"   as UserRole, branchId:"BR-003", status:"active"   as const, lastLogin:"2026-06-30T11:45:00", createdAt:"2023-06-01" },
-  { id:"USR-005", name:"Thanachart Boonsri", email:"thanachart@ddk.co.th",  role:"staff"   as UserRole, branchId:"BR-001", status:"active"   as const, lastLogin:"2026-07-01T16:10:00", createdAt:"2023-06-15" },
-  { id:"USR-006", name:"Siriporn Naknoi",    email:"siriporn@ddk.co.th",    role:"viewer"  as UserRole, branchId:"BR-001", status:"inactive" as const, lastLogin:"2026-06-15T10:00:00", createdAt:"2024-01-10" },
+  { id:"USR-001", employeeId:"EMP-003", name:"Prapas Chamnankit",  email:"prapas@ddk.co.th",      role:"admin"   as UserRole, branchId:"BR-001", branchIds:["BR-001","BR-002","BR-003","BR-004"], status:"active"   as const, startDate:"2023-01-01", endDate:null as string|null, lastLogin:"2026-07-02T09:15:00", createdAt:"2023-01-01" },
+  { id:"USR-002", employeeId:"EMP-002", name:"Nattaporn Srisuk",   email:"nattaporn@ddk.co.th",   role:"manager" as UserRole, branchId:"BR-001", branchIds:["BR-001"],                             status:"active"   as const, startDate:"2023-01-15", endDate:null as string|null, lastLogin:"2026-07-02T08:30:00", createdAt:"2023-01-15" },
+  { id:"USR-003", employeeId:"EMP-005", name:"Wichai Thongdee",    email:"wichai@ddk.co.th",      role:"manager" as UserRole, branchId:"BR-002", branchIds:["BR-002"],                             status:"active"   as const, startDate:"2023-03-01", endDate:null as string|null, lastLogin:"2026-07-01T14:22:00", createdAt:"2023-03-01" },
+  { id:"USR-004", employeeId:"EMP-006", name:"Kanokwan Srisuwan",  email:"kanokwan@ddk.co.th",    role:"staff"   as UserRole, branchId:"BR-003", branchIds:["BR-003"],                             status:"active"   as const, startDate:"2023-06-01", endDate:null as string|null, lastLogin:"2026-06-30T11:45:00", createdAt:"2023-06-01" },
+  { id:"USR-005", employeeId:"EMP-007", name:"Thanachart Boonsri", email:"thanachart@ddk.co.th",  role:"staff"   as UserRole, branchId:"BR-001", branchIds:["BR-001"],                             status:"active"   as const, startDate:"2023-06-15", endDate:null as string|null, lastLogin:"2026-07-01T16:10:00", createdAt:"2023-06-15" },
+  { id:"USR-006", employeeId:"EMP-008", name:"Siriporn Naknoi",    email:"siriporn@ddk.co.th",    role:"viewer"  as UserRole, branchId:"BR-001", branchIds:["BR-001"],                             status:"inactive" as const, startDate:"2024-01-10", endDate:"2026-06-30",        lastLogin:"2026-06-15T10:00:00", createdAt:"2024-01-10" },
 ];
 
 // ── Company Settings ──────────────────────────────────────────────────
@@ -269,6 +462,7 @@ export const companySettings = {
   phone:           "02-100-1000",
   email:           "info@ddk.co.th",
   website:         "www.ddk.co.th",
+  lineId:          "@ddkenterprise",
   currency:        "THB",
   timezone:        "Asia/Bangkok",
   language:        "th",

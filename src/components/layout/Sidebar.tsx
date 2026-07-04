@@ -32,6 +32,8 @@ import {
   Shield,
   Bell,
   Sliders,
+  PackageCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -58,6 +60,7 @@ const navItems = [
       { label: "Overview", href: "/inventory", icon: BarChart3 },
       { label: "Products", href: "/inventory/products", icon: Package },
       { label: "Purchase Orders", href: "/inventory/purchase-orders", icon: ShoppingCart },
+      { label: "Goods Receive", href: "/inventory/goods-receive", icon: PackageCheck },
       { label: "Suppliers", href: "/inventory/suppliers", icon: Truck },
     ],
   },
@@ -98,11 +101,12 @@ const navItems = [
     label: "Settings",
     icon: Settings,
     children: [
-      { label: "General",       href: "/settings/general",       icon: Settings },
-      { label: "Branches",      href: "/settings/branches",      icon: GitBranch },
-      { label: "Users",         href: "/settings/users",         icon: Shield },
-      { label: "Points Config", href: "/settings/points",        icon: Sliders },
-      { label: "Notifications", href: "/settings/notifications", icon: Bell },
+      { label: "General",          href: "/settings/general",    icon: Settings },
+      { label: "Branches",         href: "/settings/branches",   icon: GitBranch },
+      { label: "Users",            href: "/settings/users",      icon: Shield },
+      { label: "Role Permissions", href: "/settings/roles",      icon: ClipboardCheck },
+      { label: "Points Config",    href: "/settings/points",     icon: Sliders },
+      { label: "Notifications",    href: "/settings/notifications", icon: Bell },
     ],
   },
 ];
