@@ -17,7 +17,8 @@ import {
   PackageCheck, Truck, Clock, X, CheckCircle2, AlertTriangle,
   ArrowRight, User, Building2, CalendarDays, FileText, Package,
   ChevronDown, Printer, Camera, MapPin, Loader2, ImagePlus,
-  LocateFixed, ShieldAlert,
+  LocateFixed, ShieldAlert, Upload, Paperclip, FileImage,
+  FileSpreadsheet, File as FileIcon, Eye, Trash2,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -43,6 +44,14 @@ interface GpsLocation {
   timestamp: string;
 }
 
+interface GRNDocument {
+  id: string;
+  name: string;
+  size: number;   // bytes
+  mimeType: string;
+  dataUrl: string;
+}
+
 interface GRNRecord {
   grnId: string;
   poId: string;
@@ -52,6 +61,7 @@ interface GRNRecord {
   date: string;
   lines: ReceivedLine[];
   gpsLocation: GpsLocation | null;
+  documents: GRNDocument[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -125,6 +135,46 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
 
   useEffect(() => { fetchGPS(); }, []);
 
+  // ── Documents ─────────────────────────────────────────────────────────
+  const [documents, setDocuments] = useState<GRNDocument[]>([]);
+  const [dragOver, setDragOver]   = useState(false);
+  const docInputRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = (files: FileList | File[]) => {
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setDocuments((prev) => [
+          ...prev,
+          {
+            id:       `doc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            name:     file.name,
+            size:     file.size,
+            mimeType: file.type,
+            dataUrl:  e.target?.result as string,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeDoc = (id: string) =>
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
+
+  function fmtBytes(n: number): string {
+    if (n < 1024)       return `${n} B`;
+    if (n < 1024 ** 2)  return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  }
+
+  function docIcon(mime: string) {
+    if (mime.startsWith("image/"))                              return <FileImage  size={16} className="text-violet-500" />;
+    if (mime === "application/pdf")                             return <FileText   size={16} className="text-red-500" />;
+    if (mime.includes("spreadsheet") || mime.includes("excel")) return <FileSpreadsheet size={16} className="text-emerald-600" />;
+    return <FileIcon size={16} className="text-slate-400" />;
+  }
+
   // ── Photo ─────────────────────────────────────────────────────────────
   const photoInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -178,6 +228,7 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
       date: receiveDate,
       lines,
       gpsLocation,
+      documents,
     };
 
     onConfirm(grn, updatedProducts);
@@ -312,6 +363,106 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
               ) : gpsStatus === "fetching" ? (
                 <p className="text-xs text-blue-600 mt-1">Waiting for device GPS signal…</p>
               ) : null}
+            </div>
+          </div>
+
+          {/* GRN Document Attachments */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Paperclip size={13} className="text-slate-500" />
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  GRN Documents
+                </p>
+                <span className="text-[10px] text-slate-400 normal-case font-normal tracking-normal">
+                  Delivery note, supplier invoice, customs doc, packing list…
+                </span>
+              </div>
+              {documents.length > 0 && (
+                <span className="text-xs font-semibold text-blue-600">
+                  {documents.length} file{documents.length > 1 ? "s" : ""} attached
+                </span>
+              )}
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={docInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.tiff"
+              className="hidden"
+              onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }}
+            />
+
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files) addFiles(e.dataTransfer.files); }}
+              onClick={() => docInputRef.current?.click()}
+              className={cn(
+                "rounded-xl border-2 border-dashed transition-colors cursor-pointer",
+                dragOver
+                  ? "border-blue-400 bg-blue-50"
+                  : documents.length === 0
+                  ? "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"
+                  : "border-slate-200 bg-white hover:border-blue-300"
+              )}
+            >
+              {documents.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-slate-400">
+                  <Upload size={22} className={dragOver ? "text-blue-500" : "text-slate-300"} />
+                  <p className="text-sm font-medium text-slate-500">
+                    {dragOver ? "Drop files here" : "Drop files or click to browse"}
+                  </p>
+                  <p className="text-xs text-slate-400">PDF · Word · Excel · Images · up to 20 MB each</p>
+                </div>
+              ) : (
+                <div className="p-3 space-y-1.5">
+                  {documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2.5 shadow-sm"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                        {docIcon(doc.mimeType)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{doc.name}</p>
+                        <p className="text-xs text-slate-400">{fmtBytes(doc.size)}</p>
+                      </div>
+                      {doc.mimeType.startsWith("image/") && (
+                        <img src={doc.dataUrl} alt="" className="w-10 h-10 object-cover rounded-md border border-slate-100 shrink-0" />
+                      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <a
+                          href={doc.dataUrl}
+                          download={doc.name}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          <Eye size={14} />
+                        </a>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeDoc(doc.id); }}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Add more row */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); docInputRef.current?.click(); }}
+                    className="w-full flex items-center justify-center gap-2 py-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-dashed border-blue-200 transition-colors mt-1"
+                  >
+                    <Upload size={12} /> Add more files
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -642,6 +793,56 @@ function GRNSuccess({ grn, onClose }: GRNSuccessProps) {
               </table>
             </div>
           </div>
+
+          {/* Attached Documents */}
+          {grn.documents.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Paperclip size={13} className="text-slate-500" />
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Attached Documents
+                </p>
+                <span className="text-xs text-slate-400">({grn.documents.length} file{grn.documents.length > 1 ? "s" : ""})</span>
+              </div>
+              <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                {grn.documents.map((doc) => {
+                  const isImg = doc.mimeType.startsWith("image/");
+                  const isPdf = doc.mimeType === "application/pdf";
+                  const isXls = doc.mimeType.includes("spreadsheet") || doc.mimeType.includes("excel");
+                  return (
+                    <div key={doc.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                        {isImg ? <FileImage size={15} className="text-violet-500" />
+                               : isPdf ? <FileText size={15} className="text-red-500" />
+                               : isXls ? <FileSpreadsheet size={15} className="text-emerald-600" />
+                               : <FileIcon size={15} className="text-slate-400" />}
+                      </div>
+                      {isImg && (
+                        <img src={doc.dataUrl} alt="" className="w-10 h-10 object-cover rounded-md border border-slate-100 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{doc.name}</p>
+                        <p className="text-xs text-slate-400">
+                          {isImg ? "Image" : isPdf ? "PDF" : isXls ? "Spreadsheet" : "Document"} · {
+                            doc.size < 1024 ? `${doc.size} B` :
+                            doc.size < 1024 ** 2 ? `${(doc.size / 1024).toFixed(1)} KB` :
+                            `${(doc.size / 1024 ** 2).toFixed(1)} MB`
+                          }
+                        </p>
+                      </div>
+                      <a
+                        href={doc.dataUrl}
+                        download={doc.name}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors shrink-0"
+                      >
+                        <Eye size={12} /> View
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Data flow note */}
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
