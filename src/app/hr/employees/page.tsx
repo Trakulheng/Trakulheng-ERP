@@ -943,7 +943,7 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         {/* Hero */}
-        <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 px-6 pt-6 pb-16 rounded-t-2xl">
+        <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 px-6 pt-6 pb-5 rounded-t-2xl">
           <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><X size={16} /></button>
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-white text-2xl font-bold">
@@ -975,18 +975,17 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
               </span>
             )}
           </div>
-        </div>
-
-        {/* Actions (float over hero) */}
-        <div className="flex gap-2 px-6 -mt-8 mb-4">
-          <button onClick={onEdit}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm text-slate-700">
-            <Pencil size={13} /> Edit
-          </button>
-          <button onClick={onDelete}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-white border border-red-200 rounded-lg hover:bg-red-50 shadow-sm text-red-600">
-            <Trash2 size={13} /> Delete
-          </button>
+          {/* Action buttons — inside hero so they're always visible */}
+          <div className="flex gap-2 mt-5">
+            <button onClick={onEdit}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-white text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm transition-colors">
+              <Pencil size={13} /> Edit
+            </button>
+            <button onClick={onDelete}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-red-500/20 border border-red-300/40 text-red-100 rounded-lg hover:bg-red-500/30 transition-colors">
+              <Trash2 size={13} /> Delete
+            </button>
+          </div>
         </div>
 
         <div className="px-6 pb-6 space-y-5">
