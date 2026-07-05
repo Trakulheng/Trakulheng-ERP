@@ -9,16 +9,24 @@ export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
   const [showPw, setShowPw] = useState(false);
+  const [privacyChecked, setPrivacyChecked] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const canSubmit = privacyChecked && termsChecked && !loading;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
+    if (!privacyChecked || !termsChecked) {
+      setError("You must accept the Privacy Policy and Terms of Service to create an account.");
+      return;
+    }
     if (form.password !== form.confirm) {
       setError("Passwords do not match.");
       return;
@@ -33,10 +41,18 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          consentAccepted: true,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error); return; }
+      if (!res.ok) {
+        setError(data.error);
+        return;
+      }
       router.push(`/auth/verify-email?email=${encodeURIComponent(form.email)}`);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -107,7 +123,9 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm password</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Confirm password
+              </label>
               <input
                 type={showPw ? "text" : "password"}
                 required
@@ -118,6 +136,49 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Consent checkboxes */}
+            <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50 mt-2">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={privacyChecked}
+                  onChange={(e) => setPrivacyChecked(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-violet-600 shrink-0"
+                />
+                <span className="text-xs text-slate-600 leading-relaxed">
+                  I have read and agree to the{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="text-violet-600 hover:underline font-medium"
+                  >
+                    Privacy Policy
+                  </Link>{" "}
+                  and consent to processing of my personal data under Thai PDPA and EU GDPR.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={termsChecked}
+                  onChange={(e) => setTermsChecked(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-violet-600 shrink-0"
+                />
+                <span className="text-xs text-slate-600 leading-relaxed">
+                  I have read and agree to the{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-violet-600 hover:underline font-medium"
+                  >
+                    Terms of Service
+                  </Link>{" "}
+                  and confirm I am authorised to use this system on behalf of my organisation.
+                </span>
+              </label>
+            </div>
+
             {error && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3.5 py-2.5">
                 {error}
@@ -126,8 +187,8 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors mt-2"
+              disabled={!canSubmit}
+              className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg text-sm transition-colors mt-2"
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
               {loading ? "Creating account…" : "Create account"}
@@ -141,10 +202,6 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
-
-        <p className="text-center text-xs text-slate-500 mt-6">
-          By creating an account you agree to our terms of service.
-        </p>
       </div>
     </div>
   );

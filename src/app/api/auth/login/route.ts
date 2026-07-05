@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyPassword, createSession } from "@/lib/auth";
+import { CONSENT_COOKIE, CONSENT_VERSION } from "@/lib/consent";
+
+function setSessionCookies(res: NextResponse, sessionToken: string, hasConsent: boolean) {
+  res.cookies.set("session", sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 30 * 24 * 60 * 60,
+    path: "/",
+  });
+  if (hasConsent) {
+    res.cookies.set(CONSENT_COOKIE, CONSENT_VERSION, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 365 * 24 * 60 * 60,
+      path: "/",
+    });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,15 +45,14 @@ export async function POST(req: NextRequest) {
     }
 
     const token = await createSession(user.id);
+    const hasConsent = !!user.consentAcceptedAt;
 
-    const res = NextResponse.json({ ok: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
-    res.cookies.set("session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60,
-      path: "/",
+    const res = NextResponse.json({
+      ok: true,
+      needsConsent: !hasConsent,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
     });
+    setSessionCookies(res, token, hasConsent);
     return res;
   } catch (err) {
     console.error("[login]", err);
