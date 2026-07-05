@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import {
   purchaseOrders as initialPOs,
@@ -16,7 +16,8 @@ import { cn, formatCurrency } from "@/lib/utils";
 import {
   PackageCheck, Truck, Clock, X, CheckCircle2, AlertTriangle,
   ArrowRight, User, Building2, CalendarDays, FileText, Package,
-  ChevronDown, Printer,
+  ChevronDown, Printer, Camera, MapPin, Loader2, ImagePlus,
+  LocateFixed, ShieldAlert,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -32,6 +33,14 @@ interface ReceivedLine {
   receivedQty: number;
   currentStock: number;
   note: string;
+  photo: string | null; // data URL
+}
+
+interface GpsLocation {
+  lat: number;
+  lng: number;
+  accuracy: number;
+  timestamp: string;
 }
 
 interface GRNRecord {
@@ -42,6 +51,7 @@ interface GRNRecord {
   receivedBy: string;
   date: string;
   lines: ReceivedLine[];
+  gpsLocation: GpsLocation | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -86,10 +96,48 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
         receivedQty:  l.qty,
         currentStock: prod?.stock ?? 0,
         note: "",
+        photo: null,
       };
     })
   );
 
+  // ── GPS ───────────────────────────────────────────────────────────────
+  const [gpsLocation, setGpsLocation]   = useState<GpsLocation | null>(null);
+  const [gpsStatus, setGpsStatus]       = useState<"idle" | "fetching" | "ok" | "error">("idle");
+
+  const fetchGPS = () => {
+    if (!navigator.geolocation) { setGpsStatus("error"); return; }
+    setGpsStatus("fetching");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy),
+          timestamp: new Date().toISOString(),
+        });
+        setGpsStatus("ok");
+      },
+      () => setGpsStatus("error"),
+      { timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
+  useEffect(() => { fetchGPS(); }, []);
+
+  // ── Photo ─────────────────────────────────────────────────────────────
+  const photoInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handlePhotoFile = (idx: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setLines((prev) => prev.map((l, i) => i === idx ? { ...l, photo: dataUrl } : l));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────────────
   const setQty = (idx: number, qty: number) =>
     setLines((prev) => prev.map((l, i) => i === idx ? { ...l, receivedQty: Math.max(0, qty) } : l));
 
@@ -101,10 +149,19 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
     return s + l.receivedQty * (pi?.unitPrice ?? 0);
   }, 0);
 
-  const hasVariance = lines.some((l) => l.receivedQty !== l.orderedQty);
+  const hasVariance       = lines.some((l) => l.receivedQty !== l.orderedQty);
+  const activeLines       = lines.filter((l) => l.receivedQty > 0);
+  const missingPhotos     = activeLines.filter((l) => !l.photo).length;
+  const allPhotosAttached = missingPhotos === 0 && activeLines.length > 0;
+
+  const canConfirm =
+    activeLines.length > 0 &&
+    !!receivedBy &&
+    !!receiveDate &&
+    allPhotosAttached &&
+    gpsStatus === "ok";
 
   const handleConfirm = () => {
-    // Build updated products
     const updatedProducts = products.map((p) => {
       const line = lines.find((l) => l.productId === p.id);
       if (!line || line.receivedQty === 0) return p;
@@ -120,6 +177,7 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
       receivedBy,
       date: receiveDate,
       lines,
+      gpsLocation,
     };
 
     onConfirm(grn, updatedProducts);
@@ -207,6 +265,56 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
             </div>
           </div>
 
+          {/* GPS Location */}
+          <div className={cn("rounded-xl border p-4 flex items-start gap-3",
+            gpsStatus === "ok"       ? "bg-emerald-50 border-emerald-200" :
+            gpsStatus === "error"    ? "bg-red-50 border-red-200" :
+            gpsStatus === "fetching" ? "bg-blue-50 border-blue-200" :
+            "bg-slate-50 border-slate-200"
+          )}>
+            {gpsStatus === "fetching"
+              ? <Loader2 size={16} className="animate-spin text-blue-500 shrink-0 mt-0.5" />
+              : gpsStatus === "ok"
+              ? <LocateFixed size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+              : gpsStatus === "error"
+              ? <ShieldAlert size={16} className="text-red-500 shrink-0 mt-0.5" />
+              : <MapPin size={16} className="text-slate-400 shrink-0 mt-0.5" />}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className={cn("text-sm font-semibold",
+                  gpsStatus === "ok"    ? "text-emerald-800" :
+                  gpsStatus === "error" ? "text-red-700" :
+                  "text-slate-700"
+                )}>
+                  {gpsStatus === "fetching" ? "Acquiring GPS location…" :
+                   gpsStatus === "ok"       ? "GPS Location Captured ✓" :
+                   gpsStatus === "error"    ? "GPS Location Unavailable" :
+                   "GPS Location"}
+                </p>
+                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide",
+                  gpsStatus === "ok"    ? "bg-emerald-100 text-emerald-700" :
+                  gpsStatus === "error" ? "bg-red-100 text-red-600" :
+                  "bg-slate-100 text-slate-500"
+                )}>Required</span>
+                {gpsStatus === "error" && (
+                  <button onClick={fetchGPS} className="text-xs text-red-600 underline hover:text-red-800 ml-1">Retry</button>
+                )}
+              </div>
+              {gpsLocation ? (
+                <p className="text-xs text-emerald-700 mt-1 font-mono">
+                  {gpsLocation.lat.toFixed(6)}, {gpsLocation.lng.toFixed(6)}&nbsp;·&nbsp;±{gpsLocation.accuracy}m&nbsp;·&nbsp;
+                  {new Date(gpsLocation.timestamp).toLocaleTimeString()}
+                </p>
+              ) : gpsStatus === "error" ? (
+                <p className="text-xs text-red-600 mt-1">
+                  Allow location access in your browser settings and click Retry to capture GPS coordinates.
+                </p>
+              ) : gpsStatus === "fetching" ? (
+                <p className="text-xs text-blue-600 mt-1">Waiting for device GPS signal…</p>
+              ) : null}
+            </div>
+          </div>
+
           {/* Variance warning */}
           {hasVariance && (
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -237,6 +345,12 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 bg-emerald-50">Received Qty</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500">After Receive</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Condition Note</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 bg-violet-50">
+                      <span className="flex items-center justify-center gap-1">
+                        <Camera size={11} /> Photo
+                        <span className="text-red-500">*</span>
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -291,6 +405,55 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
                             placeholder="Good / Damaged / Short..."
                             className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400" />
                         </td>
+                        {/* Photo attachment */}
+                        <td className="px-4 py-3 bg-violet-50/40 text-center">
+                          <input
+                            ref={(el) => { photoInputRefs.current[i] = el; }}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handlePhotoFile(i, file);
+                            }}
+                          />
+                          {line.photo ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => photoInputRefs.current[i]?.click()}
+                                className="relative group"
+                              >
+                                <img
+                                  src={line.photo}
+                                  alt="Receipt photo"
+                                  className="w-12 h-12 object-cover rounded-lg border-2 border-emerald-400 shadow-sm"
+                                />
+                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <Camera size={14} className="text-white" />
+                                </div>
+                              </button>
+                              <span className="text-[10px] text-emerald-600 font-semibold">✓ Attached</span>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => photoInputRefs.current[i]?.click()}
+                              className={cn(
+                                "flex flex-col items-center gap-1 px-3 py-2 rounded-lg border-2 border-dashed transition-colors w-full",
+                                line.receivedQty > 0
+                                  ? "border-red-300 bg-red-50 hover:border-violet-400 hover:bg-violet-50 text-red-400 hover:text-violet-600"
+                                  : "border-slate-200 bg-white hover:border-violet-300 text-slate-300 hover:text-violet-400"
+                              )}
+                            >
+                              <ImagePlus size={16} />
+                              <span className="text-[10px] font-medium leading-tight">
+                                {line.receivedQty > 0 ? "Required" : "Optional"}
+                              </span>
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -333,16 +496,30 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-          <div className="flex items-center gap-3">
-            <p className="text-xs text-slate-400">
-              {lines.filter((l) => l.receivedQty > 0).length}/{lines.length} items to receive
-            </p>
+        <div className="border-t border-slate-100 sticky bottom-0 bg-white">
+          {/* Checklist */}
+          <div className="px-6 py-2 flex items-center gap-4 text-xs border-b border-slate-50">
+            <span className={cn("flex items-center gap-1", gpsStatus === "ok" ? "text-emerald-600" : "text-slate-400")}>
+              <LocateFixed size={11} />
+              {gpsStatus === "ok" ? "GPS captured" : gpsStatus === "fetching" ? "GPS pending…" : "GPS required"}
+            </span>
+            <span className={cn("flex items-center gap-1", allPhotosAttached ? "text-emerald-600" : missingPhotos > 0 ? "text-red-500" : "text-slate-400")}>
+              <Camera size={11} />
+              {allPhotosAttached
+                ? `${activeLines.length}/${activeLines.length} photos attached`
+                : missingPhotos > 0
+                ? `${missingPhotos} photo${missingPhotos > 1 ? "s" : ""} missing`
+                : "Photos required"}
+            </span>
+            <span className="text-slate-300">·</span>
+            <span className="text-slate-400">{activeLines.length}/{lines.length} items to receive</span>
+          </div>
+          <div className="flex items-center justify-between px-6 py-4">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
             <button
               onClick={handleConfirm}
-              disabled={lines.every((l) => l.receivedQty === 0) || !receivedBy || !receiveDate}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40">
+              disabled={!canConfirm}
+              className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
               <PackageCheck size={16} /> Confirm Receipt
             </button>
           </div>
@@ -403,6 +580,21 @@ function GRNSuccess({ grn, onClose }: GRNSuccessProps) {
                 <span className="font-bold text-emerald-900">{formatCurrency(totalReceived)}</span>
               </div>
             </div>
+
+            {/* GPS */}
+            {grn.gpsLocation && (
+              <div className="col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start gap-2.5">
+                <LocateFixed size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-slate-700">Receipt GPS Location</p>
+                  <p className="text-xs font-mono text-slate-600 mt-0.5">
+                    {grn.gpsLocation.lat.toFixed(6)}, {grn.gpsLocation.lng.toFixed(6)}
+                    &nbsp;·&nbsp;±{grn.gpsLocation.accuracy}m
+                    &nbsp;·&nbsp;{new Date(grn.gpsLocation.timestamp).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Stock update table */}
@@ -417,6 +609,7 @@ function GRNSuccess({ grn, onClose }: GRNSuccessProps) {
                     <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500">Before</th>
                     <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500">After</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Note</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-slate-500">Photo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -437,6 +630,11 @@ function GRNSuccess({ grn, onClose }: GRNSuccessProps) {
                           </span>
                         </td>
                         <td className="px-4 py-2.5 text-xs text-slate-500">{l.note || "Good condition"}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {l.photo
+                            ? <img src={l.photo} alt="receipt" className="w-10 h-10 object-cover rounded-lg border border-slate-200 inline-block" />
+                            : <span className="text-slate-300 text-xs">—</span>}
+                        </td>
                       </tr>
                     );
                   })}
