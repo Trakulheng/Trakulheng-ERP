@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { useT } from "@/context/LanguageContext";
 import { companySettings } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import {
@@ -152,6 +153,7 @@ const inputCls =
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function GeneralSettingsPage() {
+  const t = useT();
   const [settings, setSettings] = useState<Settings>({ ...companySettings });
   const [hours, setHours] = useState(initialHours);
   const [invoice, setInvoice] = useState(initialInvoice);
@@ -242,8 +244,8 @@ export default function GeneralSettingsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       <Header
-        title="General Settings"
-        subtitle="Company profile, business hours, and system preferences"
+        title={t("General Settings")}
+        subtitle={t("Company profile, business hours, and system preferences")}
         actions={
           <button
             onClick={handleSave}
@@ -251,7 +253,7 @@ export default function GeneralSettingsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <Save size={15} className={saving ? "animate-pulse" : ""} />
-            {saving ? "Saving…" : "Save Changes"}
+            {saving ? t("Saving…") : t("Save Changes")}
           </button>
         }
       />
@@ -259,7 +261,7 @@ export default function GeneralSettingsPage() {
       {saved && (
         <div className="mx-6 mt-4 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium px-4 py-3 rounded-xl">
           <CheckCircle2 size={16} className="shrink-0" />
-          Settings saved successfully
+          {t("Settings saved successfully")}
         </div>
       )}
       {saveError && (
@@ -272,11 +274,11 @@ export default function GeneralSettingsPage() {
         {/* ── Company Information ── */}
         <SectionCard
           icon={Building2}
-          title="Company Information"
-          subtitle="Legal and contact details used on documents and invoices"
+          title={t("Company Information")}
+          subtitle={t("Legal and contact details used on documents and invoices")}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <Field label="Company Name (Thai)">
+            <Field label={t("Company Name (Thai)")}>
               <input
                 type="text"
                 value={settings.name}
@@ -284,7 +286,7 @@ export default function GeneralSettingsPage() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Company Name (English)">
+            <Field label={t("Company Name (English)")}>
               <input
                 type="text"
                 value={settings.nameEn}
@@ -292,7 +294,7 @@ export default function GeneralSettingsPage() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Tax ID / เลขที่ผู้เสียภาษี" span="2">
+            <Field label={t("Tax ID / เลขที่ผู้เสียภาษี")} span="2">
               <input
                 type="text"
                 value={settings.taxId}
@@ -301,7 +303,7 @@ export default function GeneralSettingsPage() {
                 placeholder="0105562001234"
               />
             </Field>
-            <Field label="Address" span="2">
+            <Field label={t("Address")} span="2">
               <textarea
                 value={settings.address}
                 onChange={(e) => setField("address", e.target.value)}
@@ -309,7 +311,7 @@ export default function GeneralSettingsPage() {
                 className={cn(inputCls, "resize-none")}
               />
             </Field>
-            <Field label="Phone">
+            <Field label={t("Phone")}>
               <input
                 type="text"
                 value={settings.phone}
@@ -317,7 +319,7 @@ export default function GeneralSettingsPage() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Email">
+            <Field label={t("Email")}>
               <input
                 type="email"
                 value={settings.email}
@@ -325,7 +327,7 @@ export default function GeneralSettingsPage() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Website">
+            <Field label={t("Website")}>
               <input
                 type="text"
                 value={settings.website}
@@ -334,7 +336,7 @@ export default function GeneralSettingsPage() {
                 placeholder="www.example.com"
               />
             </Field>
-            <Field label="LINE ID">
+            <Field label={t("LINE ID")}>
               <input
                 type="text"
                 value={settings.lineId}
@@ -349,13 +351,13 @@ export default function GeneralSettingsPage() {
         {/* ── Business Hours ── */}
         <SectionCard
           icon={Clock}
-          title="Business Hours"
-          subtitle={`Currently open ${openDays} day${openDays !== 1 ? "s" : ""} per week`}
+          title={t("Business Hours")}
+          subtitle={`${openDays} ${openDays !== 1 ? t("days") : t("day")} / ${t("week")}`}
         >
           {/* Weekday bulk set */}
           <div className="flex items-center gap-4 mb-4 px-4 py-3 bg-slate-50 rounded-xl border border-slate-100">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              Set weekdays (Mon–Fri)
+              {t("Set weekdays (Mon–Fri)")}
             </span>
             <div className="flex items-center gap-2">
               <input
@@ -372,7 +374,7 @@ export default function GeneralSettingsPage() {
                 className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <span className="text-xs text-slate-400 ml-auto">Apply to all weekdays at once</span>
+            <span className="text-xs text-slate-400 ml-auto">{t("Apply to all weekdays at once")}</span>
           </div>
 
           <div className="space-y-2">
@@ -397,7 +399,7 @@ export default function GeneralSettingsPage() {
                       h.open ? "text-slate-800" : "text-slate-400"
                     )}
                   >
-                    {DAY_LABELS[day]}
+                    {t(DAY_LABELS[day])}
                     {isWeekend && (
                       <span className="ml-1.5 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
                         WE
@@ -435,7 +437,7 @@ export default function GeneralSettingsPage() {
                       })()}
                     </div>
                   ) : (
-                    <span className="text-sm text-slate-400 italic">Closed</span>
+                    <span className="text-sm text-slate-400 italic">{t("Closed")}</span>
                   )}
                 </div>
               );
@@ -446,13 +448,13 @@ export default function GeneralSettingsPage() {
         {/* ── Invoice & Financial Settings ── */}
         <SectionCard
           icon={FileText}
-          title="Invoice & Financial Settings"
-          subtitle="Controls document numbering, VAT, and payment terms"
+          title={t("Invoice & Financial Settings")}
+          subtitle={t("Controls document numbering, VAT, and payment terms")}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <Field
-              label="Invoice Prefix"
-              hint="Appears before the invoice number, e.g. INV, TAX, SO"
+              label={t("Invoice Prefix")}
+              hint={t("Appears before the invoice number, e.g. INV, TAX, SO")}
             >
               <input
                 type="text"
@@ -467,7 +469,7 @@ export default function GeneralSettingsPage() {
             </Field>
 
             <Field
-              label="Next Invoice Number"
+              label={t("Next Invoice Number")}
               hint={`Preview: ${invoicePreview}`}
             >
               <input
@@ -482,8 +484,8 @@ export default function GeneralSettingsPage() {
             </Field>
 
             <Field
-              label="VAT Rate (%)"
-              hint="Applied to all taxable items on invoices"
+              label={t("VAT Rate (%)")}
+              hint={t("Applied to all taxable items on invoices")}
             >
               <div className="relative">
                 <input
@@ -504,8 +506,8 @@ export default function GeneralSettingsPage() {
             </Field>
 
             <Field
-              label="Default Payment Terms (days)"
-              hint="How many days customers have to pay"
+              label={t("Default Payment Terms (days)")}
+              hint={t("How many days customers have to pay")}
             >
               <select
                 value={invoice.paymentTermsDays}
@@ -516,7 +518,7 @@ export default function GeneralSettingsPage() {
               >
                 {[7, 14, 15, 30, 45, 60, 90].map((d) => (
                   <option key={d} value={d}>
-                    {d} days (Net {d})
+                    {d} {t("days")} (Net {d})
                   </option>
                 ))}
               </select>
@@ -530,18 +532,18 @@ export default function GeneralSettingsPage() {
                 />
                 <div>
                   <p className="text-sm font-medium text-slate-800">
-                    VAT-inclusive pricing
+                    {t("VAT-inclusive pricing")}
                   </p>
                   <p className="text-xs text-slate-400">
-                    When enabled, prices displayed already include VAT (ราคารวม VAT)
+                    {t("When enabled, prices displayed already include VAT (ราคารวม VAT)")}
                   </p>
                 </div>
               </label>
             </div>
 
             <Field
-              label="Invoice Footer Text"
-              hint="Printed at the bottom of every invoice"
+              label={t("Invoice Footer Text")}
+              hint={t("Printed at the bottom of every invoice")}
               span="2"
             >
               <textarea
@@ -558,7 +560,7 @@ export default function GeneralSettingsPage() {
             {/* Live preview card */}
             <div className="lg:col-span-2 bg-slate-50 rounded-xl border border-slate-200 p-4">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                Invoice Preview
+                {t("Invoice Preview")}
               </p>
               <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -570,10 +572,10 @@ export default function GeneralSettingsPage() {
                   <div className="text-right">
                     <p className="text-xl font-bold text-blue-600">{invoicePreview}</p>
                     <p className="text-xs text-slate-400">
-                      Payment due: Net {invoice.paymentTermsDays}
+                      {t("Payment due: Net")} {invoice.paymentTermsDays}
                     </p>
                     <p className="text-xs text-slate-400">
-                      VAT {invoice.vatRate}%{invoice.vatInclusive ? " (inclusive)" : " (exclusive)"}
+                      {t("VAT")} {invoice.vatRate}%{invoice.vatInclusive ? ` (${t("inclusive")})` : ` (${t("exclusive")})`}
                     </p>
                   </div>
                 </div>
@@ -588,11 +590,11 @@ export default function GeneralSettingsPage() {
         {/* ── System Preferences ── */}
         <SectionCard
           icon={Sliders}
-          title="System Preferences"
-          subtitle="Currency, language, timezone, and fiscal year"
+          title={t("System Preferences")}
+          subtitle={t("Currency, language, timezone, and fiscal year")}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <Field label="Currency">
+            <Field label={t("Currency")}>
               <select
                 value={settings.currency}
                 onChange={(e) => setField("currency", e.target.value)}
@@ -605,7 +607,7 @@ export default function GeneralSettingsPage() {
                 <option value="JPY">JPY — Japanese Yen</option>
               </select>
             </Field>
-            <Field label="Timezone">
+            <Field label={t("Timezone")}>
               <select
                 value={settings.timezone}
                 onChange={(e) => setField("timezone", e.target.value)}
@@ -619,7 +621,7 @@ export default function GeneralSettingsPage() {
                 <option value="America/New_York">America/New_York</option>
               </select>
             </Field>
-            <Field label="Language">
+            <Field label={t("Language")}>
               <select
                 value={settings.language}
                 onChange={(e) => setField("language", e.target.value)}
@@ -629,7 +631,7 @@ export default function GeneralSettingsPage() {
                 <option value="en">English</option>
               </select>
             </Field>
-            <Field label="Fiscal Year Start">
+            <Field label={t("Fiscal Year Start")}>
               <select
                 value={settings.fiscalYearStart}
                 onChange={(e) => setField("fiscalYearStart", e.target.value)}
@@ -651,17 +653,17 @@ export default function GeneralSettingsPage() {
         {/* ── Social Media & Online Presence ── */}
         <SectionCard
           icon={Share2}
-          title="Social Media & Online Presence"
-          subtitle="Shown in email footers, receipts, and the customer portal"
+          title={t("Social Media & Online Presence")}
+          subtitle={t("Shown in email footers, receipts, and the customer portal")}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {(
               [
-                { key: "facebook",  label: "Facebook Page",   placeholder: "facebook.com/YourPage",   prefix: "fb" },
-                { key: "instagram", label: "Instagram",        placeholder: "@yourhandle",              prefix: "ig" },
-                { key: "lineOA",    label: "LINE Official Account", placeholder: "@yourline",          prefix: "line" },
-                { key: "tiktok",    label: "TikTok",           placeholder: "@yourtiktok",              prefix: "tt" },
-                { key: "youtube",   label: "YouTube Channel",  placeholder: "youtube.com/@yourchannel", prefix: "yt" },
+                { key: "facebook",  label: "Facebook Page",        placeholder: "facebook.com/YourPage",   prefix: "fb" },
+                { key: "instagram", label: "Instagram",             placeholder: "@yourhandle",              prefix: "ig" },
+                { key: "lineOA",    label: "LINE Official Account", placeholder: "@yourline",               prefix: "line" },
+                { key: "tiktok",    label: "TikTok",                placeholder: "@yourtiktok",              prefix: "tt" },
+                { key: "youtube",   label: "YouTube Channel",       placeholder: "youtube.com/@yourchannel", prefix: "yt" },
               ] as { key: keyof typeof initialSocial; label: string; placeholder: string; prefix: string }[]
             ).map(({ key, label, placeholder, prefix }) => {
               const prefixColors: Record<string, string> = {
@@ -674,7 +676,7 @@ export default function GeneralSettingsPage() {
               return (
                 <div key={key}>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {label}
+                    {t(label)}
                   </label>
                   <div className="flex items-center gap-0">
                     <span

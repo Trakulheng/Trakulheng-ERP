@@ -4,6 +4,7 @@ import { Bell, Search, ChevronDown, MapPin, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -15,6 +16,7 @@ interface HeaderProps {
 export function Header({ title, subtitle, actions }: HeaderProps) {
   const { activeBranch, setActiveBranch, branches } = useBranch();
   const { toggle } = useSidebar();
+  const { lang, setLang, t } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -56,16 +58,16 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
             >
               <MapPin size={13} className="text-blue-600 shrink-0" />
               <span className="font-medium text-slate-700 max-w-[100px] truncate text-xs">
-                {activeBranch?.name ?? "No Branch"}
+                {activeBranch?.name ?? t("No Branch")}
               </span>
               <ChevronDown size={12} className={cn("text-slate-400 transition-transform", open && "rotate-180")} />
             </button>
 
             {open && (
               <div className="absolute right-0 mt-1.5 w-72 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50">
-                <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Select Branch</p>
+                <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">{t("Select Branch")}</p>
                 {branches.length === 0 && (
-                  <p className="px-3 py-3 text-sm text-slate-400 text-center">No branches configured</p>
+                  <p className="px-3 py-3 text-sm text-slate-400 text-center">{t("No branches configured")}</p>
                 )}
                 {branches.map((branch) => (
                   <button
@@ -95,7 +97,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
                 ))}
                 <div className="border-t border-slate-100 mt-1 pt-1">
                   <a href="/settings/branches" className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors" onClick={() => setOpen(false)}>
-                    Manage branches →
+                    {t("Manage branches →")}
                   </a>
                 </div>
               </div>
@@ -106,9 +108,35 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder={t("Search...")}
               className="pl-8 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+
+          {/* Language toggle */}
+          <div className="flex items-center rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
+            <button
+              onClick={() => setLang("en")}
+              className={cn(
+                "px-2.5 py-1.5 transition-colors",
+                lang === "en"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-500 hover:bg-slate-100"
+              )}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLang("th")}
+              className={cn(
+                "px-2.5 py-1.5 transition-colors border-l border-slate-200",
+                lang === "th"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-500 hover:bg-slate-100"
+              )}
+            >
+              TH
+            </button>
           </div>
 
           <button className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors">

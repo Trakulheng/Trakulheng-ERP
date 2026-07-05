@@ -3,12 +3,14 @@
 import { BranchProvider } from "@/context/BranchContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SidebarProvider } from "@/context/SidebarContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <ThemeProvider>
+        <LanguageProvider>
         <BranchProvider>
           <div className="flex min-h-screen bg-slate-50">
             <Sidebar />
@@ -17,6 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </BranchProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </SidebarProvider>
   );

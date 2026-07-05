@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { useT } from "@/context/LanguageContext";
 import { UserSwitcher } from "./UserSwitcher";
 
 const navItems = [
@@ -89,6 +90,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { theme } = useTheme();
   const { isOpen, close } = useSidebar();
+  const t = useT();
   const [openSections, setOpenSections] = useState<string[]>(["Finance", "Inventory", "Sales & CRM", "HR & Payroll", "CRM", "Settings"]);
   const [me, setMe] = useState<Me | null>(null);
   const [showSwitcher, setShowSwitcher] = useState(false);
@@ -168,7 +170,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className={cn("font-bold text-sm leading-tight", S.logoText)}>Trakulheng</p>
-            <p className={cn("text-xs", S.logoSub)}>Enterprise System</p>
+            <p className={cn("text-xs", S.logoSub)}>{t("Enterprise System")}</p>
           </div>
           <button
             onClick={close}
@@ -196,7 +198,7 @@ export function Sidebar() {
                   )}
                 >
                   <Icon size={18} />
-                  {item.label}
+                  {t(item.label)}
                 </Link>
               );
             }
@@ -214,7 +216,7 @@ export function Sidebar() {
                   )}
                 >
                   <Icon size={18} />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className="flex-1 text-left">{t(item.label)}</span>
                   {isOpen_ ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
 
@@ -233,7 +235,7 @@ export function Sidebar() {
                           )}
                         >
                           <ChildIcon size={15} />
-                          {child.label}
+                          {t(child.label)}
                         </Link>
                       );
                     })}
