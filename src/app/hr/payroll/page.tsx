@@ -215,7 +215,7 @@ function PayslipModal({ employee: emp, period, onClose }: PayslipModalProps) {
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function PayrollPage() {
-  const currentPayroll = payrollRuns[0];
+  const currentPayroll = payrollRuns[0] ?? { period: "—", status: "draft", employees: 0, grossPay: 0, deductions: 0, netPay: 0, id: "", date: "" };
   const [viewEmpId, setViewEmpId] = useState<string | null>(null);
   const [search, setSearch]       = useState("");
 

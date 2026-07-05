@@ -92,8 +92,8 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
   const myLines = poLineItems.filter((l) => l.poId === po.id);
   const supplier = suppliers.find((s) => s.id === po.supplierId);
 
-  const [branchId, setBranchId]       = useState(branches[0].id);
-  const [receivedBy, setReceivedBy]   = useState(employees[0].name);
+  const [branchId, setBranchId]       = useState(branches[0]?.id ?? "");
+  const [receivedBy, setReceivedBy]   = useState(employees[0]?.name ?? "");
   const [receiveDate, setReceiveDate] = useState(new Date().toISOString().split("T")[0]);
   const [lines, setLines] = useState<ReceivedLine[]>(
     myLines.map((l) => {
@@ -888,8 +888,8 @@ export default function GoodsReceivePage() {
   const [grnHistory, setGrnHistory] = useState<GRNRecord[]>([]);
 
   // Session context (mock current user)
-  const currentUser = employees.find((e) => e.department === "Operations") ?? employees[0];
-  const currentBranch = branches[0];
+  const currentUser = employees.find((e) => e.department === "Operations") ?? employees[0] ?? null;
+  const currentBranch = branches[0] ?? null;
 
   const awaitingPOs = useMemo(() =>
     pos.filter((p) => p.status === "pending" || p.status === "in-transit"),
@@ -925,13 +925,13 @@ export default function GoodsReceivePage() {
             <div className="flex items-center gap-2">
               <User size={15} className="text-blue-300" />
               <span className="text-blue-100">Logged in as:</span>
-              <span className="font-semibold">{currentUser.name}</span>
-              <span className="text-blue-300">({currentUser.position})</span>
+              <span className="font-semibold">{currentUser?.name ?? "—"}</span>
+              <span className="text-blue-300">({currentUser?.position ?? "—"})</span>
             </div>
             <div className="w-px h-4 bg-blue-700" />
             <div className="flex items-center gap-2">
               <Building2 size={15} className="text-blue-300" />
-              <span className="font-semibold">{currentBranch.name}</span>
+              <span className="font-semibold">{currentBranch?.name ?? "No Branch"}</span>
             </div>
             <div className="w-px h-4 bg-blue-700" />
             <div className="flex items-center gap-2">
