@@ -11,7 +11,7 @@ export default function VerifiedPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-violet-600 rounded-2xl mb-4 shadow-lg shadow-violet-500/30">
             <LayoutDashboard size={26} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">DDK ERP</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Trakulheng</h1>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
@@ -21,7 +21,7 @@ export default function VerifiedPage() {
 
           <h2 className="text-xl font-bold text-slate-900 mb-2">Email verified!</h2>
           <p className="text-slate-500 text-sm leading-relaxed mb-8">
-            Your account is active. You&apos;re signed in and ready to use DDK ERP.
+            Your account is active. You&apos;re signed in and ready to use Trakulheng.
           </p>
 
           <Link

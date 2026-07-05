@@ -195,7 +195,7 @@ export function Sidebar() {
           <Building2 size={20} className="text-white" />
         </div>
         <div>
-          <p className={cn("font-bold text-sm leading-tight", S.logoText)}>DDK ERP</p>
+          <p className={cn("font-bold text-sm leading-tight", S.logoText)}>Trakulheng</p>
           <p className={cn("text-xs", S.logoSub)}>Enterprise System</p>
         </div>
       </div>
@@ -271,7 +271,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className={cn("text-sm font-medium truncate", S.userName)}>Admin User</p>
-            <p className={cn("text-xs truncate", S.userEmail)}>admin@ddk.co.th</p>
+            <p className={cn("text-xs truncate", S.userEmail)}>admin@trakulheng.co.th</p>
           </div>
         </div>
       </div>

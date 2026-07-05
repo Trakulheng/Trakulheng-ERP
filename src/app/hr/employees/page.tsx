@@ -548,7 +548,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
               </div>
               <Field label="Work Email">
                 <input type="email" value={form.workEmail} onChange={e => set("workEmail", e.target.value)}
-                  placeholder="name@ddk.co.th" className={INPUT} />
+                  placeholder="name@trakulheng.co.th" className={INPUT} />
               </Field>
               <Field label="Status">
                 <div className="flex gap-2">

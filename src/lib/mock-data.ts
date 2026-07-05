@@ -1,4 +1,4 @@
-// Mock data for DDK ERP - frontend demo
+// Mock data for Trakulheng ERP - frontend demo
 
 // Branches
 export type BranchEmployeeRole = "manager" | "staff" | "viewer";
@@ -316,14 +316,14 @@ export const systemUsers: {
 // ── Company Settings ──────────────────────────────────────────────────
 
 export const companySettings = {
-  name:            "บริษัท ดีดีเค เอ็นเตอร์ไพรส์ จำกัด",
-  nameEn:          "DDK Enterprise Co., Ltd.",
+  name:            "บริษัท ตระกูลเฮง จำกัด",
+  nameEn:          "Trakulheng Co., Ltd.",
   taxId:           "0105562001234",
   address:         "88 Silom Rd, Bang Rak, Bangkok 10500",
   phone:           "02-100-1000",
-  email:           "info@ddk.co.th",
-  website:         "www.ddk.co.th",
-  lineId:          "@ddkenterprise",
+  email:           "info@trakulheng.co.th",
+  website:         "www.trakulheng.co.th",
+  lineId:          "@trakulheng",
   currency:        "THB",
   timezone:        "Asia/Bangkok",
   language:        "th",

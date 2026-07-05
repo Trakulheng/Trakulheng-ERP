@@ -6,8 +6,8 @@ import { AppShell } from "@/components/layout/AppShell";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "DDK ERP - Enterprise Resource Planning",
-  description: "DDK ERP System — Finance, Inventory, Sales, HR",
+  title: "Trakulheng - Enterprise Resource Planning",
+  description: "Trakulheng ERP System — Finance, Inventory, Sales, HR",
 };
 
 // Applied before React hydrates — prevents flash of wrong theme

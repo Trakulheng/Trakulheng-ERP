@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LayoutDashboard } from "lucide-react";
 
-export const metadata = { title: "Terms of Service — DDK ERP" };
+export const metadata = { title: "Terms of Service — Trakulheng" };
 
 function H2({ children }: { children: React.ReactNode }) {
   return (
@@ -34,7 +34,7 @@ export default function TermsOfServicePage() {
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
               <LayoutDashboard size={16} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800">DDK ERP</span>
+            <span className="font-bold text-slate-800">Trakulheng</span>
           </Link>
           <Link href="/consent" className="text-sm text-violet-600 hover:underline">
             ← Back to consent
@@ -53,16 +53,16 @@ export default function TermsOfServicePage() {
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 mb-8">
           <p className="text-sm text-blue-800 leading-relaxed">
-            Please read these Terms carefully before using the DDK ERP system. By accepting these
-            Terms, you form a binding agreement with DDK Enterprise Co., Ltd. under Thai law.
+            Please read these Terms carefully before using the Trakulheng system. By accepting these
+            Terms, you form a binding agreement with Trakulheng Co., Ltd. under Thai law.
           </p>
         </div>
 
         <H2>1. Parties and Agreement</H2>
         <P>
-          These Terms of Service (&ldquo;Terms&rdquo;) govern access to and use of the DDK ERP
+          These Terms of Service (&ldquo;Terms&rdquo;) govern access to and use of the Trakulheng
           web-based enterprise resource planning system (&ldquo;the System&rdquo;) operated by{" "}
-          <strong>DDK Enterprise Co., Ltd.</strong> (&ldquo;Company&rdquo;, &ldquo;we&rdquo;,
+          <strong>Trakulheng Co., Ltd.</strong> (&ldquo;Company&rdquo;, &ldquo;we&rdquo;,
           &ldquo;us&rdquo;), a company registered under the laws of Thailand.
         </P>
         <P>
@@ -90,7 +90,7 @@ export default function TermsOfServicePage() {
           You agree to provide accurate, current, and complete information during registration and to
           update it when it changes. You are responsible for maintaining the confidentiality of your
           password and for all activity that occurs under your account. You must notify us immediately
-          at <strong>support@ddk.co.th</strong> if you suspect unauthorised access.
+          at <strong>support@trakulheng.co.th</strong> if you suspect unauthorised access.
         </P>
         <P>
           We reserve the right to suspend or terminate accounts that we reasonably believe have been
@@ -217,14 +217,14 @@ export default function TermsOfServicePage() {
         <P>For questions about these Terms:</P>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-1 text-sm text-slate-600">
           <p>
-            <strong className="text-slate-800">DDK Enterprise Co., Ltd.</strong>
+            <strong className="text-slate-800">Trakulheng Co., Ltd.</strong>
           </p>
           <p>88 Silom Rd, Bang Rak, Bangkok 10500, Thailand</p>
           <p>
-            <strong className="text-slate-800">Legal:</strong> legal@ddk.co.th
+            <strong className="text-slate-800">Legal:</strong> legal@trakulheng.co.th
           </p>
           <p>
-            <strong className="text-slate-800">Support:</strong> support@ddk.co.th
+            <strong className="text-slate-800">Support:</strong> support@trakulheng.co.th
           </p>
           <p>
             <strong className="text-slate-800">Phone:</strong> 02-100-1000
@@ -232,7 +232,7 @@ export default function TermsOfServicePage() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-slate-200 text-xs text-slate-400 flex items-center justify-between flex-wrap gap-3">
-          <span>© 2026 DDK Enterprise Co., Ltd. All rights reserved.</span>
+          <span>© 2026 Trakulheng Co., Ltd. All rights reserved.</span>
           <div className="flex gap-4">
             <Link href="/privacy" className="hover:text-slate-600">
               Privacy Policy

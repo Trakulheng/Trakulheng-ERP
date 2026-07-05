@@ -69,7 +69,7 @@ export default function RegisterPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-violet-600 rounded-2xl mb-4 shadow-lg shadow-violet-500/30">
             <LayoutDashboard size={26} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">DDK ERP</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Trakulheng</h1>
           <p className="text-slate-400 text-sm mt-1">Create your account</p>
         </div>
 

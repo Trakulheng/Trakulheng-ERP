@@ -16,7 +16,7 @@ const SECTIONS = [
   },
   {
     title: "Your rights under Thai PDPA (พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562)",
-    body: "You have the right to access, correct, delete, restrict processing of, and receive a portable copy of your personal data. You may withdraw consent at any time without affecting the lawfulness of prior processing. To exercise these rights contact privacy@ddk.co.th.",
+    body: "You have the right to access, correct, delete, restrict processing of, and receive a portable copy of your personal data. You may withdraw consent at any time without affecting the lawfulness of prior processing. To exercise these rights contact privacy@trakulheng.co.th.",
   },
   {
     title: "Your rights under EU GDPR (Regulation 2016/679)",
@@ -89,7 +89,7 @@ export default function ConsentPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 bg-violet-600 rounded-2xl mb-3 shadow-lg shadow-violet-500/30">
             <LayoutDashboard size={22} className="text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white">DDK ERP</h1>
+          <h1 className="text-xl font-bold text-white">Trakulheng</h1>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -100,7 +100,7 @@ export default function ConsentPage() {
               <h2 className="text-lg font-bold text-white">Privacy &amp; Terms</h2>
             </div>
             <p className="text-violet-200 text-sm leading-relaxed">
-              Before using DDK ERP, please review and accept our Privacy Policy and Terms of Service. This system processes personal data subject to Thai PDPA and EU GDPR.
+              Before using Trakulheng, please review and accept our Privacy Policy and Terms of Service. This system processes personal data subject to Thai PDPA and EU GDPR.
             </p>
           </div>
 
@@ -185,7 +185,7 @@ export default function ConsentPage() {
               className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm transition-colors"
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
-              {loading ? "Saving…" : "Accept and continue to DDK ERP"}
+              {loading ? "Saving…" : "Accept and continue to Trakulheng"}
             </button>
 
             <p className="text-center text-xs text-slate-400">

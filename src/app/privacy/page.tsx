@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LayoutDashboard } from "lucide-react";
 
-export const metadata = { title: "Privacy Policy — DDK ERP" };
+export const metadata = { title: "Privacy Policy — Trakulheng" };
 
 function H2({ children }: { children: React.ReactNode }) {
   return (
@@ -51,7 +51,7 @@ export default function PrivacyPolicyPage() {
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
               <LayoutDashboard size={16} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800">DDK ERP</span>
+            <span className="font-bold text-slate-800">Trakulheng</span>
           </Link>
           <Link href="/consent" className="text-sm text-violet-600 hover:underline">
             ← Back to consent
@@ -72,24 +72,24 @@ export default function PrivacyPolicyPage() {
           <p className="text-sm text-amber-800 leading-relaxed">
             <strong>Bilingual notice (ประกาศสองภาษา):</strong> This policy is provided in English.
             Key rights under Thai PDPA are summarised in Thai where required. For a Thai-language
-            version, contact <strong>privacy@ddk.co.th</strong>.
+            version, contact <strong>privacy@trakulheng.co.th</strong>.
           </p>
         </div>
 
         <H2>1. Who We Are (Data Controller)</H2>
         <P>
-          DDK Enterprise Co., Ltd. (
-          <strong>บริษัท ดีดีเค เอ็นเตอร์ไพรส์ จำกัด</strong>), registered in Thailand (Tax ID:
+          Trakulheng Co., Ltd. (
+          <strong>บริษัท ตระกูลเฮง จำกัด</strong>), registered in Thailand (Tax ID:
           0105562001234), 88 Silom Rd, Bang Rak, Bangkok 10500, is the data controller responsible
-          for your personal data processed through the DDK ERP system.
+          for your personal data processed through the Trakulheng system.
         </P>
         <P>
-          Contact for privacy matters: <strong>privacy@ddk.co.th</strong> · Telephone: 02-100-1000
+          Contact for privacy matters: <strong>privacy@trakulheng.co.th</strong> · Telephone: 02-100-1000
         </P>
 
         <H2>2. Scope</H2>
         <P>
-          This policy applies to all users of the DDK ERP web application, including employees,
+          This policy applies to all users of the Trakulheng web application, including employees,
           contractors, and administrators who create accounts or are granted access. It covers data
           processed in connection with account registration, authentication, and use of all modules
           within the system.
@@ -165,7 +165,7 @@ export default function PrivacyPolicyPage() {
           ]}
         />
         <P>
-          To exercise any right, email <strong>privacy@ddk.co.th</strong> with your name and account
+          To exercise any right, email <strong>privacy@trakulheng.co.th</strong> with your name and account
           email. We will respond within <strong>30 days</strong> as required by PDPA. If you believe
           your rights have been violated, you may file a complaint with the{" "}
           <strong>Personal Data Protection Committee (PDPC)</strong>.
@@ -273,7 +273,7 @@ export default function PrivacyPolicyPage() {
         <P>
           This system is intended for business use by persons aged 18 or over. We do not knowingly
           collect personal data from persons under 18. If you become aware that a minor has created
-          an account, please contact us immediately at privacy@ddk.co.th.
+          an account, please contact us immediately at privacy@trakulheng.co.th.
         </P>
 
         <H2>13. Changes to This Policy</H2>
@@ -288,14 +288,14 @@ export default function PrivacyPolicyPage() {
         <P>For any privacy-related questions, requests, or complaints:</P>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-1 text-sm text-slate-600">
           <p>
-            <strong className="text-slate-800">Data Controller:</strong> DDK Enterprise Co., Ltd.
+            <strong className="text-slate-800">Data Controller:</strong> Trakulheng Co., Ltd.
           </p>
           <p>
             <strong className="text-slate-800">Address:</strong> 88 Silom Rd, Bang Rak, Bangkok
             10500, Thailand
           </p>
           <p>
-            <strong className="text-slate-800">Privacy email:</strong> privacy@ddk.co.th
+            <strong className="text-slate-800">Privacy email:</strong> privacy@trakulheng.co.th
           </p>
           <p>
             <strong className="text-slate-800">Phone:</strong> 02-100-1000
@@ -307,7 +307,7 @@ export default function PrivacyPolicyPage() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-slate-200 text-xs text-slate-400 flex items-center justify-between flex-wrap gap-3">
-          <span>© 2026 DDK Enterprise Co., Ltd. All rights reserved.</span>
+          <span>© 2026 Trakulheng Co., Ltd. All rights reserved.</span>
           <div className="flex gap-4">
             <Link href="/terms" className="hover:text-slate-600">
               Terms of Service

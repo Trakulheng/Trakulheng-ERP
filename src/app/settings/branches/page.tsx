@@ -310,7 +310,7 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Brand</label>
-              <input value={form.brand} onChange={(e) => set("brand", e.target.value)} placeholder="e.g. DDK Enterprise"
+              <input value={form.brand} onChange={(e) => set("brand", e.target.value)} placeholder="e.g. Trakulheng"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
@@ -389,7 +389,7 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
-                <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="branch@ddk.co.th"
+                <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="branch@trakulheng.co.th"
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>

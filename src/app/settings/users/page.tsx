@@ -189,7 +189,7 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
     setName(emp.name);
     // Infer email from name (demo)
     const slug = emp.name.split(" ")[0].toLowerCase();
-    setEmail(`${slug}@ddk.co.th`);
+    setEmail(`${slug}@trakulheng.co.th`);
     setStartDate(emp.hireDate);
     // Map branch from employeeShifts / branches — best-effort
     const assignedBranch = branches.find((b) =>
@@ -262,7 +262,7 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@ddk.co.th"
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@trakulheng.co.th"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="grid grid-cols-2 gap-3">
