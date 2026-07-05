@@ -181,3 +181,17 @@ model PayrollRun {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model Task {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  dueDate      String?
+  dueTime      String?
+  priority     String   @default("medium")
+  status       String   @default("pending")
+  assigneeName String?
+  shiftLabel   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
