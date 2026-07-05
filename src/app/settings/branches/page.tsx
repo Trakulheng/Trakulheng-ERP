@@ -802,24 +802,6 @@ export default function BranchesPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Role demo bar */}
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <Shield size={15} className="text-amber-600 shrink-0" />
-          <span className="text-sm text-amber-800 font-medium">Demo — Current Role:</span>
-          <div className="flex gap-1">
-            {(["owner","admin","manager","employee"] as UserRole[]).map((r) => (
-              <button key={r} onClick={() => setCurrentRole(r)}
-                className={cn("px-3 py-1 text-xs font-medium rounded-full transition-colors",
-                  currentRole === r ? "bg-amber-600 text-white" : "bg-amber-100 text-amber-700 hover:bg-amber-200")}>
-                {ROLE_LABELS[r]}
-              </button>
-            ))}
-          </div>
-          {!CAN_TOGGLE_STATUS.includes(currentRole) && (
-            <span className="ml-auto flex items-center gap-1 text-xs text-amber-600"><Lock size={11} />Status toggle locked</span>
-          )}
-        </div>
-
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
