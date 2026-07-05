@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, LayoutDashboard } from "lucide-react";
+import { CheckCircle2, LayoutDashboard, Lock } from "lucide-react";
 
 export default function VerifiedPage() {
   return (
@@ -20,16 +20,25 @@ export default function VerifiedPage() {
           </div>
 
           <h2 className="text-xl font-bold text-slate-900 mb-2">Email verified!</h2>
-          <p className="text-slate-500 text-sm leading-relaxed mb-8">
-            Your account is active. You&apos;re signed in and ready to use Trakulheng.
+          <p className="text-slate-500 text-sm leading-relaxed mb-6">
+            Your account is active. Set up a 6-digit PIN for quick sign-in, or go straight to the dashboard.
           </p>
 
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
-          >
-            Go to Dashboard →
-          </Link>
+          <div className="space-y-3">
+            <Link
+              href="/auth/set-pin"
+              className="inline-flex items-center justify-center gap-2 w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            >
+              <Lock size={15} />
+              Set up 6-digit PIN
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            >
+              Go to Dashboard →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

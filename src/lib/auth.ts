@@ -17,9 +17,25 @@ export function generateToken(bytes = 32) {
 
 export async function createVerificationToken(userId: string) {
   const token = generateToken();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-  await prisma.verificationToken.create({ data: { token, userId, expiresAt } });
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await prisma.verificationToken.create({ data: { token, userId, expiresAt, type: "email" } });
   return token;
+}
+
+export async function createPasswordResetToken(userId: string) {
+  await prisma.verificationToken.deleteMany({ where: { userId, type: "password_reset" } });
+  const token = generateToken();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  await prisma.verificationToken.create({ data: { token, userId, expiresAt, type: "password_reset" } });
+  return token;
+}
+
+export async function hashPin(pin: string) {
+  return bcrypt.hash(pin, 10);
+}
+
+export async function verifyPin(pin: string, hash: string) {
+  return bcrypt.compare(pin, hash);
 }
 
 export async function createSession(userId: string) {

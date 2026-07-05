@@ -15,24 +15,53 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const urlError = params.get("error");
+  const resetSuccess = params.get("reset");
 
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [tab, setTab] = useState<"password" | "pin">("password");
+  const [form, setForm] = useState({ email: "", password: "", pin: "" });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(urlError ? (ERROR_MESSAGES[urlError] ?? "An error occurred.") : "");
+  const [resendSent, setResendSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const setPinValue = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+    setForm((f) => ({ ...f, pin: val }));
+  };
+
+  async function handleResend() {
+    if (!form.email || resendLoading) return;
+    setResendLoading(true);
+    try {
+      await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
+      });
+      setResendSent(true);
+    } finally {
+      setResendLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const endpoint = tab === "pin" ? "/api/auth/pin-login" : "/api/auth/login";
+      const body = tab === "pin"
+        ? { email: form.email, pin: form.pin }
+        : { email: form.email, password: form.password };
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -43,7 +72,11 @@ function LoginForm() {
         }
         return;
       }
-      router.push("/");
+      if (data.needsConsent) {
+        router.push("/consent");
+      } else {
+        router.push("/");
+      }
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -52,8 +85,32 @@ function LoginForm() {
     }
   }
 
+  const showUnverifiedHelp = error.includes("verify your email");
+
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-8">
+      {resetSuccess && (
+        <div className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3.5 py-2.5">
+          Password updated successfully. Sign in with your new password.
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex rounded-lg bg-slate-100 p-1 mb-6 gap-1">
+        {(["password", "pin"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => { setTab(t); setError(""); }}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {t === "password" ? "Password" : "6-digit PIN"}
+          </button>
+        ))}
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
@@ -68,33 +125,62 @@ function LoginForm() {
           />
         </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-sm font-medium text-slate-700">Password</label>
+        {tab === "password" ? (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-slate-700">Password</label>
+              <Link href="/auth/forgot-password" className="text-xs text-violet-600 hover:underline">
+                Forgot password?
+              </Link>
+            </div>
+            <div className="relative">
+              <input
+                type={showPw ? "text" : "password"}
+                required
+                value={form.password}
+                onChange={set("password")}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent placeholder:text-slate-300"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
-          <div className="relative">
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">6-digit PIN</label>
             <input
-              type={showPw ? "text" : "password"}
+              type="text"
+              inputMode="numeric"
               required
-              value={form.password}
-              onChange={set("password")}
-              placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent placeholder:text-slate-300"
+              value={form.pin}
+              onChange={setPinValue}
+              placeholder="••••••"
+              maxLength={6}
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent placeholder:text-slate-300 tracking-[0.5em] text-center font-mono text-lg"
             />
-            <button
-              type="button"
-              onClick={() => setShowPw((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
           </div>
-        </div>
+        )}
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3.5 py-2.5">
-            {error}
-          </p>
+          <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3.5 py-2.5">
+            <p>{error}</p>
+            {showUnverifiedHelp && (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendLoading || resendSent}
+                className="mt-2 text-xs font-medium text-red-700 underline disabled:no-underline disabled:opacity-60"
+              >
+                {resendSent ? "Verification email sent!" : resendLoading ? "Sending…" : "Resend verification email"}
+              </button>
+            )}
+          </div>
         )}
 
         <button

@@ -4,6 +4,7 @@ import { CONSENT_COOKIE, CONSENT_VERSION } from "@/lib/consent";
 const PUBLIC_PREFIXES = [
   "/auth/",
   "/api/auth/",
+  "/api/admin/",
   "/consent",
   "/privacy",
   "/terms",
