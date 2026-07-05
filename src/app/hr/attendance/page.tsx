@@ -227,7 +227,7 @@ export default function AttendancePage() {
         id: `ATT-NEW-${Date.now()}`,
         employeeId: modal.employeeId,
         branchId: activeBranch.id,
-        date: "2026-06-29",
+        date: new Date().toISOString().split("T")[0],
         shiftId: row.es.shiftId,
         clockIn: timeStr,
         clockInLat: modal.gps.lat,

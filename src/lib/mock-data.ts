@@ -389,7 +389,7 @@ export const employees: Employee[] = [
 ];
 
 export const payrollRuns = [
-  { id: "PAY-001", period: "June 2026", employees: 10, grossPay: 720000, deductions: 108000, netPay: 612000, status: "processed", date: "2026-06-29" },
+  { id: "PAY-001", period: "June 2026", employees: 11, grossPay: 778000, deductions: 116700, netPay: 661300, status: "paid",      date: "2026-06-30" },
   { id: "PAY-002", period: "May 2026", employees: 10, grossPay: 720000, deductions: 108000, netPay: 612000, status: "paid", date: "2026-05-30" },
   { id: "PAY-003", period: "April 2026", employees: 10, grossPay: 715000, deductions: 107250, netPay: 607750, status: "paid", date: "2026-04-30" },
   { id: "PAY-004", period: "March 2026", employees: 9, grossPay: 668000, deductions: 100200, netPay: 567800, status: "paid", date: "2026-03-31" },
@@ -424,7 +424,7 @@ export const employeeShifts = [
   { id:"ES-010", employeeId:"EMP-010", shiftId:"SH-001", branchId:"BR-001", daysOfWeek:[1,2,3,4,5], effectiveFrom:"2026-01-01" },
 ];
 
-const TODAY = "2026-06-29";
+const TODAY = "2026-07-05";
 export const attendanceRecords = [
   { id:"ATT-001", employeeId:"EMP-001", branchId:"BR-001", date:TODAY, shiftId:"SH-001", clockIn:"07:58", clockInLat:13.7220, clockInLng:100.5218, clockInDistance:28,  clockOut:null, clockOutLat:null, clockOutLng:null, clockOutDistance:null, status:"clocked-in" as const, workMinutes:null },
   { id:"ATT-002", employeeId:"EMP-002", branchId:"BR-001", date:TODAY, shiftId:"SH-001", clockIn:"08:03", clockInLat:13.7224, clockInLng:100.5220, clockInDistance:45,  clockOut:null, clockOutLat:null, clockOutLng:null, clockOutDistance:null, status:"clocked-in" as const, workMinutes:null },

@@ -106,7 +106,7 @@ const initialRequests: ChangeRequest[] = [
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TODAY = "2026-07-04";
+const TODAY = "2026-07-05";
 const MAX_FUTURE = "2027-07-04";
 const COLOR_OPTIONS: ShiftColor[] = ["blue", "amber", "violet", "emerald"];
 const WEEK_DAYS_MON_SUN = [1, 2, 3, 4, 5, 6, 0];
