@@ -8,12 +8,13 @@ import {
   CreditCard, CalendarDays, ChevronDown, ChevronRight, Building2,
   Settings, GitBranch, ScanLine, CalendarClock, HeartHandshake, Gift,
   TicketCheck, Zap, PieChart, Shield, Bell, Sliders, PackageCheck,
-  ClipboardCheck, CheckSquare, X,
+  ClipboardCheck, CheckSquare, X, ArrowLeftRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { UserSwitcher } from "./UserSwitcher";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -80,11 +81,22 @@ const navItems = [
   },
 ];
 
+interface Me { name: string | null; email: string; role: string }
+
 export function Sidebar() {
   const pathname = usePathname();
   const { theme } = useTheme();
   const { isOpen, close } = useSidebar();
   const [openSections, setOpenSections] = useState<string[]>(["Finance", "Inventory", "Sales & CRM", "HR & Payroll", "CRM", "Settings"]);
+  const [me, setMe] = useState<Me | null>(null);
+  const [showSwitcher, setShowSwitcher] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.email) setMe(data); })
+      .catch(() => {});
+  }, []);
 
   const S = {
     dark: {
@@ -231,18 +243,32 @@ export function Sidebar() {
         </nav>
 
         {/* User area */}
-        <div className={cn("border-t px-4 py-4 flex-shrink-0", S.footerBorder)}>
+        <div className={cn("border-t px-4 py-3 flex-shrink-0", S.footerBorder)}>
           <div className="flex items-center gap-3">
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0", S.avatar)}>
-              A
+            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", S.avatar)}>
+              {me?.name ? me.name[0].toUpperCase() : me?.email?.[0]?.toUpperCase() ?? "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={cn("text-sm font-medium truncate", S.userName)}>Admin User</p>
-              <p className={cn("text-xs truncate", S.userEmail)}>admin@trakulheng.co.th</p>
+              <p className={cn("text-sm font-medium truncate", S.userName)}>
+                {me?.name ?? me?.email ?? "Loading…"}
+              </p>
+              <p className={cn("text-xs truncate", S.userEmail)}>{me?.email ?? ""}</p>
             </div>
+            <button
+              onClick={() => setShowSwitcher(true)}
+              title="Switch user"
+              className={cn(
+                "p-1.5 rounded-lg transition-colors flex-shrink-0",
+                S.closeBtn
+              )}
+            >
+              <ArrowLeftRight size={15} />
+            </button>
           </div>
         </div>
       </aside>
+
+      {showSwitcher && <UserSwitcher onClose={() => setShowSwitcher(false)} />}
     </>
   );
 }
