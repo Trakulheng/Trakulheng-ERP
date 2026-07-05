@@ -146,6 +146,12 @@ model SalesOrder {
   updatedAt   DateTime @updatedAt
 }
 
+model GeneralSetting {
+  id        String   @id @default("singleton")
+  data      Json
+  updatedAt DateTime @updatedAt
+}
+
 model Brand {
   id          String   @id @default(cuid())
   name        String

@@ -157,6 +157,24 @@ export default function GeneralSettingsPage() {
   const [invoice, setInvoice] = useState(initialInvoice);
   const [social, setSocial] = useState(initialSocial);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/settings/general")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (!d) return;
+        if (d.company)  setSettings((s) => ({ ...s, ...d.company }));
+        if (d.hours)    setHours(d.hours);
+        if (d.invoice)  setInvoice(d.invoice);
+        if (d.system)   setSettings((s) => ({ ...s, ...d.system }));
+        if (d.social)   setSocial(d.social);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   function setField<K extends keyof Settings>(k: K, v: Settings[K]) {
     setSettings((s) => ({ ...s, [k]: v }));
@@ -179,15 +197,44 @@ export default function GeneralSettingsPage() {
     });
   }
 
-  function handleSave() {
-    setSaved(true);
+  async function handleSave() {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const payload = {
+        company: {
+          name: settings.name, nameEn: settings.nameEn, taxId: settings.taxId,
+          address: settings.address, phone: settings.phone, email: settings.email,
+          website: settings.website, lineId: settings.lineId,
+        },
+        hours,
+        invoice,
+        system: {
+          currency: settings.currency, timezone: settings.timezone,
+          language: settings.language, fiscalYearStart: settings.fiscalYearStart,
+        },
+        social,
+      };
+      const res = await fetch("/api/settings/general", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setSaveError(d.error ?? "Failed to save.");
+        return;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setSaveError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  useEffect(() => {
-    if (!saved) return;
-    const t = setTimeout(() => setSaved(false), 3000);
-    return () => clearTimeout(t);
-  }, [saved]);
+  useEffect(() => {}, [saved]);
 
   const invoicePreview = `${invoice.prefix}-${String(invoice.nextNumber).padStart(5, "0")}`;
   const openDays = DAYS.filter((d) => hours[d].open).length;
@@ -200,10 +247,11 @@ export default function GeneralSettingsPage() {
         actions={
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={saving || loading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            <Save size={15} />
-            Save Changes
+            <Save size={15} className={saving ? "animate-pulse" : ""} />
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         }
       />
@@ -212,6 +260,11 @@ export default function GeneralSettingsPage() {
         <div className="mx-6 mt-4 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium px-4 py-3 rounded-xl">
           <CheckCircle2 size={16} className="shrink-0" />
           Settings saved successfully
+        </div>
+      )}
+      {saveError && (
+        <div className="mx-6 mt-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+          {saveError}
         </div>
       )}
 
