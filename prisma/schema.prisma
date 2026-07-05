@@ -7,26 +7,56 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  admin
+  manager
+  staff
+  viewer
+}
+
 model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          UserRole  @default(staff)
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tokens   VerificationToken[]
+  sessions Session[]
+}
+
+model VerificationToken {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      String   @default("user")
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Customer {
-  id         String   @id @default(cuid())
-  name       String
-  contact    String?
-  email      String?
-  phone      String?
-  type       String   @default("SME")
-  status     String   @default("active")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  invoices   Invoice[]
+  id          String       @id @default(cuid())
+  name        String
+  contact     String?
+  email       String?
+  phone       String?
+  type        String       @default("SME")
+  status      String       @default("active")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  invoices    Invoice[]
   salesOrders SalesOrder[]
 }
 
@@ -67,15 +97,15 @@ model Product {
 }
 
 model Supplier {
-  id       String  @id @default(cuid())
-  name     String
-  contact  String?
-  email    String?
-  phone    String?
-  category String?
-  rating   Float   @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String          @id @default(cuid())
+  name           String
+  contact        String?
+  email          String?
+  phone          String?
+  category       String?
+  rating         Float           @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   purchaseOrders PurchaseOrder[]
 }
 
@@ -108,16 +138,16 @@ model SalesOrder {
 }
 
 model Employee {
-  id         String   @id @default(cuid())
-  employeeId String   @unique
-  name       String
-  department String
-  position   String
-  hireDate   DateTime
-  salary     Float
-  status     String   @default("active")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String        @id @default(cuid())
+  employeeId    String        @unique
+  name          String
+  department    String
+  position      String
+  hireDate      DateTime
+  salary        Float
+  status        String        @default("active")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   leaveRequests LeaveRequest[]
 }
 

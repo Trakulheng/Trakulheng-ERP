@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
     "@prisma/client": "^7.8.0",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.22.0",
@@ -20,9 +21,11 @@
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^3.9.0",
+    "resend": "^6.17.1",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
