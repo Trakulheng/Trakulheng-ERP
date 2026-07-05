@@ -77,10 +77,10 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
                     )}
                   >
                     <div className={cn(
-                      "mt-0.5 w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0",
+                      "mt-0.5 w-9 h-7 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 tracking-tight px-1",
                       activeBranch?.id === branch.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
                     )}>
-                      {branch.code.slice(0, 2)}
+                      {branch.code}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

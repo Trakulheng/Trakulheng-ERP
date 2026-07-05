@@ -193,11 +193,13 @@ interface UserModalProps {
   initial?: SystemUser;
   onClose: () => void;
   onSave: (u: SystemUser) => Promise<void>;
+  onResendInvite?: () => void;
+  resending?: boolean;
   saving: boolean;
   saveError: string;
 }
 
-function UserModal({ initial, onClose, onSave, saving, saveError }: UserModalProps) {
+function UserModal({ initial, onClose, onSave, onResendInvite, resending, saving, saveError }: UserModalProps) {
   const isEdit = !!initial;
   const { branches } = useBranch();
 
@@ -342,8 +344,17 @@ function UserModal({ initial, onClose, onSave, saving, saveError }: UserModalPro
         )}
 
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
-          <button onClick={onClose} disabled={saving}
-            className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} disabled={saving}
+              className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+            {isEdit && initial?.status === "pending" && onResendInvite && (
+              <button onClick={onResendInvite} disabled={resending || saving}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm text-amber-700 border border-amber-300 bg-amber-50 rounded-lg hover:bg-amber-100 disabled:opacity-50">
+                <RefreshCw size={13} className={resending ? "animate-spin" : ""} />
+                {resending ? "Sending…" : "Resend Invite"}
+              </button>
+            )}
+          </div>
           <button disabled={!canSave || saving} onClick={handleSave}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
             {saving && <RefreshCw size={13} className="animate-spin" />}
@@ -630,6 +641,8 @@ export default function UserManagementPage() {
           initial={editingUser}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
+          onResendInvite={editingUser ? () => handleResendInvite(editingUser) : undefined}
+          resending={editingUser ? resending === editingUser.id : false}
           saving={saving}
           saveError={saveError}
         />

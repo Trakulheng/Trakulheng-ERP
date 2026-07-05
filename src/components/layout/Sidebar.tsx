@@ -72,7 +72,9 @@ const navItems = [
     children: [
       { label: "General", href: "/settings/general", icon: Settings },
       { label: "Branches", href: "/settings/branches", icon: GitBranch },
+      { label: "Brands", href: "/settings/brands", icon: ArrowLeftRight },
       { label: "Users", href: "/settings/users", icon: Shield },
+      { label: "Dashboard Layout", href: "/settings/dashboard", icon: LayoutDashboard },
       { label: "Role Permissions", href: "/settings/roles", icon: ClipboardCheck },
       { label: "Points Config", href: "/settings/points", icon: Sliders },
       { label: "Notifications", href: "/settings/notifications", icon: Bell },

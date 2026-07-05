@@ -131,10 +131,33 @@ function EmpCombobox({ value, onChange, placeholder = "Search employee..." }: Em
 
 type AssignedEmp = { id: string; role: BranchEmployeeRole };
 
+const THAI_PROVINCES = [
+  "Amnat Charoen","Ang Thong","Bangkok","Bueng Kan","Buri Ram","Chachoengsao",
+  "Chai Nat","Chaiyaphum","Chanthaburi","Chiang Mai","Chiang Rai","Chon Buri",
+  "Chumphon","Kalasin","Kamphaeng Phet","Kanchanaburi","Khon Kaen","Krabi",
+  "Lampang","Lamphun","Loei","Lop Buri","Mae Hong Son","Maha Sarakham",
+  "Mukdahan","Nakhon Nayok","Nakhon Pathom","Nakhon Phanom","Nakhon Ratchasima",
+  "Nakhon Sawan","Nakhon Si Thammarat","Nan","Narathiwat","Nong Bua Lam Phu",
+  "Nong Khai","Nonthaburi","Pathum Thani","Pattani","Phang Nga","Phatthalung",
+  "Phayao","Phetchabun","Phetchaburi","Phichit","Phitsanulok",
+  "Phra Nakhon Si Ayutthaya","Phrae","Phuket","Prachin Buri","Prachuap Khiri Khan",
+  "Ranong","Ratchaburi","Rayong","Roi Et","Sa Kaeo","Sakon Nakhon","Samut Prakan",
+  "Samut Sakhon","Samut Songkhram","Sara Buri","Satun","Sing Buri","Si Sa Ket",
+  "Songkhla","Sukhothai","Suphan Buri","Surat Thani","Surin","Tak","Trang","Trat",
+  "Ubon Ratchathani","Udon Thani","Uthai Thani","Uttaradit","Yala","Yasothon",
+];
+
+const COUNTRIES = [
+  "Thailand","Singapore","Malaysia","Vietnam","Cambodia","Laos","Myanmar",
+  "Japan","China","South Korea","USA","UK","Australia","Germany","France","UAE",
+];
+
 type BranchFormState = {
   code: string;
   name: string;
   brand: string;
+  province: string;
+  country: string;
   status: "active" | "inactive";
   address: string;
   googleMapsUrl: string;
@@ -163,7 +186,7 @@ type BranchFormState = {
 };
 
 const emptyForm: BranchFormState = {
-  code: "", name: "", brand: "", status: "active",
+  code: "", name: "", brand: "", province: "", country: "Thailand", status: "active",
   address: "", googleMapsUrl: "", location: "", floor: "", sizeSqm: "",
   phone: "", email: "", lineId: "",
   managerId: "", manager: "", startDate: "",
@@ -189,11 +212,21 @@ interface BranchModalProps {
 function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }: BranchModalProps) {
   const isEdit = !!initial;
   const canStatus = CAN_TOGGLE_STATUS.includes(currentRole);
+  const [brandList, setBrandList] = useState<{ id: string; name: string; code: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/settings/brands")
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setBrandList(d.filter((b: any) => b.status === "active")))
+      .catch(() => {});
+  }, []);
 
   const [form, setForm] = useState<BranchFormState>(() => initial ? {
     code:                initial.code,
     name:                initial.name,
     brand:               (initial as any).brand               ?? "",
+    province:            (initial as any).province            ?? "",
+    country:             (initial as any).country             ?? "Thailand",
     status:              initial.status,
     address:             initial.address,
     googleMapsUrl:       (initial as any).googleMapsUrl        ?? "",
@@ -311,8 +344,18 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Brand</label>
-              <input value={form.brand} onChange={(e) => set("brand", e.target.value)} placeholder="e.g. Trakulheng"
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <select value={form.brand} onChange={(e) => set("brand", e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="">— Select brand —</option>
+                {brandList.map((b) => (
+                  <option key={b.id} value={b.name}>{b.name} ({b.code})</option>
+                ))}
+              </select>
+              {brandList.length === 0 && (
+                <p className="text-xs text-slate-400 mt-1">
+                  No brands yet — <a href="/settings/brands" className="text-blue-500 hover:underline">add brands in Settings → Brands</a>.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1 flex items-center gap-1.5">
@@ -375,6 +418,27 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
                   onChange={(e) => set("sizeSqm", e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="850"
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">State / Province</label>
+                <select value={form.province} onChange={(e) => set("province", e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">— Select province —</option>
+                  {THAI_PROVINCES.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Country</label>
+                <select value={form.country} onChange={(e) => set("country", e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </section>

@@ -146,11 +146,31 @@ model SalesOrder {
   updatedAt   DateTime @updatedAt
 }
 
+model Brand {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  description String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DashboardConfig {
+  id        String   @id @default(cuid())
+  role      String   @unique
+  widgets   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Branch {
   id                  String   @id @default(cuid())
   code                String   @unique
   name                String
   brand               String?
+  province            String?
+  country             String   @default("Thailand")
   status              String   @default("active")
   isHeadOffice        Boolean  @default(false)
   address             String?
