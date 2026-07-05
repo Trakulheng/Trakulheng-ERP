@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { systemUsers as initialSystemUsers, employees, branches, UserRole } from "@/lib/mock-data";
+import { systemUsers as initialSystemUsers, UserRole } from "@/lib/mock-data";
+import { useBranch } from "@/context/BranchContext";
 import { cn } from "@/lib/utils";
 import {
   Users, UserCheck, Shield, UserPlus, Search, Pencil, Trash2, X,
@@ -26,7 +27,10 @@ interface SystemUser {
   createdAt: string;
 }
 
-type Employee = (typeof employees)[number];
+interface Employee {
+  id: string; name: string; department: string; position: string;
+  hireDate: string; status: string; branchId?: string;
+}
 
 // ── Constants ─────────────────────────────────────────────────────────
 
@@ -58,7 +62,7 @@ function formatLastLogin(iso: string) {
 
 // ── Employee search combobox ──────────────────────────────────────────
 
-function EmpCombobox({ value, onChange }: { value: string; onChange: (emp: Employee) => void }) {
+function EmpCombobox({ value, onChange, employees }: { value: string; onChange: (emp: Employee) => void; employees: Employee[] }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -70,7 +74,7 @@ function EmpCombobox({ value, onChange }: { value: string; onChange: (emp: Emplo
       e.department.toLowerCase().includes(q.toLowerCase()) ||
       e.position.toLowerCase().includes(q.toLowerCase())
     ).slice(0, 7),
-  [q]);
+  [q, employees]);
 
   useEffect(() => {
     const fn = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -126,6 +130,7 @@ function EmpCombobox({ value, onChange }: { value: string; onChange: (emp: Emplo
 // ── Branch multi-select ───────────────────────────────────────────────
 
 function BranchMultiSelect({ selected, onChange }: { selected: string[]; onChange: (ids: string[]) => void }) {
+  const { branches } = useBranch();
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
 
@@ -143,22 +148,26 @@ function BranchMultiSelect({ selected, onChange }: { selected: string[]; onChang
         })}
         {selected.length === 0 && <span className="text-xs text-slate-400">No branches selected</span>}
       </div>
-      <div className="grid grid-cols-2 gap-1">
-        {branches.map((b) => (
-          <button key={b.id} onClick={() => toggle(b.id)}
-            className={cn("flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition-colors text-left",
-              selected.includes(b.id)
-                ? "border-blue-400 bg-blue-50 text-blue-700"
-                : "border-slate-200 text-slate-600 hover:border-slate-300")}>
-            <div className={cn("w-4 h-4 rounded flex items-center justify-center shrink-0",
-              selected.includes(b.id) ? "bg-blue-500" : "bg-slate-200")}>
-              {selected.includes(b.id) && <Check size={9} className="text-white" />}
-            </div>
-            <span className="truncate">{b.name}</span>
-            {b.isHeadOffice && <span className="text-amber-600 text-[10px] ml-auto">HQ</span>}
-          </button>
-        ))}
-      </div>
+      {branches.length === 0 ? (
+        <p className="text-xs text-slate-400">No branches configured yet — add branches in Settings → Branches.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-1">
+          {branches.map((b) => (
+            <button key={b.id} onClick={() => toggle(b.id)}
+              className={cn("flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition-colors text-left",
+                selected.includes(b.id)
+                  ? "border-blue-400 bg-blue-50 text-blue-700"
+                  : "border-slate-200 text-slate-600 hover:border-slate-300")}>
+              <div className={cn("w-4 h-4 rounded flex items-center justify-center shrink-0",
+                selected.includes(b.id) ? "bg-blue-500" : "bg-slate-200")}>
+                {selected.includes(b.id) && <Check size={9} className="text-white" />}
+              </div>
+              <span className="truncate">{b.name}</span>
+              {b.isHeadOffice && <span className="text-amber-600 text-[10px] ml-auto">HQ</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -174,24 +183,31 @@ interface UserModalProps {
 
 function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
   const isEdit = !!initial;
+  const { branches } = useBranch();
 
+  const [empList,    setEmpList]    = useState<Employee[]>([]);
   const [employeeId, setEmployeeId] = useState(initial?.employeeId ?? "");
   const [name,       setName]       = useState(initial?.name       ?? "");
   const [email,      setEmail]      = useState(initial?.email      ?? "");
   const [role,       setRole]       = useState<UserRole>(initial?.role ?? "staff");
-  const [branchIds,  setBranchIds]  = useState<string[]>(initial?.branchIds ?? ["BR-001"]);
+  const [branchIds,  setBranchIds]  = useState<string[]>(initial?.branchIds ?? []);
   const [status,     setStatus]     = useState<"active"|"inactive">(initial?.status ?? "active");
   const [startDate,  setStartDate]  = useState(initial?.startDate  ?? new Date().toISOString().split("T")[0]);
   const [endDate,    setEndDate]    = useState(initial?.endDate     ?? "");
 
+  useEffect(() => {
+    fetch("/api/employees")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setEmpList(data))
+      .catch(() => {});
+  }, []);
+
   const handleEmployeePick = (emp: Employee) => {
     setEmployeeId(emp.id);
     setName(emp.name);
-    // Infer email from name (demo)
     const slug = emp.name.split(" ")[0].toLowerCase();
     setEmail(`${slug}@trakulheng.co.th`);
     setStartDate(emp.hireDate);
-    // Map branch from employeeShifts / branches — best-effort
     const assignedBranch = branches.find((b) =>
       (b as any).assignedEmployeeIds?.includes(emp.id)
     );
@@ -220,7 +236,7 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
     onSave(u);
   };
 
-  const linkedEmp = employees.find((e) => e.id === employeeId);
+  const linkedEmp = empList.find((e) => e.id === employeeId);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
@@ -237,7 +253,7 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
           {/* Link to Employee */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Link to Employee Record</label>
-            <EmpCombobox value={employeeId} onChange={handleEmployeePick} />
+            <EmpCombobox value={employeeId} onChange={handleEmployeePick} employees={empList} />
             {linkedEmp && (
               <div className="mt-2 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 space-y-1">
                 <div className="flex gap-4">
@@ -328,12 +344,21 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function UserManagementPage() {
+  const { branches } = useBranch();
+  const [empList,    setEmpList]    = useState<Employee[]>([]);
   const [users,      setUsers]      = useState<SystemUser[]>(initialSystemUsers as SystemUser[]);
   const [search,     setSearch]     = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
   const [modalOpen,  setModalOpen]  = useState(false);
   const [editingUser,setEditingUser]= useState<SystemUser | undefined>(undefined);
   const [deleteId,   setDeleteId]   = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/employees")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setEmpList(data))
+      .catch(() => {});
+  }, []);
 
   const nextId = `USR-${String(users.length + 1).padStart(3, "0")}`;
 
@@ -432,7 +457,7 @@ export default function UserManagementPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.map((u, i) => {
-                const linkedEmp = employees.find((e) => e.id === u.employeeId);
+                const linkedEmp = empList.find((e) => e.id === u.employeeId);
                 const today = new Date();
                 const expired = u.endDate && new Date(u.endDate) < today;
                 return (
@@ -457,7 +482,7 @@ export default function UserManagementPage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {(u.branchIds ?? [u.branchId]).slice(0, 2).map((bid) => {
-                          const b = branches.find((x) => x.id === bid);
+                          const b = branches.find((x: any) => x.id === bid);
                           return b ? (
                             <span key={bid} className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">{b.code}</span>
                           ) : null;
