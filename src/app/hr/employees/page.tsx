@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import {
-  employees as initialEmployees, branches,
   Employee, EmployeeStatus, EmploymentType, BankAccount, SsfStatus,
   DEPARTMENTS, BANKS, EMPLOYMENT_TYPES, SSF_FUND_TYPES, SSF_HOSPITALS,
 } from "@/lib/mock-data";
+import { useBranch } from "@/context/BranchContext";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -159,6 +159,7 @@ interface ModalProps {
 
 function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: ModalProps) {
   const isEdit = !!initial;
+  const { branches } = useBranch();
   const [step, setStep] = useState<Step>(1);
   const photoRef  = useRef<HTMLInputElement>(null);
   const docRef    = useRef<HTMLInputElement>(null);
@@ -920,6 +921,7 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
   emp: Employee; allEmployees: Employee[];
   onClose: () => void; onEdit: () => void; onDelete: () => void;
 }) {
+  const { branches } = useBranch();
   const manager  = allEmployees.find(e => e.id === emp.managerId);
   const branch   = branches.find(b => b.id === emp.branchId);
   const initials = emp.firstName[0] + (emp.lastName[0] ?? "");
@@ -1121,7 +1123,7 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function EmployeesPage() {
-  const [list,       setList]       = useState<Employee[]>(initialEmployees);
+  const [list,       setList]       = useState<Employee[]>([]);
   const [showAdd,    setShowAdd]    = useState(false);
   const [editEmp,    setEditEmp]    = useState<Employee | undefined>(undefined);
   const [viewEmp,    setViewEmp]    = useState<Employee | undefined>(undefined);
@@ -1129,6 +1131,13 @@ export default function EmployeesPage() {
   const [search,     setSearch]     = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<"all" | EmployeeStatus>("all");
+
+  useEffect(() => {
+    fetch("/api/employees")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setList(data))
+      .catch(() => {});
+  }, []);
 
   const nextId = `EMP-${String(list.length + 1).padStart(3, "0")}`;
 
@@ -1149,19 +1158,34 @@ export default function EmployeesPage() {
   const onLeave     = list.filter(e => e.status === "on-leave").length;
   const depts       = Array.from(new Set(list.map(e => e.department))).sort();
 
-  const handleSave = (emp: Employee) => {
-    setList(prev => {
-      const idx = prev.findIndex(e => e.id === emp.id);
-      if (idx >= 0) { const n = [...prev]; n[idx] = emp; return n; }
-      return [...prev, emp];
-    });
+  const handleSave = async (emp: Employee) => {
+    try {
+      const isNew = !editEmp;
+      const url   = isNew ? "/api/employees" : `/api/employees/${emp.id}`;
+      const res   = await fetch(url, {
+        method:  isNew ? "POST" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(emp),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const saved: Employee = await res.json();
+      setList(prev => {
+        if (isNew) return [...prev, saved];
+        return prev.map(e => e.id === saved.id ? saved : e);
+      });
+    } catch {
+      // silently fail — could add toast here
+    }
     setShowAdd(false);
     setEditEmp(undefined);
     setViewEmp(undefined);
   };
 
-  const handleDelete = (id: string) => {
-    setList(prev => prev.filter(e => e.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/employees/${id}`, { method: "DELETE" });
+      setList(prev => prev.filter(e => e.id !== id));
+    } catch {}
     setDeleteId(null);
     setViewEmp(undefined);
   };
@@ -1291,10 +1315,17 @@ export default function EmployeesPage() {
                         title={emp.verified ? `Verified ${emp.verifiedDate ?? ""}` : "Click to verify"}
                         onClick={() => {
                           const today = new Date().toISOString().slice(0, 10);
+                          const nextVerified = !emp.verified;
+                          const nextDate = nextVerified ? today : undefined;
                           setList(prev => prev.map(e => e.id === emp.id
-                            ? { ...e, verified: !e.verified, verifiedDate: !e.verified ? today : undefined }
+                            ? { ...e, verified: nextVerified, verifiedDate: nextDate }
                             : e
                           ));
+                          void fetch(`/api/employees/${emp.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ verified: nextVerified, verifiedDate: nextDate ?? null }),
+                          });
                         }}
                         className="flex flex-col items-center gap-0.5 mx-auto group">
                         <div className={cn(
@@ -1383,7 +1414,7 @@ export default function EmployeesPage() {
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={() => handleDelete(deleteId!)} className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+              <button onClick={() => void handleDelete(deleteId!)} className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
             </div>
           </div>
         </div>

@@ -142,18 +142,82 @@ model SalesOrder {
   updatedAt   DateTime @updatedAt
 }
 
+model Branch {
+  id                  String   @id @default(cuid())
+  code                String   @unique
+  name                String
+  brand               String?
+  status              String   @default("active")
+  isHeadOffice        Boolean  @default(false)
+  address             String?
+  googleMapsUrl       String?
+  location            String?
+  floor               String?
+  sizeSqm             Float?
+  phone               String?
+  email               String?
+  lineId              String?
+  managerId           String?
+  manager             String?
+  startDate           String?
+  assignedEmployees   Json?
+  lat                 Float    @default(0)
+  lng                 Float    @default(0)
+  radiusMeters        Float    @default(200)
+  rentFrom            String?
+  rentTo              String?
+  rentMonthly         Float?
+  lessorName          String?
+  lessorContactFirst  String?
+  lessorContactLast   String?
+  lessorContactTel    String?
+  lessorContactEmail  String?
+  lessorContactLineId String?
+  rentalDocs          Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
 model Employee {
-  id            String        @id @default(cuid())
-  employeeId    String        @unique
-  name          String
-  department    String
-  position      String
-  hireDate      DateTime
-  salary        Float
-  status        String        @default("active")
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  leaveRequests LeaveRequest[]
+  id                String        @id @default(cuid())
+  employeeId        String        @unique
+  name              String
+  firstName         String?
+  lastName          String?
+  firstNameTh       String?
+  lastNameTh        String?
+  nickname          String?
+  gender            String        @default("male")
+  dob               String?
+  nationalId        String?
+  phone             String?
+  personalEmail     String?
+  workEmail         String?
+  department        String
+  position          String
+  employmentType    String        @default("full-time")
+  branchId          String?
+  hireDate          String?
+  probationEndDate  String?
+  managerId         String?
+  salary            Float
+  bankAccounts      Json?
+  ssn               String?
+  ssfFundType       String?
+  ssfEnrollmentDate String?
+  ssfHospital       String?
+  ssfStatus         String?
+  emergencyName     String?
+  emergencyRelation String?
+  emergencyPhone    String?
+  photo             String?
+  documents         Json?
+  status            String        @default("active")
+  verified          Boolean       @default(false)
+  verifiedDate      String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  leaveRequests     LeaveRequest[]
 }
 
 model LeaveRequest {

@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { branches as initialBranches, employees, BranchEmployeeRole } from "@/lib/mock-data";
+import { employees, BranchEmployeeRole } from "@/lib/mock-data";
+import { useBranch } from "@/context/BranchContext";
 import {
   MapPin, Phone, Mail, Users, Building2, Plus, Pencil, Trash2, X,
   Check, Search, Lock, Globe, Calendar, Layers, SquareStack,
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-type Branch   = (typeof initialBranches)[number];
+type Branch = import("@/lib/mock-data").Branch;
 type Employee = (typeof employees)[number];
 type UserRole = "admin" | "owner" | "manager" | "employee";
 
@@ -648,12 +649,21 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function BranchesPage() {
-  const [list,        setList]        = useState<Branch[]>(initialBranches as Branch[]);
+  const { refetch } = useBranch();
+  const [list,        setList]        = useState<Branch[]>([]);
   const [currentRole, setCurrentRole] = useState<UserRole>("admin");
   const [showModal,   setShowModal]   = useState(false);
   const [editBranch,  setEditBranch]  = useState<Branch | undefined>(undefined);
   const [deleteId,    setDeleteId]    = useState<string | null>(null);
   const [toast,       setToast]       = useState<string | null>(null);
+  const [saving,      setSaving]      = useState(false);
+
+  useEffect(() => {
+    fetch("/api/branches")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setList(data))
+      .catch(() => {});
+  }, []);
 
   const nextId  = `BR-${String(list.length + 1).padStart(3, "0")}`;
   const active  = list.filter((b) => b.status === "active").length;
@@ -662,27 +672,56 @@ export default function BranchesPage() {
   const openAdd  = () => { setEditBranch(undefined); setShowModal(true); };
   const openEdit = (b: Branch) => { setEditBranch(b); setShowModal(true); };
 
-  const handleSave = (b: Branch) => {
-    setList((prev) => {
-      const idx = prev.findIndex((x) => x.id === b.id);
-      if (idx >= 0) { const next = [...prev]; next[idx] = b; return next; }
-      return [...prev, b];
-    });
-    setShowModal(false);
+  const handleSave = async (b: Branch) => {
+    setSaving(true);
+    try {
+      const isNew = !editBranch;
+      const url   = isNew ? "/api/branches" : `/api/branches/${b.id}`;
+      const res   = await fetch(url, {
+        method:  isNew ? "POST" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(b),
+      });
+      if (!res.ok) throw new Error("Failed to save branch");
+      const saved: Branch = await res.json();
+      setList((prev) => {
+        if (isNew) return [...prev, saved];
+        return prev.map((x) => x.id === saved.id ? saved : x);
+      });
+      await refetch();
+      setShowModal(false);
+    } catch {
+      setToast("Failed to save branch. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setList((prev) => prev.filter((b) => b.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/branches/${id}`, { method: "DELETE" });
+      setList((prev) => prev.filter((b) => b.id !== id));
+      await refetch();
+    } catch {
+      setToast("Failed to delete branch.");
+    }
     setDeleteId(null);
   };
 
-  const toggleStatus = (b: Branch) => {
+  const toggleStatus = async (b: Branch) => {
     if (!CAN_TOGGLE_STATUS.includes(currentRole)) {
       setToast("Requires Admin or Owner permission to change branch status.");
       return;
     }
     if (b.isHeadOffice) return;
-    setList((prev) => prev.map((x) => x.id === b.id ? { ...x, status: x.status === "active" ? "inactive" : "active" } : x));
+    const newStatus = b.status === "active" ? "inactive" : "active";
+    setList((prev) => prev.map((x) => x.id === b.id ? { ...x, status: newStatus } : x));
+    await fetch(`/api/branches/${b.id}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ status: newStatus }),
+    });
+    await refetch();
   };
 
   return (
@@ -879,7 +918,7 @@ export default function BranchesPage() {
             <p className="text-sm text-slate-500 mb-6">This will permanently remove the branch and cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={() => handleDelete(deleteId!)} className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+              <button onClick={() => void handleDelete(deleteId!)} className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
             </div>
           </div>
         </div>
