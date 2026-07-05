@@ -1,30 +1,32 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
-import { systemUsers as initialSystemUsers, UserRole } from "@/lib/mock-data";
 import { useBranch } from "@/context/BranchContext";
 import { cn } from "@/lib/utils";
 import {
   Users, UserCheck, Shield, UserPlus, Search, Pencil, Trash2, X,
-  ChevronDown, Check, Plus,
+  ChevronDown, Check, Mail, RefreshCw, Clock,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
+type UserRole   = "admin" | "manager" | "staff" | "viewer";
+type UserStatus = "active" | "inactive" | "pending";
+
 interface SystemUser {
-  id: string;
+  id:         string;
   employeeId: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  branchId: string;
-  branchIds: string[];
-  status: "active" | "inactive";
-  startDate: string;
-  endDate: string | null;
-  lastLogin: string;
-  createdAt: string;
+  name:       string;
+  email:      string;
+  role:       UserRole;
+  branchId:   string;
+  branchIds:  string[];
+  status:     UserStatus;
+  startDate:  string;
+  endDate:    string | null;
+  lastLogin:  string;
+  createdAt:  string;
 }
 
 interface Employee {
@@ -48,13 +50,26 @@ const ROLE_LABELS: Record<UserRole, string> = {
   viewer:  "Viewer",
 };
 
+const STATUS_COLORS: Record<UserStatus, string> = {
+  active:   "bg-emerald-100 text-emerald-700",
+  inactive: "bg-slate-100 text-slate-500",
+  pending:  "bg-amber-100 text-amber-700",
+};
+
+const STATUS_LABELS: Record<UserStatus, string> = {
+  active:   "Active",
+  inactive: "Inactive",
+  pending:  "Invite Sent",
+};
+
 const AVATAR_COLORS = ["bg-blue-500","bg-violet-500","bg-emerald-500","bg-amber-500","bg-rose-500","bg-indigo-500"];
 
 function initials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
-function formatLastLogin(iso: string) {
+function formatLastLogin(iso: string, status: UserStatus) {
+  if (status === "pending") return "—";
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" })
     + " " + d.toLocaleTimeString("en-US", { hour:"2-digit", minute:"2-digit", hour12:false });
@@ -176,12 +191,13 @@ function BranchMultiSelect({ selected, onChange }: { selected: string[]; onChang
 
 interface UserModalProps {
   initial?: SystemUser;
-  nextId: string;
   onClose: () => void;
-  onSave: (u: SystemUser) => void;
+  onSave: (u: SystemUser) => Promise<void>;
+  saving: boolean;
+  saveError: string;
 }
 
-function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
+function UserModal({ initial, onClose, onSave, saving, saveError }: UserModalProps) {
   const isEdit = !!initial;
   const { branches } = useBranch();
 
@@ -191,7 +207,6 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
   const [email,      setEmail]      = useState(initial?.email      ?? "");
   const [role,       setRole]       = useState<UserRole>(initial?.role ?? "staff");
   const [branchIds,  setBranchIds]  = useState<string[]>(initial?.branchIds ?? []);
-  const [status,     setStatus]     = useState<"active"|"inactive">(initial?.status ?? "active");
   const [startDate,  setStartDate]  = useState(initial?.startDate  ?? new Date().toISOString().split("T")[0]);
   const [endDate,    setEndDate]    = useState(initial?.endDate     ?? "");
 
@@ -205,35 +220,34 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
   const handleEmployeePick = (emp: Employee) => {
     setEmployeeId(emp.id);
     setName(emp.name);
-    const slug = emp.name.split(" ")[0].toLowerCase();
-    setEmail(`${slug}@trakulheng.co.th`);
-    setStartDate(emp.hireDate);
-    const assignedBranch = branches.find((b) =>
-      (b as any).assignedEmployeeIds?.includes(emp.id)
-    );
-    if (assignedBranch && !branchIds.includes(assignedBranch.id)) {
-      setBranchIds([assignedBranch.id]);
+    if (!email) {
+      const slug = emp.name.toLowerCase().replace(/\s+/g, ".");
+      setEmail(`${slug}@trakulheng.co.th`);
+    }
+    if (emp.hireDate) setStartDate(emp.hireDate);
+    if (emp.branchId && !branchIds.includes(emp.branchId)) {
+      setBranchIds([emp.branchId]);
     }
   };
 
   const canSave = name.trim() && email.trim() && branchIds.length > 0;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const u: SystemUser = {
-      id:         initial?.id ?? nextId,
+      id:         initial?.id ?? "",
       employeeId,
       name,
       email,
       role,
-      branchId:   branchIds[0] ?? "BR-001",
+      branchId:   branchIds[0] ?? "",
       branchIds,
-      status,
+      status:     initial?.status ?? "pending",
       startDate,
       endDate:    endDate || null,
       lastLogin:  initial?.lastLogin  ?? new Date().toISOString(),
       createdAt:  initial?.createdAt  ?? new Date().toISOString().split("T")[0],
     };
-    onSave(u);
+    await onSave(u);
   };
 
   const linkedEmp = empList.find((e) => e.id === employeeId);
@@ -244,7 +258,11 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit User" : "Add User"}</h2>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">{initial?.id ?? nextId}</p>
+            {!isEdit && (
+              <p className="text-xs text-blue-600 mt-0.5 flex items-center gap-1">
+                <Mail size={11} /> An invitation email will be sent automatically
+              </p>
+            )}
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
@@ -277,29 +295,19 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Email * <span className="text-slate-400">(invite will be sent here)</span></label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@trakulheng.co.th"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Role</label>
-                <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="staff">Staff</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as "active"|"inactive")}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="staff">Staff</option>
+                <option value="viewer">Viewer</option>
+              </select>
             </div>
           </div>
 
@@ -329,14 +337,39 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
           </div>
         </div>
 
+        {saveError && (
+          <div className="mx-6 mb-4 px-3.5 py-2.5 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600">{saveError}</div>
+        )}
+
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-          <button disabled={!canSave} onClick={handleSave}
-            className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
-            {isEdit ? "Save Changes" : "Add User"}
+          <button onClick={onClose} disabled={saving}
+            className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+          <button disabled={!canSave || saving} onClick={handleSave}
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+            {saving && <RefreshCw size={13} className="animate-spin" />}
+            {saving ? "Sending invite…" : isEdit ? "Save Changes" : "Create & Send Invite"}
+            {!saving && !isEdit && <Mail size={13} />}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────
+
+function Toast({ message, onDone }: { message: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 4000);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-sm animate-fade-in">
+      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+        <Check size={12} className="text-white" />
+      </div>
+      {message}
     </div>
   );
 }
@@ -345,22 +378,27 @@ function UserModal({ initial, nextId, onClose, onSave }: UserModalProps) {
 
 export default function UserManagementPage() {
   const { branches } = useBranch();
-  const [empList,    setEmpList]    = useState<Employee[]>([]);
-  const [users,      setUsers]      = useState<SystemUser[]>(initialSystemUsers as SystemUser[]);
-  const [search,     setSearch]     = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
-  const [modalOpen,  setModalOpen]  = useState(false);
-  const [editingUser,setEditingUser]= useState<SystemUser | undefined>(undefined);
-  const [deleteId,   setDeleteId]   = useState<string | null>(null);
+  const [users,        setUsers]       = useState<SystemUser[]>([]);
+  const [loadingUsers, setLoadingUsers]= useState(true);
+  const [search,       setSearch]      = useState("");
+  const [roleFilter,   setRoleFilter]  = useState<"all" | UserRole>("all");
+  const [modalOpen,    setModalOpen]   = useState(false);
+  const [editingUser,  setEditingUser] = useState<SystemUser | undefined>(undefined);
+  const [deleteId,     setDeleteId]    = useState<string | null>(null);
+  const [saving,       setSaving]      = useState(false);
+  const [saveError,    setSaveError]   = useState("");
+  const [toast,        setToast]       = useState("");
+  const [resending,    setResending]   = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/employees")
-      .then((r) => r.ok ? r.json() : [])
-      .then((data) => setEmpList(data))
-      .catch(() => {});
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/users");
+      if (res.ok) setUsers(await res.json());
+    } catch {}
+    setLoadingUsers(false);
   }, []);
 
-  const nextId = `USR-${String(users.length + 1).padStart(3, "0")}`;
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const filtered = useMemo(() => users.filter((u) => {
     const q = search.toLowerCase();
@@ -370,26 +408,70 @@ export default function UserManagementPage() {
   }), [users, search, roleFilter]);
 
   const stats = useMemo(() => ({
-    total:  users.length,
-    active: users.filter((u) => u.status === "active").length,
-    admins: users.filter((u) => u.role === "admin").length,
+    total:   users.length,
+    active:  users.filter((u) => u.status === "active").length,
+    admins:  users.filter((u) => u.role === "admin").length,
+    pending: users.filter((u) => u.status === "pending").length,
   }), [users]);
 
-  const openNew  = () => { setEditingUser(undefined); setModalOpen(true); };
-  const openEdit = (u: SystemUser) => { setEditingUser(u); setModalOpen(true); };
+  const openNew  = () => { setSaveError(""); setEditingUser(undefined); setModalOpen(true); };
+  const openEdit = (u: SystemUser) => { setSaveError(""); setEditingUser(u); setModalOpen(true); };
 
-  const handleSave = (u: SystemUser) => {
-    setUsers((prev) => {
-      const idx = prev.findIndex((x) => x.id === u.id);
-      if (idx >= 0) { const next = [...prev]; next[idx] = u; return next; }
-      return [u, ...prev];
-    });
-    setModalOpen(false);
+  const handleSave = async (u: SystemUser) => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const isEdit = !!u.id;
+      const endpoint = isEdit ? `/api/settings/users/${u.id}` : "/api/settings/users";
+      const method   = isEdit ? "PATCH" : "POST";
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(u),
+      });
+      const data = await res.json();
+      if (!res.ok) { setSaveError(data.error ?? "Failed to save user."); return; }
+
+      setUsers((prev) => {
+        const idx = prev.findIndex((x) => x.id === data.id);
+        if (idx >= 0) { const next = [...prev]; next[idx] = data; return next; }
+        return [data, ...prev];
+      });
+      setModalOpen(false);
+      if (!isEdit) setToast(`Invitation sent to ${data.email}`);
+    } catch {
+      setSaveError("Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    setDeleteId(null);
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/settings/users/${id}`, { method: "DELETE" });
+      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setDeleteId(null);
+    } catch {
+      alert("Failed to delete user.");
+    }
+  };
+
+  const handleResendInvite = async (u: SystemUser) => {
+    setResending(u.id);
+    try {
+      const res = await fetch(`/api/settings/users/${u.id}`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ action: "resend-invite" }),
+      });
+      if (res.ok) setToast(`Invitation resent to ${u.email}`);
+      else { const d = await res.json(); alert(d.error); }
+    } catch {
+      alert("Failed to resend invitation.");
+    } finally {
+      setResending(null);
+    }
   };
 
   return (
@@ -420,6 +502,9 @@ export default function UserManagementPage() {
                 </div>
               </div>
               <p className="text-2xl font-bold text-slate-900">{value}</p>
+              {label === "Total Users" && stats.pending > 0 && (
+                <p className="text-xs text-amber-600 mt-1">{stats.pending} invite{stats.pending !== 1 ? "s" : ""} pending</p>
+              )}
             </div>
           ))}
         </div>
@@ -456,21 +541,22 @@ export default function UserManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.map((u, i) => {
-                const linkedEmp = empList.find((e) => e.id === u.employeeId);
-                const today = new Date();
+              {loadingUsers && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">Loading users…</td></tr>
+              )}
+              {!loadingUsers && filtered.map((u, i) => {
+                const today   = new Date();
                 const expired = u.endDate && new Date(u.endDate) < today;
                 return (
                   <tr key={u.id} className={cn("hover:bg-slate-50 transition-colors", expired && "opacity-60")}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0", AVATAR_COLORS[i % AVATAR_COLORS.length])}>
-                          {initials(u.name)}
+                          {u.name ? initials(u.name) : "?"}
                         </div>
                         <div>
-                          <p className="font-medium text-slate-800">{u.name}</p>
+                          <p className="font-medium text-slate-800">{u.name || "(unnamed)"}</p>
                           <p className="text-xs text-slate-400">{u.email}</p>
-                          {linkedEmp && <p className="text-xs text-blue-500">{linkedEmp.position} · {linkedEmp.department}</p>}
                         </div>
                       </div>
                     </td>
@@ -481,7 +567,7 @@ export default function UserManagementPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {(u.branchIds ?? [u.branchId]).slice(0, 2).map((bid) => {
+                        {(u.branchIds ?? []).slice(0, 2).map((bid) => {
                           const b = branches.find((x: any) => x.id === bid);
                           return b ? (
                             <span key={bid} className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">{b.code}</span>
@@ -490,21 +576,34 @@ export default function UserManagementPage() {
                         {(u.branchIds ?? []).length > 2 && (
                           <span className="text-xs text-slate-400">+{(u.branchIds ?? []).length - 2}</span>
                         )}
+                        {(u.branchIds ?? []).length === 0 && <span className="text-xs text-slate-300">—</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
-                      <div>{u.startDate}</div>
+                      <div>{u.startDate || "—"}</div>
                       {u.endDate && <div className={cn("text-xs", expired ? "text-red-500 font-medium" : "text-slate-400")}>→ {u.endDate}{expired ? " (expired)" : ""}</div>}
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{formatLastLogin(u.lastLogin)}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">
+                      {u.status === "pending" ? (
+                        <span className="flex items-center gap-1 text-amber-500"><Clock size={11} /> Awaiting setup</span>
+                      ) : formatLastLogin(u.lastLogin, u.status)}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full",
-                        u.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500")}>
-                        {u.status === "active" ? "Active" : "Inactive"}
+                      <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", STATUS_COLORS[u.status])}>
+                        {STATUS_LABELS[u.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
+                        {u.status === "pending" && (
+                          <button
+                            onClick={() => handleResendInvite(u)}
+                            disabled={resending === u.id}
+                            title="Resend invite"
+                            className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 disabled:opacity-40">
+                            <RefreshCw size={14} className={resending === u.id ? "animate-spin" : ""} />
+                          </button>
+                        )}
                         <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
                           <Pencil size={15} />
                         </button>
@@ -516,8 +615,10 @@ export default function UserManagementPage() {
                   </tr>
                 );
               })}
-              {filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">No users match your search.</td></tr>
+              {!loadingUsers && filtered.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">
+                  {users.length === 0 ? "No users yet. Add the first user to get started." : "No users match your search."}
+                </td></tr>
               )}
             </tbody>
           </table>
@@ -527,9 +628,10 @@ export default function UserManagementPage() {
       {modalOpen && (
         <UserModal
           initial={editingUser}
-          nextId={nextId}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
+          saving={saving}
+          saveError={saveError}
         />
       )}
 
@@ -539,15 +641,17 @@ export default function UserManagementPage() {
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4"><Trash2 size={22} className="text-red-600" /></div>
             <h3 className="text-base font-semibold text-slate-900 mb-1">Delete User</h3>
             <p className="text-sm text-slate-500 mb-6">
-              Remove <strong>{users.find((u) => u.id === deleteId)?.name}</strong>? This cannot be undone.
+              Remove <strong>{users.find((u) => u.id === deleteId)?.name}</strong>? This will revoke all access and cannot be undone.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={() => handleDelete(deleteId!)} className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+              <button onClick={() => void handleDelete(deleteId!)} className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
             </div>
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast} onDone={() => setToast("")} />}
     </div>
   );
 }

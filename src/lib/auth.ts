@@ -30,6 +30,14 @@ export async function createPasswordResetToken(userId: string) {
   return token;
 }
 
+export async function createInviteToken(userId: string) {
+  await prisma.verificationToken.deleteMany({ where: { userId, type: "invite" } });
+  const token = generateToken();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await prisma.verificationToken.create({ data: { token, userId, expiresAt, type: "invite" } });
+  return token;
+}
+
 export async function hashPin(pin: string) {
   return bcrypt.hash(pin, 10);
 }

@@ -18,11 +18,15 @@ model User {
   id                String    @id @default(cuid())
   email             String    @unique
   name              String?
-  password          String
+  password          String?
   pin               String?
   pinSetAt          DateTime?
   role              UserRole  @default(staff)
   emailVerified     Boolean   @default(false)
+  employeeRecordId  String?
+  branchIds         Json?
+  accessStartDate   String?
+  accessEndDate     String?
   consentAcceptedAt DateTime?
   consentVersion    String?
   createdAt         DateTime  @default(now())

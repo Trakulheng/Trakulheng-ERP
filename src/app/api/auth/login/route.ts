@@ -35,6 +35,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
+    if (!user.password) {
+      return NextResponse.json({ error: "Your account hasn't been set up yet. Please check your invitation email to set your password.", code: "pending_invite" }, { status: 403 });
+    }
+
     const valid = await verifyPassword(password, user.password);
     if (!valid) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
