@@ -1318,11 +1318,11 @@ export default function ShiftsPage() {
   const [empViewId, setEmpViewId] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const branchEmps = useMemo(() => allEmployees.filter((e) => e.branchId === activeBranch.id), [activeBranch.id]);
-  const branchPatterns = useMemo(() => patterns.filter((p) => p.branchId === activeBranch.id), [patterns, activeBranch.id]);
+  const branchEmps = useMemo(() => allEmployees.filter((e) => e.branchId === activeBranch?.id), [activeBranch?.id]);
+  const branchPatterns = useMemo(() => patterns.filter((p) => p.branchId === activeBranch?.id), [patterns, activeBranch?.id]);
   const departments = useMemo(() => Array.from(new Set(branchEmps.map((e) => e.department))).sort(), [branchEmps]);
 
-  const pendingConfirmations = overrides.filter((o) => o.branchId === activeBranch.id && o.confirmStatus === "pending").length;
+  const pendingConfirmations = overrides.filter((o) => o.branchId === activeBranch?.id && o.confirmStatus === "pending").length;
   const pendingRequests = requests.filter((r) => r.status === "pending").length;
 
   // Shift → employees mapping for template tab
@@ -1362,7 +1362,7 @@ export default function ShiftsPage() {
       employeeId: cellModal.empId,
       shiftId,
       date: cellModal.date,
-      branchId: activeBranch.id,
+      branchId: activeBranch?.id ?? "",
       confirmStatus: "pending",
       note: note || undefined,
     };
@@ -1392,7 +1392,7 @@ export default function ShiftsPage() {
       employeeId: req.employeeId,
       shiftId: req.requestedShiftId,
       date: req.date,
-      branchId: activeBranch.id,
+      branchId: activeBranch?.id ?? "",
       confirmStatus: "confirmed",
       note: `Approved — request ${req.id}`,
     };
@@ -1411,6 +1411,17 @@ export default function ShiftsPage() {
   // Summary stats for templates tab
   const totalScheduledEmps = new Set(branchPatterns.map((p) => p.employeeId)).size;
   const avgShiftHours = shiftList.length ? Math.round(shiftList.reduce((acc, s) => acc + calcWorkMinutes(s.startTime, s.endTime, s.breakMinutes), 0) / shiftList.length / 60 * 10) / 10 : 0;
+
+  if (!activeBranch) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50">
+        <Header title="Shift Management" />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-slate-400">No branches configured. Go to Settings → Branches to add one.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">

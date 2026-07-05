@@ -1,12 +1,12 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode } from "react";
-import { branches } from "@/lib/mock-data";
+import { branches, Branch } from "@/lib/mock-data";
 
-export type Branch = (typeof branches)[number];
+export type { Branch };
 
 interface BranchContextValue {
-  activeBranch: Branch;
+  activeBranch: Branch | null;
   setActiveBranch: (branch: Branch) => void;
   branches: Branch[];
 }
@@ -14,7 +14,7 @@ interface BranchContextValue {
 const BranchContext = createContext<BranchContextValue | null>(null);
 
 export function BranchProvider({ children }: { children: ReactNode }) {
-  const [activeBranch, setActiveBranch] = useState<Branch>(branches[0]);
+  const [activeBranch, setActiveBranch] = useState<Branch | null>(branches[0] ?? null);
   return (
     <BranchContext.Provider value={{ activeBranch, setActiveBranch, branches }}>
       {children}

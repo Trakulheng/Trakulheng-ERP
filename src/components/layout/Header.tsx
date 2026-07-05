@@ -43,11 +43,13 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
             >
               <MapPin size={14} className="text-blue-600 shrink-0" />
               <span className="font-medium text-slate-700 max-w-[140px] truncate">
-                {activeBranch.name}
+                {activeBranch?.name ?? "No Branch"}
               </span>
-              <span className="text-xs text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">
-                {activeBranch.code}
-              </span>
+              {activeBranch && (
+                <span className="text-xs text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">
+                  {activeBranch.code}
+                </span>
+              )}
               <ChevronDown size={14} className={cn("text-slate-400 transition-transform", open && "rotate-180")} />
             </button>
 
@@ -56,18 +58,21 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
                 <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Select Branch
                 </p>
+                {branches.length === 0 && (
+                  <p className="px-3 py-3 text-sm text-slate-400 text-center">No branches configured</p>
+                )}
                 {branches.map((branch) => (
                   <button
                     key={branch.id}
                     onClick={() => { setActiveBranch(branch); setOpen(false); }}
                     className={cn(
                       "w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors",
-                      activeBranch.id === branch.id && "bg-blue-50"
+                      activeBranch?.id === branch.id && "bg-blue-50"
                     )}
                   >
                     <div className={cn(
                       "mt-0.5 w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0",
-                      activeBranch.id === branch.id
+                      activeBranch?.id === branch.id
                         ? "bg-blue-600 text-white"
                         : "bg-slate-100 text-slate-600"
                     )}>
@@ -77,7 +82,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "text-sm font-medium",
-                          activeBranch.id === branch.id ? "text-blue-700" : "text-slate-800"
+                          activeBranch?.id === branch.id ? "text-blue-700" : "text-slate-800"
                         )}>
                           {branch.name}
                         </span>

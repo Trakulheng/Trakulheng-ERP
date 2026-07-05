@@ -148,6 +148,17 @@ export default function AttendancePage() {
     return () => clearInterval(id);
   }, []);
 
+  if (!activeBranch) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50">
+        <Header title="Attendance" />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-slate-400">No branches configured. Go to Settings → Branches to add one.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Build employee list for activeBranch × today's day of week
   const todayDow = now.getDay(); // 0=Sun
   const branchAssignments = employeeShifts.filter(
