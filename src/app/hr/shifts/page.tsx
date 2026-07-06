@@ -107,14 +107,7 @@ const initialOverrides: CalendarEntry[] = [
   { id: "CE-005", employeeId: "EMP-003", shiftId: "SH-002", date: "2026-08-05", branchId: "BR-001", confirmStatus: "pending",   note: "Temporary schedule change" },
 ];
 
-const initialRequests: ChangeRequest[] = [
-  { id: "CR-001", employeeId: "EMP-007", date: "2026-07-08", currentShiftId: "SH-001", requestedShiftId: "SH-002", reason: "Doctor appointment — need afternoon shift instead", status: "pending",  createdAt: "2026-07-04T09:00:00" },
-  { id: "CR-002", employeeId: "EMP-010", date: "2026-07-10", currentShiftId: "SH-001", requestedShiftId: null,     reason: "Family emergency — requesting day off",                status: "pending",  createdAt: "2026-07-04T10:30:00" },
-  { id: "CR-003", employeeId: "EMP-001", date: "2026-07-15", currentShiftId: "SH-001", requestedShiftId: "SH-004", reason: "Team meeting requires half-day only",                    status: "approved", createdAt: "2026-06-30T14:00:00", resolvedBy: "EMP-004", resolvedAt: "2026-07-01T09:00:00", managerNote: "Approved — coordinate with team lead" },
-  { id: "CR-004", employeeId: "EMP-006", date: "2026-07-12", currentShiftId: "SH-001", requestedShiftId: "SH-002", reason: "Shift swap request with colleague",                        status: "rejected", createdAt: "2026-07-02T11:00:00", resolvedBy: "EMP-005", resolvedAt: "2026-07-03T08:30:00", managerNote: "Cannot accommodate — understaffed that week" },
-  { id: "CR-005", employeeId: "EMP-003", date: "2026-07-20", currentShiftId: "SH-002", requestedShiftId: "SH-001", reason: "Personal commitment in the morning",                       status: "pending",  createdAt: "2026-07-03T15:00:00" },
-  { id: "CR-006", employeeId: "EMP-005", date: "2026-07-22", currentShiftId: "SH-001", requestedShiftId: null,     reason: "Medical leave — attached certificate",                    status: "approved", createdAt: "2026-07-01T08:00:00", resolvedBy: "EMP-004", resolvedAt: "2026-07-02T09:00:00", managerNote: "Approved with documentation" },
-];
+// Change Requests are now DB-backed — no mock data
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1588,7 +1581,7 @@ export default function ShiftsPage() {
   const [todosByShift, setTodosByShift] = useState<Record<string, ShiftTodo[]>>({});
   const [patterns, setPatterns] = useState<EmployeeShift[]>([...initialAssignments]);
   const [overrides, setOverrides] = useState<CalendarEntry[]>(initialOverrides);
-  const [requests, setRequests] = useState<ChangeRequest[]>(initialRequests);
+  const [requests, setRequests] = useState<ChangeRequest[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [monday, setMonday] = useState<Date>(() => getMondayOf(parseDate(TODAY)));
   const [calMonth, setCalMonth] = useState(() => { const d = parseDate(TODAY); return { year: d.getFullYear(), month: d.getMonth() }; });
@@ -1626,6 +1619,15 @@ export default function ShiftsPage() {
       .then((r) => r.ok ? r.json() : [])
       .then((data: Shift[]) => { setShiftList(data); setShiftsLoading(false); })
       .catch(() => setShiftsLoading(false));
+  }, [activeBranch?.id]);
+
+  // Load change requests from DB when branch changes
+  useEffect(() => {
+    if (!activeBranch?.id) { setRequests([]); return; }
+    fetch(`/api/hr/shifts/change-requests?branchId=${activeBranch.id}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: ChangeRequest[]) => setRequests(data))
+      .catch(() => {});
   }, [activeBranch?.id]);
 
   // Fetch todos for all loaded shifts
@@ -1710,9 +1712,12 @@ export default function ShiftsPage() {
     setOverrides((prev) => prev.map((o) => o.id === entryId ? { ...o, confirmStatus: "confirmed" } : o));
   };
 
-  const handleApproveRequest = (id: string) => {
+  const handleApproveRequest = async (id: string) => {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
+    // Optimistic update
+    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" as const, resolvedAt: new Date().toISOString() } : r));
+    // Calendar override so the approved shift shows on schedule
     const entry: CalendarEntry = {
       id: `CE-${Date.now()}`,
       employeeId: req.employeeId,
@@ -1727,11 +1732,31 @@ export default function ShiftsPage() {
       if (idx >= 0) { const n = [...prev]; n[idx] = entry; return n; }
       return [...prev, entry];
     });
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" as const, resolvedBy: "EMP-004", resolvedAt: new Date().toISOString() } : r));
+    // Persist
+    const res = await fetch(`/api/hr/shifts/change-requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved" }),
+    });
+    if (res.ok) {
+      const saved: ChangeRequest = await res.json();
+      setRequests((prev) => prev.map((r) => r.id === id ? saved : r));
+    }
   };
 
-  const handleRejectRequest = (id: string, note: string) => {
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" as const, resolvedBy: "EMP-004", resolvedAt: new Date().toISOString(), managerNote: note || "Request rejected" } : r));
+  const handleRejectRequest = async (id: string, note: string) => {
+    // Optimistic update
+    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" as const, resolvedAt: new Date().toISOString(), managerNote: note || undefined } : r));
+    // Persist
+    const res = await fetch(`/api/hr/shifts/change-requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "rejected", managerNote: note }),
+    });
+    if (res.ok) {
+      const saved: ChangeRequest = await res.json();
+      setRequests((prev) => prev.map((r) => r.id === id ? saved : r));
+    }
   };
 
   // Summary stats for templates tab
@@ -2163,7 +2188,16 @@ export default function ShiftsPage() {
           employeeId={reqChangeModal.empId} date={reqChangeModal.date}
           currentShiftId={reqChangeModal.currentShiftId} shiftList={shiftList}
           onClose={() => setReqChangeModal(null)}
-          onSubmit={(req) => { setRequests((prev) => [req, ...prev]); setReqChangeModal(null); }}
+          onSubmit={async (req) => {
+            const res = await fetch("/api/hr/shifts/change-requests", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...req, branchId: activeBranch?.id }),
+            });
+            const saved = res.ok ? await res.json() : req;
+            setRequests((prev) => [saved, ...prev]);
+            setReqChangeModal(null);
+          }}
         />
       )}
     </div>
