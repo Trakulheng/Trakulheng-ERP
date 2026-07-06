@@ -396,23 +396,82 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
           {/* Location */}
           <section className="space-y-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2">Location</p>
+
+            {/* Lat / Lng — primary */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-slate-600">Coordinates</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => {
+                        set("lat", parseFloat(pos.coords.latitude.toFixed(6)));
+                        set("lng", parseFloat(pos.coords.longitude.toFixed(6)));
+                      },
+                      () => {}
+                    );
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <Crosshair size={12} /> Use my current location
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Latitude</label>
+                  <input
+                    type="number" step="0.000001"
+                    value={form.lat}
+                    onChange={(e) => set("lat", e.target.value === "" ? "" : parseFloat(e.target.value))}
+                    placeholder="13.722110"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Longitude</label>
+                  <input
+                    type="number" step="0.000001"
+                    value={form.lng}
+                    onChange={(e) => set("lng", e.target.value === "" ? "" : parseFloat(e.target.value))}
+                    placeholder="100.498800"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Clock-in Radius (m)</label>
+                  <input
+                    type="number" min={50} max={5000} step={50}
+                    value={form.radiusMeters}
+                    onChange={(e) => set("radiusMeters", e.target.value === "" ? "" : parseInt(e.target.value))}
+                    placeholder="200"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              {(form.lat || form.lng) ? (
+                <div className="mt-1.5 flex items-center justify-between">
+                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                    <Check size={11} /> Coordinates set — clock-in allowed within {form.radiusMeters || 200}m
+                  </p>
+                  <a
+                    href={`https://www.google.com/maps?q=${form.lat},${form.lng}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-500 hover:underline flex items-center gap-0.5"
+                  >
+                    <ExternalLink size={10} /> View on Maps
+                  </a>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-600 mt-1.5">No coordinates set — GPS check will be skipped for clock-in</p>
+              )}
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
               <textarea rows={2} value={form.address} onChange={(e) => set("address", e.target.value)}
                 placeholder="Street address, subdistrict, district, province, postcode"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1 flex items-center gap-1.5">
-                Google Maps URL
-                {form.googleMapsUrl && (
-                  <a href={form.googleMapsUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline flex items-center gap-0.5"><ExternalLink size={10} /> Open</a>
-                )}
-              </label>
-              <input value={form.googleMapsUrl} onChange={(e) => set("googleMapsUrl", e.target.value)}
-                placeholder="https://maps.google.com/?q=..."
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-1">
@@ -453,67 +512,6 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
                   ))}
                 </select>
               </div>
-            </div>
-
-            {/* GPS Coordinates */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">GPS Coordinates for Clock-In</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.geolocation.getCurrentPosition(
-                      (pos) => {
-                        set("lat", parseFloat(pos.coords.latitude.toFixed(6)));
-                        set("lng", parseFloat(pos.coords.longitude.toFixed(6)));
-                      },
-                      () => {}
-                    );
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  <Crosshair size={12} /> Use my current location
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Latitude</label>
-                  <input
-                    type="number" step="0.000001"
-                    value={form.lat}
-                    onChange={(e) => set("lat", e.target.value === "" ? "" : parseFloat(e.target.value))}
-                    placeholder="e.g. 13.722110"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Longitude</label>
-                  <input
-                    type="number" step="0.000001"
-                    value={form.lng}
-                    onChange={(e) => set("lng", e.target.value === "" ? "" : parseFloat(e.target.value))}
-                    placeholder="e.g. 100.498800"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Allowed Radius (m)</label>
-                  <input
-                    type="number" min={50} max={5000} step={50}
-                    value={form.radiusMeters}
-                    onChange={(e) => set("radiusMeters", e.target.value === "" ? "" : parseInt(e.target.value))}
-                    placeholder="200"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              {(form.lat || form.lng) ? (
-                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                  <Check size={11} /> Coordinates set — employees can clock in within {form.radiusMeters || 200}m of this point
-                </p>
-              ) : (
-                <p className="text-xs text-amber-600 mt-1.5">No coordinates set — GPS check will be skipped for clock-in</p>
-              )}
             </div>
           </section>
 
@@ -975,12 +973,15 @@ export default function BranchesPage() {
                       <span className="text-xs">{br.lineId}</span>
                     </div>
                   )}
-                  {br.googleMapsUrl && (
+                  {(branch.lat !== 0 || branch.lng !== 0) && (
                     <div className="flex items-center gap-2">
-                      <MapPin size={13} className="shrink-0 text-slate-400" />
-                      <a href={br.googleMapsUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-500 hover:underline flex items-center gap-1">
-                        Open in Maps <ExternalLink size={10} />
+                      <Crosshair size={13} className="shrink-0 text-slate-400" />
+                      <a
+                        href={`https://www.google.com/maps?q=${branch.lat},${branch.lng}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-mono"
+                      >
+                        {branch.lat?.toFixed(4)}, {branch.lng?.toFixed(4)} <ExternalLink size={10} />
                       </a>
                     </div>
                   )}
