@@ -8,7 +8,7 @@ import {
   MapPin, Phone, Mail, Users, Building2, Plus, Pencil, Trash2, X,
   Check, Search, Lock, Globe, Calendar, Layers, SquareStack,
   MessageCircle, ExternalLink, ChevronDown, Shield, User,
-  Upload, FileText, Banknote,
+  Upload, FileText, Banknote, Crosshair,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -165,6 +165,9 @@ type BranchFormState = {
   location: string;
   floor: string;
   sizeSqm: number | "";
+  lat: number | "";
+  lng: number | "";
+  radiusMeters: number | "";
   phone: string;
   email: string;
   lineId: string;
@@ -189,6 +192,7 @@ type BranchFormState = {
 const emptyForm: BranchFormState = {
   code: "", name: "", brand: "", province: "", country: "Thailand", status: "active",
   address: "", googleMapsUrl: "", location: "", floor: "", sizeSqm: "",
+  lat: "", lng: "", radiusMeters: 200,
   phone: "", email: "", lineId: "",
   managerId: "", manager: "", startDate: "",
   assignedEmployeeIds: [],
@@ -239,6 +243,9 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
     location:            (initial as any).location             ?? "",
     floor:               (initial as any).floor                ?? "",
     sizeSqm:             (initial as any).sizeSqm              ?? "",
+    lat:                 (initial as any).lat                  ?? "",
+    lng:                 (initial as any).lng                  ?? "",
+    radiusMeters:        (initial as any).radiusMeters         ?? 200,
     phone:               initial.phone,
     email:               initial.email,
     lineId:              (initial as any).lineId               ?? "",
@@ -307,9 +314,9 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
     const base: Branch = {
       id:        initial?.id ?? nextId,
       isHeadOffice: initial?.isHeadOffice ?? false,
-      lat:       (initial as any)?.lat    ?? 0,
-      lng:       (initial as any)?.lng    ?? 0,
-      radiusMeters: (initial as any)?.radiusMeters ?? 200,
+      lat:       typeof form.lat === "number" ? form.lat : 0,
+      lng:       typeof form.lng === "number" ? form.lng : 0,
+      radiusMeters: typeof form.radiusMeters === "number" ? form.radiusMeters : 200,
       employees: form.assignedEmployees.length,
       ...form,
       assignedEmployeeIds: form.assignedEmployees.map((ae) => ae.id),
@@ -446,6 +453,67 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* GPS Coordinates */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">GPS Coordinates for Clock-In</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => {
+                        set("lat", parseFloat(pos.coords.latitude.toFixed(6)));
+                        set("lng", parseFloat(pos.coords.longitude.toFixed(6)));
+                      },
+                      () => {}
+                    );
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <Crosshair size={12} /> Use my current location
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Latitude</label>
+                  <input
+                    type="number" step="0.000001"
+                    value={form.lat}
+                    onChange={(e) => set("lat", e.target.value === "" ? "" : parseFloat(e.target.value))}
+                    placeholder="e.g. 13.722110"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Longitude</label>
+                  <input
+                    type="number" step="0.000001"
+                    value={form.lng}
+                    onChange={(e) => set("lng", e.target.value === "" ? "" : parseFloat(e.target.value))}
+                    placeholder="e.g. 100.498800"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Allowed Radius (m)</label>
+                  <input
+                    type="number" min={50} max={5000} step={50}
+                    value={form.radiusMeters}
+                    onChange={(e) => set("radiusMeters", e.target.value === "" ? "" : parseInt(e.target.value))}
+                    placeholder="200"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              {(form.lat || form.lng) ? (
+                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                  <Check size={11} /> Coordinates set — employees can clock in within {form.radiusMeters || 200}m of this point
+                </p>
+              ) : (
+                <p className="text-xs text-amber-600 mt-1.5">No coordinates set — GPS check will be skipped for clock-in</p>
+              )}
             </div>
           </section>
 

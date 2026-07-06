@@ -141,12 +141,13 @@ export default function ClockPage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // Demo GPS fallback when denied
-  const effectiveGps = (gpsStatus === "denied" && me?.branch)
+  // Demo GPS fallback when denied — only use branch coords if they're actually set
+  const effectiveGps = (gpsStatus === "denied" && me?.branch && (me.branch.lat !== 0 || me.branch.lng !== 0))
     ? { lat: me.branch.lat + (Math.random() - 0.5) * 0.001, lng: me.branch.lng + (Math.random() - 0.5) * 0.001, accuracy: 999, isDemo: true }
     : gps;
 
-  const dist = (effectiveGps && me?.branch)
+  const branchGpsSet = !!(me?.branch && (me.branch.lat !== 0 || me.branch.lng !== 0));
+  const dist = (effectiveGps && me?.branch && branchGpsSet)
     ? Math.round(haversineMeters(effectiveGps.lat, effectiveGps.lng, me.branch.lat, me.branch.lng))
     : null;
 
@@ -334,13 +335,18 @@ export default function ClockPage() {
               )}
             </div>
 
-            {dist !== null && branch ? (
+            {!branchGpsSet ? (
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-500">
+                <MapPin size={15} className="text-slate-400 shrink-0" />
+                Branch GPS not configured — clock-in allowed from any location
+              </div>
+            ) : dist !== null ? (
               <GpsBadge dist={dist} radius={radius} isDemo={effectiveGps?.isDemo} />
             ) : (
               <div className="h-10 bg-slate-50 rounded-xl animate-pulse" />
             )}
 
-            {branch && (
+            {branchGpsSet && branch && (
               <p className="text-xs text-slate-400 text-center">
                 Store: {branch.lat.toFixed(4)}°N, {branch.lng.toFixed(4)}°E · Allowed radius: {radius}m
               </p>
