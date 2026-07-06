@@ -1,6 +1,7 @@
 import { Header } from "@/components/layout/Header";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
@@ -212,6 +213,11 @@ export default async function DashboardPage() {
               Leave request management coming soon.
             </div>
           </div>
+        )}
+
+        {/* Today's To-do List — staff widget */}
+        {isEnabled(widgets, "shift_todos") && (
+          <TodayTodosWidget employeeId={user?.employeeRecordId} />
         )}
 
         {/* Empty state */}

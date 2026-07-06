@@ -23,6 +23,7 @@ export const ALL_WIDGETS: WidgetDef[] = [
   { id: "payroll",         label: "Payroll Summary",     description: "Upcoming payroll runs table",                   type: "table", size: "full" },
   { id: "tasks",           label: "My Tasks",            description: "Tasks assigned to the current user",            type: "list",  size: "md" },
   { id: "leave_requests",  label: "Leave Requests",      description: "Pending leave requests to review",              type: "list",  size: "md" },
+  { id: "shift_todos",     label: "Today's To-do List",  description: "Shift to-do tasks for today (staff view)",      type: "list",  size: "md" },
 ];
 
 const mkDefault = (ids: string[]): WidgetConfig[] =>
@@ -31,6 +32,6 @@ const mkDefault = (ids: string[]): WidgetConfig[] =>
 export const DEFAULT_WIDGETS: Record<string, WidgetConfig[]> = {
   admin:   mkDefault(["revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","payroll","tasks","leave_requests"]),
   manager: mkDefault(["revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","tasks","leave_requests"]),
-  staff:   mkDefault(["inventory_value","stock_alerts","tasks"]),
+  staff:   mkDefault(["shift_todos","inventory_value","stock_alerts","tasks"]),
   viewer:  mkDefault(["revenue","expenses","inventory_value","tasks"]),
 };

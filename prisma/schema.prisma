@@ -146,6 +146,15 @@ model SalesOrder {
   updatedAt   DateTime @updatedAt
 }
 
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model GeneralSetting {
   id        String   @id @default("singleton")
   data      Json
@@ -227,6 +236,7 @@ model Employee {
   position          String
   employmentType    String        @default("full-time")
   branchId          String?
+  branchIds         Json?
   hireDate          String?
   probationEndDate  String?
   managerId         String?
@@ -288,4 +298,32 @@ model Task {
   shiftLabel   String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model ShiftTodo {
+  id              String         @id @default(cuid())
+  shiftId         String
+  name            String
+  sequence        Int            @default(0)
+  expectedMinutes Int            @default(30)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  logs            ShiftTodoLog[]
+
+  @@index([shiftId])
+}
+
+model ShiftTodoLog {
+  id          String    @id @default(cuid())
+  todoId      String
+  todo        ShiftTodo @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  date        String
+  employeeId  String
+  completedAt DateTime?
+  photoUrl    String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([todoId, date, employeeId])
 }

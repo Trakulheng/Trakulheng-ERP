@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import {
   Employee, EmployeeStatus, EmploymentType, BankAccount, SsfStatus,
-  DEPARTMENTS, BANKS, EMPLOYMENT_TYPES, SSF_FUND_TYPES, SSF_HOSPITALS,
+  BANKS, EMPLOYMENT_TYPES, SSF_FUND_TYPES, SSF_HOSPITALS,
 } from "@/lib/mock-data";
 import { useBranch } from "@/context/BranchContext";
 import { formatCurrency } from "@/lib/utils";
@@ -47,7 +47,7 @@ interface EmpForm {
   phone: string; personalEmail: string;
   department: string; position: string;
   employmentType: EmploymentType;
-  branchId: string; hireDate: string; probationEndDate: string;
+  branchIds: string[]; hireDate: string; probationEndDate: string;
   managerId: string; workEmail: string;
   salary: number | "";
   bankAccounts: BankAccountEntry[];
@@ -67,9 +67,9 @@ const EMPTY_FORM: EmpForm = {
   firstName: "", lastName: "", firstNameTh: "", lastNameTh: "",
   nickname: "", gender: "male", dob: "", nationalId: "",
   phone: "", personalEmail: "",
-  department: DEPARTMENTS[0], position: "",
+  department: "", position: "",
   employmentType: "full-time",
-  branchId: "", hireDate: "", probationEndDate: "",
+  branchIds: [], hireDate: "", probationEndDate: "",
   managerId: "", workEmail: "",
   salary: "",
   bankAccounts: [{ ...emptyBankAccount("ba-0"), isMain: true }],
@@ -161,6 +161,14 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
   const isEdit = !!initial;
   const { branches } = useBranch();
   const [step, setStep] = useState<Step>(1);
+  const [deptList, setDeptList] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/settings/departments")
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setDeptList(d.filter((x: any) => x.status === "active")))
+      .catch(() => {});
+  }, []);
   const photoRef  = useRef<HTMLInputElement>(null);
   const docRef    = useRef<HTMLInputElement>(null);
   const scanIdRef = useRef<HTMLInputElement>(null);
@@ -233,7 +241,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
     department:       initial.department,
     position:         initial.position,
     employmentType:   initial.employmentType,
-    branchId:         initial.branchId          ?? "",
+    branchIds:        (initial as any).branchIds ?? (initial.branchId ? [initial.branchId] : []),
     hireDate:         initial.hireDate,
     probationEndDate: initial.probationEndDate  ?? "",
     managerId:        initial.managerId         ?? "",
@@ -273,6 +281,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
       name,
       salary:       typeof form.salary === "number" ? form.salary : 0,
       bankAccounts: form.bankAccounts,
+      branchId:     form.branchIds[0] ?? undefined,
     } as Employee;
     onSave(saved);
   };
@@ -510,8 +519,15 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Department" required>
                   <select value={form.department} onChange={e => set("department", e.target.value)} className={SELECT}>
-                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    <option value="">— Select department —</option>
+                    {deptList.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                    {deptList.length === 0 && <option disabled>No departments configured</option>}
                   </select>
+                  {deptList.length === 0 && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      <a href="/settings/departments" className="text-blue-500 hover:underline">Add departments in Settings → Departments</a>
+                    </p>
+                  )}
                 </Field>
                 <Field label="Employment Type" required>
                   <select value={form.employmentType} onChange={e => set("employmentType", e.target.value as EmploymentType)} className={SELECT}>
@@ -523,22 +539,53 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
                 <input value={form.position} onChange={e => set("position", e.target.value)}
                   placeholder="e.g. Senior Engineer" className={INPUT} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Branch">
-                  <select value={form.branchId} onChange={e => set("branchId", e.target.value)} className={SELECT}>
-                    <option value="">— Select branch —</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
-                  </select>
-                </Field>
-                <Field label="Reporting Manager">
-                  <select value={form.managerId} onChange={e => set("managerId", e.target.value)} className={SELECT}>
-                    <option value="">— None —</option>
-                    {allEmployees.filter(e => !initial || e.id !== initial.id).map(e => (
-                      <option key={e.id} value={e.id}>{e.name} — {e.position}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
+              <Field label="Branch Assignment">
+                {branches.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-2">No branches configured.</p>
+                ) : (
+                  <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-44 overflow-y-auto">
+                    {branches.map(b => {
+                      const checked = form.branchIds.includes(b.id);
+                      return (
+                        <label key={b.id} className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors",
+                          checked && "bg-blue-50"
+                        )}>
+                          <div className={cn(
+                            "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                            checked ? "bg-blue-600 border-blue-600" : "border-slate-300"
+                          )}>
+                            {checked && <Check size={10} className="text-white" />}
+                          </div>
+                          <input type="checkbox" className="sr-only" checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? form.branchIds.filter(id => id !== b.id)
+                                : [...form.branchIds, b.id];
+                              set("branchIds", next);
+                            }} />
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">{b.code}</span>
+                            <span className="text-sm text-slate-800 truncate">{b.name}</span>
+                            {b.isHeadOffice && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded ml-auto shrink-0">HQ</span>}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {form.branchIds.length > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">{form.branchIds.length} branch{form.branchIds.length !== 1 ? "es" : ""} selected</p>
+                )}
+              </Field>
+              <Field label="Reporting Manager">
+                <select value={form.managerId} onChange={e => set("managerId", e.target.value)} className={SELECT}>
+                  <option value="">— None —</option>
+                  {allEmployees.filter(e => !initial || e.id !== initial.id).map(e => (
+                    <option key={e.id} value={e.id}>{e.name} — {e.position}</option>
+                  ))}
+                </select>
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Hire Date" required>
                   <input type="date" value={form.hireDate} onChange={e => set("hireDate", e.target.value)} className={INPUT} />

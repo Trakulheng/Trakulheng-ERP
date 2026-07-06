@@ -43,47 +43,7 @@ interface Redemption {
   notes?: string;
 }
 
-// ─── Extended seed data (add pending + cancelled examples) ────────────────────
-
-const extraRedemptions: Redemption[] = [
-  {
-    id: "RD-005", customerId: "CRM-002", customerName: "Somchai Rattana",
-    rewardId: "GIFT-002", rewardName: "DDK Safety Vest", pointsUsed: 800,
-    date: "2026-07-02", status: "pending", processedBy: "System",
-  },
-  {
-    id: "RD-006", customerId: "CRM-004", customerName: "Maria Santos",
-    rewardId: "GIFT-006", rewardName: "100 Bonus Points", pointsUsed: 1000,
-    date: "2026-07-01", status: "pending", processedBy: "Staff",
-    notes: "Customer in-store pickup",
-  },
-  {
-    id: "RD-007", customerId: "CRM-007", customerName: "Wiroj Chaiyasit",
-    rewardId: "GIFT-003", rewardName: "10% Discount Voucher", pointsUsed: 500,
-    date: "2026-06-28", status: "cancelled", processedBy: "Admin",
-    notes: "Customer changed mind — points restored",
-  },
-  {
-    id: "RD-008", customerId: "CRM-001", customerName: "John Smith",
-    rewardId: "GIFT-004", rewardName: "Free Delivery (1 Order)", pointsUsed: 300,
-    date: "2026-06-25", status: "completed", processedBy: "Admin",
-  },
-  {
-    id: "RD-009", customerId: "CRM-008", customerName: "Naruemon Phakdee",
-    rewardId: "GIFT-005", rewardName: "Premium Tool Set", pointsUsed: 2000,
-    date: "2026-06-20", status: "pending", processedBy: "Staff",
-  },
-  {
-    id: "RD-010", customerId: "CRM-003", customerName: "Ahmed Hassan",
-    rewardId: "GIFT-001", rewardName: "DDK Branded Mug", pointsUsed: 200,
-    date: "2026-06-18", status: "completed", processedBy: "System",
-  },
-];
-
-const ALL_REDEMPTIONS: Redemption[] = [
-  ...(seedRedemptions as Redemption[]),
-  ...extraRedemptions,
-];
+const ALL_REDEMPTIONS: Redemption[] = [...(seedRedemptions as Redemption[])];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

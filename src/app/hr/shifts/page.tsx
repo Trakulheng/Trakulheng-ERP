@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { useBranch } from "@/context/BranchContext";
 import {
@@ -33,9 +33,21 @@ import {
   Timer,
   CalendarCheck,
   Hash,
+  ClipboardList,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ShiftTodo {
+  id: string;
+  shiftId: string;
+  name: string;
+  sequence: number;
+  expectedMinutes: number;
+}
 
 type ShiftColor = "blue" | "amber" | "violet" | "emerald";
 type ViewMode = "week" | "month";
@@ -218,18 +230,132 @@ function KpiCard({ label, value, sub, icon: Icon, color = "blue" }: {
   );
 }
 
+// ─── TodoModal ────────────────────────────────────────────────────────────────
+
+function TodoModal({
+  shiftId,
+  initial,
+  onClose,
+  onSave,
+}: {
+  shiftId: string;
+  initial?: ShiftTodo;
+  onClose: () => void;
+  onSave: (todo: ShiftTodo) => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [hours, setHours] = useState(Math.floor((initial?.expectedMinutes ?? 30) / 60));
+  const [mins, setMins] = useState((initial?.expectedMinutes ?? 30) % 60);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const totalMinutes = hours * 60 + mins;
+
+  async function handleSave() {
+    if (!name.trim()) { setError("Name is required."); return; }
+    setSaving(true); setError("");
+    try {
+      const url = initial
+        ? `/api/hr/shifts/todos/${initial.id}`
+        : `/api/hr/shifts/${shiftId}/todos`;
+      const res = await fetch(url, {
+        method: initial ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), expectedMinutes: totalMinutes }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to save."); return; }
+      onSave(data);
+    } catch {
+      setError("Something went wrong.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">
+            {initial ? "Edit To-do" : "Add To-do"}
+          </h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
+            <X size={15} className="text-slate-500" />
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Task Name *</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Clean workstation"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Expected Time</label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <input
+                  type="number" min={0} max={23} value={hours}
+                  onChange={(e) => setHours(Math.max(0, Math.min(23, Number(e.target.value))))}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                />
+                <p className="text-center text-[10px] text-slate-400 mt-0.5">hours</p>
+              </div>
+              <span className="text-slate-400 font-bold">:</span>
+              <div className="flex-1">
+                <input
+                  type="number" min={0} max={59} step={5} value={mins}
+                  onChange={(e) => setMins(Math.max(0, Math.min(59, Number(e.target.value))))}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                />
+                <p className="text-center text-[10px] text-slate-400 mt-0.5">minutes</p>
+              </div>
+            </div>
+            {totalMinutes > 0 && (
+              <p className="text-xs text-slate-400 mt-1">
+                = {hours > 0 ? `${hours}h ` : ""}{mins > 0 ? `${mins}m` : ""}
+              </p>
+            )}
+          </div>
+          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
+        </div>
+        <div className="flex gap-3 px-5 py-4 border-t border-slate-100">
+          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-700">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !name.trim()}
+            className="flex-1 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+          >
+            {saving ? "Saving…" : initial ? "Save Changes" : "Add To-do"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ShiftCard (Templates) ────────────────────────────────────────────────────
 
 function ShiftCard({
-  shift, assignedEmps, patterns, onEdit, onDelete,
+  shift, assignedEmps, patterns, todos, onEdit, onDelete, onTodoChange,
 }: {
   shift: Shift;
   assignedEmps: typeof allEmployees;
   patterns: EmployeeShift[];
+  todos: ShiftTodo[];
   onEdit: (s: Shift) => void;
   onDelete: (id: string) => void;
+  onTodoChange: (shiftId: string, todos: ShiftTodo[]) => void;
 }) {
   const [showRoster, setShowRoster] = useState(false);
+  const [showTodos, setShowTodos] = useState(false);
+  const [todoModal, setTodoModal] = useState<{ open: true; editing?: ShiftTodo } | null>(null);
   const c = shiftColorMap[shift.color];
 
   // Recurring days this shift is used
@@ -332,6 +458,103 @@ function ShiftCard({
             )}
           </div>
         )}
+
+        {/* To-do list section */}
+        <div className="border-t border-slate-100 pt-3 mt-1">
+          <button
+            onClick={() => setShowTodos((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 font-medium w-full"
+          >
+            <ClipboardList size={11} />
+            <span className="flex-1 text-left">
+              To-do List{todos.length > 0 ? ` (${todos.length})` : ""}
+            </span>
+            {showTodos ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+          </button>
+
+          {showTodos && (
+            <div className="mt-2 space-y-1">
+              {todos.length === 0 && (
+                <p className="text-xs text-slate-400 italic text-center py-1">No to-dos yet.</p>
+              )}
+              {todos.map((todo, idx) => (
+                <div key={todo.id} className="flex items-center gap-1.5 group">
+                  <span className="text-[10px] text-slate-300 font-mono w-4 text-right shrink-0">{todo.sequence}</span>
+                  <span className="flex-1 text-xs text-slate-700 truncate">{todo.name}</span>
+                  <span className="text-[10px] text-slate-400 shrink-0">
+                    {todo.expectedMinutes < 60
+                      ? `${todo.expectedMinutes}m`
+                      : `${Math.floor(todo.expectedMinutes / 60)}h${todo.expectedMinutes % 60 ? ` ${todo.expectedMinutes % 60}m` : ""}`}
+                  </span>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      onClick={async () => {
+                        if (idx === 0) return;
+                        const prev = todos[idx - 1];
+                        await Promise.all([
+                          fetch(`/api/hr/shifts/todos/${todo.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sequence: prev.sequence }) }),
+                          fetch(`/api/hr/shifts/todos/${prev.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sequence: todo.sequence }) }),
+                        ]);
+                        const next = [...todos];
+                        next[idx] = { ...todo, sequence: prev.sequence };
+                        next[idx - 1] = { ...prev, sequence: todo.sequence };
+                        onTodoChange(shift.id, next.sort((a, b) => a.sequence - b.sequence));
+                      }}
+                      disabled={idx === 0}
+                      className="p-0.5 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-20"
+                      title="Move up"
+                    >
+                      <ChevronUp size={9} />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (idx === todos.length - 1) return;
+                        const next_ = todos[idx + 1];
+                        await Promise.all([
+                          fetch(`/api/hr/shifts/todos/${todo.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sequence: next_.sequence }) }),
+                          fetch(`/api/hr/shifts/todos/${next_.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sequence: todo.sequence }) }),
+                        ]);
+                        const nextArr = [...todos];
+                        nextArr[idx] = { ...todo, sequence: next_.sequence };
+                        nextArr[idx + 1] = { ...next_, sequence: todo.sequence };
+                        onTodoChange(shift.id, nextArr.sort((a, b) => a.sequence - b.sequence));
+                      }}
+                      disabled={idx === todos.length - 1}
+                      className="p-0.5 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-20"
+                      title="Move down"
+                    >
+                      <ChevronDown size={9} />
+                    </button>
+                    <button
+                      onClick={() => setTodoModal({ open: true, editing: todo })}
+                      className="p-0.5 rounded hover:bg-slate-100 text-slate-400"
+                      title="Edit"
+                    >
+                      <Pencil size={9} />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await fetch(`/api/hr/shifts/todos/${todo.id}`, { method: "DELETE" });
+                        onTodoChange(shift.id, todos.filter((t) => t.id !== todo.id));
+                      }}
+                      className="p-0.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500"
+                      title="Delete"
+                    >
+                      <Trash2 size={9} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                onClick={() => setTodoModal({ open: true })}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium mt-1 w-full"
+              >
+                <Plus size={11} /> Add to-do
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Actions footer */}
@@ -350,6 +573,21 @@ function ShiftCard({
           <Trash2 size={12} /> Delete
         </button>
       </div>
+
+      {todoModal && (
+        <TodoModal
+          shiftId={shift.id}
+          initial={todoModal.editing}
+          onClose={() => setTodoModal(null)}
+          onSave={(saved) => {
+            const updated = todoModal.editing
+              ? todos.map((t) => (t.id === saved.id ? saved : t))
+              : [...todos, saved].sort((a, b) => a.sequence - b.sequence);
+            onTodoChange(shift.id, updated);
+            setTodoModal(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1304,6 +1542,7 @@ export default function ShiftsPage() {
 
   const [tab, setTab] = useState<MainTab>("calendar");
   const [shiftList, setShiftList] = useState<Shift[]>([...initialShifts]);
+  const [todosByShift, setTodosByShift] = useState<Record<string, ShiftTodo[]>>({});
   const [patterns, setPatterns] = useState<EmployeeShift[]>([...initialAssignments]);
   const [overrides, setOverrides] = useState<CalendarEntry[]>(initialOverrides);
   const [requests, setRequests] = useState<ChangeRequest[]>(initialRequests);
@@ -1336,11 +1575,27 @@ export default function ShiftsPage() {
     return map;
   }, [shiftList, branchEmps, branchPatterns]);
 
+  // Fetch todos for all shifts on mount and when shiftList changes
+  useEffect(() => {
+    shiftList.forEach((s) => {
+      fetch(`/api/hr/shifts/${s.id}/todos`)
+        .then((r) => r.ok ? r.json() : [])
+        .then((data: ShiftTodo[]) =>
+          setTodosByShift((prev) => ({ ...prev, [s.id]: data }))
+        )
+        .catch(() => {});
+    });
+  }, [shiftList.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const prevWeek = () => setMonday((d) => addDays(d, -7));
   const nextWeek = () => setMonday((d) => addDays(d, 7));
   const prevMonth = () => setCalMonth((m) => { const d = new Date(m.year, m.month - 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; });
   const nextMonth = () => setCalMonth((m) => { const d = new Date(m.year, m.month + 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; });
   const goToday = () => { const d = parseDate(TODAY); setMonday(getMondayOf(d)); setCalMonth({ year: d.getFullYear(), month: d.getMonth() }); };
+
+  const handleTodoChange = (shiftId: string, todos: ShiftTodo[]) => {
+    setTodosByShift((prev) => ({ ...prev, [shiftId]: todos }));
+  };
 
   const handleSaveShift = (shift: Shift) => {
     setShiftList((prev) => {
@@ -1480,8 +1735,10 @@ export default function ShiftsPage() {
                 <ShiftCard key={s.id} shift={s}
                   assignedEmps={shiftEmpMap[s.id] ?? []}
                   patterns={branchPatterns}
+                  todos={todosByShift[s.id] ?? []}
                   onEdit={(sh) => setShiftModal({ mode: "edit", data: sh })}
                   onDelete={handleDeleteShift}
+                  onTodoChange={handleTodoChange}
                 />
               ))}
               <button onClick={() => setShiftModal({ mode: "add" })}
