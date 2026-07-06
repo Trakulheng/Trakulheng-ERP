@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { employees, BranchEmployeeRole } from "@/lib/mock-data";
+import { BranchEmployeeRole } from "@/lib/mock-data";
 import { useBranch } from "@/context/BranchContext";
 import {
   MapPin, Phone, Mail, Users, Building2, Plus, Pencil, Trash2, X,
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 // ── Types ──────────────────────────────────────────────────────────────
 
 type Branch = import("@/lib/mock-data").Branch;
-type Employee = (typeof employees)[number];
+type Employee = { id: string; name: string; position: string; department: string };
 type UserRole = "admin" | "owner" | "manager" | "employee";
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -47,10 +47,11 @@ function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
 interface EmpComboboxProps {
   value: string;
   onChange: (id: string, name: string) => void;
+  employees: Employee[];
   placeholder?: string;
 }
 
-function EmpCombobox({ value, onChange, placeholder = "Search employee..." }: EmpComboboxProps) {
+function EmpCombobox({ value, onChange, employees, placeholder = "Search employee..." }: EmpComboboxProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen]   = useState(false);
   const ref               = useRef<HTMLDivElement>(null);
@@ -62,7 +63,7 @@ function EmpCombobox({ value, onChange, placeholder = "Search employee..." }: Em
     return employees.filter(
       (e) => e.name.toLowerCase().includes(q) || e.department?.toLowerCase().includes(q) || e.position?.toLowerCase().includes(q)
     ).slice(0, 6);
-  }, [query]);
+  }, [query, employees]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -213,11 +214,16 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
   const isEdit = !!initial;
   const canStatus = CAN_TOGGLE_STATUS.includes(currentRole);
   const [brandList, setBrandList] = useState<{ id: string; name: string; code: string }[]>([]);
+  const [empList, setEmpList] = useState<Employee[]>([]);
 
   useEffect(() => {
     fetch("/api/settings/brands")
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setBrandList(d.filter((b: any) => b.status === "active")))
+      .catch(() => {});
+    fetch("/api/employees?status=active")
+      .then((r) => r.ok ? r.json() : [])
+      .then((d: any[]) => setEmpList(d.map((e) => ({ id: e.id, name: e.name, position: e.position ?? "", department: e.department ?? "" }))))
       .catch(() => {});
   }, []);
 
@@ -258,11 +264,11 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
 
   const availableEmps = useMemo(() => {
     const q = empSearch.toLowerCase();
-    return employees.filter((e) =>
+    return empList.filter((e) =>
       !form.assignedEmployees.some((ae) => ae.id === e.id) &&
       (e.name.toLowerCase().includes(q) || e.position?.toLowerCase().includes(q) || e.department?.toLowerCase().includes(q))
     ).slice(0, 8);
-  }, [empSearch, form.assignedEmployees]);
+  }, [empSearch, form.assignedEmployees, empList]);
 
   const set = <K extends keyof BranchFormState>(key: K, val: BranchFormState[K]) =>
     setForm((f) => ({ ...f, [key]: val }));
@@ -473,6 +479,7 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
               <EmpCombobox
                 value={form.managerId}
                 onChange={(id, name) => setForm((f) => ({ ...f, managerId: id, manager: name }))}
+                employees={empList}
                 placeholder="Search from employee list..."
               />
             </div>
@@ -626,7 +633,7 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {form.assignedEmployees.map((ae) => {
-                      const emp = employees.find((e) => e.id === ae.id);
+                      const emp = empList.find((e) => e.id === ae.id);
                       if (!emp) return null;
                       return (
                         <tr key={ae.id} className="hover:bg-slate-50/50">
