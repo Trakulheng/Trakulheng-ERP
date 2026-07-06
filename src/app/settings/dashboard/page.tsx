@@ -30,9 +30,10 @@ export default function DashboardSettingsPage() {
     staff:   [...DEFAULT_WIDGETS.staff],
     viewer:  [...DEFAULT_WIDGETS.viewer],
   });
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [saving,    setSaving]    = useState(false);
+  const [saved,     setSaved]     = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [loading,   setLoading]   = useState(true);
 
   // DnD state
   const dragIdx  = useRef<number | null>(null);
@@ -92,17 +93,25 @@ export default function DashboardSettingsPage() {
   };
 
   const handleSave = async () => {
-    setSaving(true);
+    setSaving(true); setSaveError("");
     try {
-      await fetch("/api/settings/dashboard-config", {
+      const res = await fetch("/api/settings/dashboard-config", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ role: activeRole, widgets: configs[activeRole] }),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch {}
-    setSaving(false);
+      if (!res.ok) {
+        const d = await res.json();
+        setSaveError(d.error ?? "Failed to save layout.");
+      } else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } catch {
+      setSaveError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -146,6 +155,9 @@ export default function DashboardSettingsPage() {
                 {saved ? "Saved!" : saving ? "Saving…" : "Save Layout"}
               </button>
             </div>
+            {saveError && (
+              <p className="text-xs text-red-600 mt-2 text-right">{saveError}</p>
+            )}
           </div>
 
           {loading ? (

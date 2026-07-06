@@ -1177,6 +1177,8 @@ export default function EmployeesPage() {
   const [search,     setSearch]     = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<"all" | EmployeeStatus>("all");
+  const [toast,      setToast]      = useState("");
+  const [empSaving,  setEmpSaving]  = useState(false);
 
   useEffect(() => {
     fetch("/api/employees")
@@ -1205,6 +1207,8 @@ export default function EmployeesPage() {
   const depts       = Array.from(new Set(list.map(e => e.department))).sort();
 
   const handleSave = async (emp: Employee) => {
+    if (empSaving) return;
+    setEmpSaving(true);
     try {
       const isNew = !editEmp;
       const url   = isNew ? "/api/employees" : `/api/employees/${emp.id}`;
@@ -1213,18 +1217,23 @@ export default function EmployeesPage() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(emp),
       });
-      if (!res.ok) throw new Error("Save failed");
-      const saved: Employee = await res.json();
-      setList(prev => {
-        if (isNew) return [...prev, saved];
-        return prev.map(e => e.id === saved.id ? saved : e);
-      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.error ?? "Failed to save employee. Please try again.");
+        setTimeout(() => setToast(""), 4000);
+        return;
+      }
+      const saved: Employee = data;
+      setList(prev => isNew ? [...prev, saved] : prev.map(e => e.id === saved.id ? saved : e));
+      setShowAdd(false);
+      setEditEmp(undefined);
+      setViewEmp(undefined);
     } catch {
-      // silently fail — could add toast here
+      setToast("Network error. Please try again.");
+      setTimeout(() => setToast(""), 4000);
+    } finally {
+      setEmpSaving(false);
     }
-    setShowAdd(false);
-    setEditEmp(undefined);
-    setViewEmp(undefined);
   };
 
   const handleDelete = async (id: string) => {
@@ -1445,6 +1454,13 @@ export default function EmployeesPage() {
           onEdit={() => { setEditEmp(viewEmp); setViewEmp(undefined); setShowAdd(true); }}
           onDelete={() => setDeleteId(viewEmp.id)}
         />
+      )}
+
+      {/* Error toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-xl">
+          {toast}
+        </div>
       )}
 
       {/* Delete confirmation */}
