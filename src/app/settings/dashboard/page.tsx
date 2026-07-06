@@ -34,6 +34,7 @@ export default function DashboardSettingsPage() {
   const [saved,     setSaved]     = useState(false);
   const [saveError, setSaveError] = useState("");
   const [loading,   setLoading]   = useState(true);
+  const [isAdmin,   setIsAdmin]   = useState(true);
 
   // DnD state
   const dragIdx  = useRef<number | null>(null);
@@ -41,12 +42,14 @@ export default function DashboardSettingsPage() {
 
   useEffect(() => {
     (async () => {
-      const results = await Promise.all(
-        ROLES.map((r) =>
+      const [meRes, ...configResults] = await Promise.all([
+        fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
+        ...ROLES.map((r) =>
           fetch(`/api/settings/dashboard-config?role=${r.id}`)
             .then((res) => res.ok ? res.json() : null)
-        )
-      );
+        ),
+      ]);
+      setIsAdmin(meRes?.role === "admin");
       function mergeWidgets(saved: WidgetConfig[] | null | undefined, role: string): WidgetConfig[] {
         if (!saved) return [...DEFAULT_WIDGETS[role]];
         const defaults = DEFAULT_WIDGETS[role] ?? [];
@@ -55,10 +58,10 @@ export default function DashboardSettingsPage() {
         return newWidgets.length > 0 ? [...saved, ...newWidgets] : saved;
       }
       setConfigs({
-        admin:   mergeWidgets(results[0]?.widgets, "admin"),
-        manager: mergeWidgets(results[1]?.widgets, "manager"),
-        staff:   mergeWidgets(results[2]?.widgets, "staff"),
-        viewer:  mergeWidgets(results[3]?.widgets, "viewer"),
+        admin:   mergeWidgets(configResults[0]?.widgets, "admin"),
+        manager: mergeWidgets(configResults[1]?.widgets, "manager"),
+        staff:   mergeWidgets(configResults[2]?.widgets, "staff"),
+        viewer:  mergeWidgets(configResults[3]?.widgets, "viewer"),
       });
       setLoading(false);
     })();
@@ -144,23 +147,29 @@ export default function DashboardSettingsPage() {
 
         {/* Widget list */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">
-                {ROLES.find((r) => r.id === activeRole)?.label} Dashboard Widgets
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Drag to reorder · Toggle to show/hide</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={handleReset}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
-                <RotateCcw size={12} /> Reset defaults
-              </button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {saved ? <Check size={12} /> : <Save size={12} />}
-                {saved ? "Saved!" : saving ? "Saving…" : "Save Layout"}
-              </button>
+          <div className="px-5 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {ROLES.find((r) => r.id === activeRole)?.label} Dashboard Widgets
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Drag to reorder · Toggle to show/hide</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={handleReset}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                  <RotateCcw size={12} /> Reset defaults
+                </button>
+                {isAdmin ? (
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    {saved ? <Check size={12} /> : <Save size={12} />}
+                    {saved ? "Saved!" : saving ? "Saving…" : "Save Layout"}
+                  </button>
+                ) : (
+                  <span className="text-xs text-slate-400 italic">View only — admin access required to save</span>
+                )}
+              </div>
             </div>
             {saveError && (
               <p className="text-xs text-red-600 mt-2 text-right">{saveError}</p>
