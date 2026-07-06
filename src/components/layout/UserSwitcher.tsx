@@ -101,9 +101,7 @@ export function UserSwitcher({ onClose }: Props) {
 
       setStep("success");
       setTimeout(() => {
-        router.push("/");
-        router.refresh();
-        onClose();
+        window.location.href = "/";
       }, 1200);
     } catch {
       setError("Something went wrong. Please try again.");

@@ -97,6 +97,23 @@ const navItems = [
   },
 ];
 
+const AVATAR_COLOR: Record<string, string> = {
+  admin:   "bg-blue-600",
+  manager: "bg-violet-600",
+  staff:   "bg-emerald-600",
+  viewer:  "bg-slate-500",
+};
+
+function initials(name: string | null, email: string) {
+  if (name) {
+    const parts = name.trim().split(" ");
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : name.slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
+
 interface Me { name: string | null; email: string; role: string; menuOrder?: string[] | null }
 
 export function Sidebar() {
@@ -278,8 +295,8 @@ export function Sidebar() {
         {/* User area */}
         <div className={cn("border-t px-4 py-3 flex-shrink-0", S.footerBorder)}>
           <div className="flex items-center gap-3">
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", S.avatar)}>
-              {me?.name ? me.name[0].toUpperCase() : me?.email?.[0]?.toUpperCase() ?? "?"}
+            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", AVATAR_COLOR[me?.role ?? ""] ?? "bg-slate-500")}>
+              {me ? initials(me.name, me.email) : "?"}
             </div>
             <div className="flex-1 min-w-0">
               <p className={cn("text-sm font-medium truncate", S.userName)}>
