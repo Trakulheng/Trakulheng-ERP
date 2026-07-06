@@ -3,13 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
 import { useBranch } from "@/context/BranchContext";
-import {
-  employees,
-  employeeShifts,
-  attendanceRecords as initialAttendanceRecords,
-  shifts,
-} from "@/lib/mock-data";
-import { haversineDistance, formatDistance } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 import {
   Download,
@@ -21,28 +14,54 @@ import {
   LogIn,
   LogOut,
   X,
+  RefreshCw,
 } from "lucide-react";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AttendanceStatus = "clocked-in" | "completed" | "late" | "not-yet";
+
+interface Employee {
+  id: string;
+  name: string;
+  department: string;
+  position: string;
+}
+
+interface ShiftTemplate {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  color: string;
+}
+
+interface ShiftAssignment {
+  employeeId: string;
+  shiftId: string | null;
+  date: string;
+}
 
 interface AttendanceRecord {
   id: string;
   employeeId: string;
   branchId: string;
   date: string;
-  shiftId: string;
-  clockIn: string | null;
+  shiftId: string | null;
+  clockInTime: string | null;
+  clockOutTime: string | null;
   clockInLat: number | null;
   clockInLng: number | null;
   clockInDistance: number | null;
-  clockOut: string | null;
   clockOutLat: number | null;
   clockOutLng: number | null;
   clockOutDistance: number | null;
+  gpsValid: boolean;
   status: AttendanceStatus;
-  workMinutes: number | null;
+  totalMinutes: number | null;
+  overtimeMinutes: number | null;
+  lateMinutes: number | null;
 }
 
 type GpsStatus = "fetching" | "success" | "error";
@@ -61,21 +80,24 @@ interface ModalState {
   gps: GpsState | null;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(m: number): string {
+  return m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`;
 }
 
 function formatHHMM(date: Date): string {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
-function calcWorkMinutes(clockIn: string, clockOut: string): number {
-  const inMin = timeToMinutes(clockIn);
-  const outMin = timeToMinutes(clockOut);
-  return outMin >= inMin ? outMin - inMin : 24 * 60 - inMin + outMin;
 }
 
 function formatWorkHours(minutes: number): string {
@@ -84,7 +106,7 @@ function formatWorkHours(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+// ─── StatusBadge ──────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: AttendanceStatus }) {
   const map: Record<AttendanceStatus, { label: string; cls: string }> = {
@@ -101,16 +123,18 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
   );
 }
 
-// ─── Shift badge ──────────────────────────────────────────────────────────────
+// ─── ShiftBadge ───────────────────────────────────────────────────────────────
 
 const shiftColorMap: Record<string, string> = {
   blue:    "bg-blue-100 text-blue-700",
   amber:   "bg-amber-100 text-amber-700",
   violet:  "bg-violet-100 text-violet-700",
   emerald: "bg-emerald-100 text-emerald-700",
+  red:     "bg-red-100 text-red-700",
+  teal:    "bg-teal-100 text-teal-700",
 };
 
-function ShiftBadge({ shift }: { shift: { name: string; startTime: string; endTime: string; color: string } }) {
+function ShiftBadge({ shift }: { shift: ShiftTemplate }) {
   return (
     <span className={cn("inline-flex flex-col items-start px-2 py-0.5 rounded text-xs font-medium leading-tight", shiftColorMap[shift.color] ?? "bg-slate-100 text-slate-600")}>
       <span>{shift.name}</span>
@@ -119,7 +143,7 @@ function ShiftBadge({ shift }: { shift: { name: string; startTime: string; endTi
   );
 }
 
-// ─── GPS distance badge ───────────────────────────────────────────────────────
+// ─── DistanceBadge ────────────────────────────────────────────────────────────
 
 function DistanceBadge({ meters, radius }: { meters: number; radius: number }) {
   const ok = meters <= radius;
@@ -136,17 +160,47 @@ function DistanceBadge({ meters, radius }: { meters: number; radius: number }) {
 export default function AttendancePage() {
   const { activeBranch } = useBranch();
 
-  const [records, setRecords] = useState<AttendanceRecord[]>(
-    initialAttendanceRecords.map((r) => ({ ...r, status: r.status as AttendanceStatus }))
-  );
-  const [now, setNow] = useState(new Date());
-  const [modal, setModal] = useState<ModalState | null>(null);
+  const [employees, setEmployees]     = useState<Employee[]>([]);
+  const [shifts, setShifts]           = useState<ShiftTemplate[]>([]);
+  const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
+  const [records, setRecords]         = useState<AttendanceRecord[]>([]);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
+  const [now, setNow]                 = useState(new Date());
+  const [modal, setModal]             = useState<ModalState | null>(null);
+
+  const today = new Date().toISOString().split("T")[0];
 
   // Live clock
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Fetch all data when branch changes
+  const fetchAll = useCallback(async () => {
+    if (!activeBranch) return;
+    setPageLoading(true);
+    try {
+      const [empRes, shiftRes, assignRes, recRes] = await Promise.all([
+        fetch(`/api/employees?branchId=${activeBranch.id}&status=active`),
+        fetch(`/api/hr/shifts?branchId=${activeBranch.id}`),
+        fetch(`/api/hr/shifts/assignments?branchId=${activeBranch.id}&from=${today}&to=${today}`),
+        fetch(`/api/hr/attendance?branchId=${activeBranch.id}&date=${today}`),
+      ]);
+      const [empData, shiftData, assignData, recData] = await Promise.all([
+        empRes.json(), shiftRes.json(), assignRes.json(), recRes.json(),
+      ]);
+      if (Array.isArray(empData))    setEmployees(empData);
+      if (Array.isArray(shiftData))  setShifts(shiftData);
+      if (Array.isArray(assignData)) setAssignments(assignData);
+      if (Array.isArray(recData))    setRecords(recData);
+    } finally {
+      setPageLoading(false);
+    }
+  }, [activeBranch, today]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   if (!activeBranch) {
     return (
@@ -159,39 +213,37 @@ export default function AttendancePage() {
     );
   }
 
-  // Build employee list for activeBranch × today's day of week
-  const todayDow = now.getDay(); // 0=Sun
-  const branchAssignments = employeeShifts.filter(
-    (es) => es.branchId === activeBranch.id && es.daysOfWeek.includes(todayDow)
-  );
+  // Build display rows
+  const assignedIds = new Set(assignments.map((a) => a.employeeId));
+  const recordIds   = new Set(records.map((r) => r.employeeId));
+  const allIds      = new Set([...assignedIds, ...recordIds]);
 
-  const rows = branchAssignments.map((es) => {
-    const emp = employees.find((e) => e.id === es.employeeId)!;
-    const shift = shifts.find((s) => s.id === es.shiftId)!;
-    const record = records.find((r) => r.employeeId === es.employeeId && r.branchId === activeBranch.id) ?? null;
+  const rows = employees
+    .filter((e) => allIds.has(e.id))
+    .map((emp) => {
+      const assignment = assignments.find((a) => a.employeeId === emp.id) ?? null;
+      const shift      = assignment?.shiftId ? shifts.find((s) => s.id === assignment.shiftId) ?? null : null;
+      const record     = records.find((r) => r.employeeId === emp.id) ?? null;
 
-    let status: AttendanceStatus = "not-yet";
-    if (record) {
-      status = record.status;
-    } else {
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-      const startMin = timeToMinutes(shift.startTime) + 15;
-      if (nowMin > startMin) status = "late";
-    }
+      let displayStatus: AttendanceStatus = "not-yet";
+      if (record) {
+        displayStatus = record.status as AttendanceStatus;
+      } else if (shift) {
+        const nowMin   = now.getHours() * 60 + now.getMinutes();
+        const [sh, sm] = shift.startTime.split(":").map(Number);
+        if (nowMin > sh * 60 + sm + 15) displayStatus = "late";
+      }
 
-    return { es, emp, shift, record, status };
-  });
+      return { emp, shift, assignment, record, displayStatus };
+    });
 
-  // Summary
-  const totalCount = rows.length;
-  const clockedIn  = rows.filter((r) => r.status === "clocked-in").length;
-  const lateCount  = rows.filter((r) => r.status === "late" && !r.record).length
-    + rows.filter((r) => r.record?.status === "late").length;
-  const notYet     = rows.filter((r) => r.status === "not-yet").length;
+  const clockedIn = rows.filter((r) => r.displayStatus === "clocked-in").length;
+  const lateCount = rows.filter((r) => r.displayStatus === "late").length;
+  const notYet    = rows.filter((r) => r.displayStatus === "not-yet").length;
 
-  // ── Open modal ──────────────────────────────────────────────────────────────
+  // ── Open GPS modal ──────────────────────────────────────────────────────────
 
-  const openModal = useCallback((employeeId: string, action: "in" | "out") => {
+  const openModal = (employeeId: string, action: "in" | "out") => {
     const m: ModalState = { employeeId, action, gpsStatus: "fetching", gps: null };
     setModal(m);
 
@@ -217,67 +269,55 @@ export default function AttendancePage() {
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, [activeBranch]);
+  };
 
   // ── Confirm clock in/out ────────────────────────────────────────────────────
 
-  const confirmClock = useCallback(() => {
-    if (!modal || !modal.gps) return;
+  const confirmClock = async () => {
+    if (!modal || !modal.gps || submitting) return;
+    setSubmitting(true);
 
-    const timeStr = formatHHMM(now);
-    const dist = Math.round(haversineDistance(modal.gps.lat, modal.gps.lng, activeBranch.lat, activeBranch.lng));
-    const row = rows.find((r) => r.emp.id === modal.employeeId);
-    if (!row) return;
+    const timeStr  = formatHHMM(now);
+    const row      = rows.find((r) => r.emp.id === modal.employeeId);
+    const endpoint = modal.action === "in" ? "/api/hr/attendance/clock-in" : "/api/hr/attendance/clock-out";
 
-    if (modal.action === "in") {
-      const shiftStart = timeToMinutes(row.shift.startTime);
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-      const isLate = nowMin > shiftStart + 15;
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          branchId:   activeBranch.id,
+          employeeId: modal.employeeId,
+          date:       today,
+          shiftId:    row?.assignment?.shiftId ?? null,
+          ...(modal.action === "in" ? { clockInTime: timeStr } : { clockOutTime: timeStr }),
+          lat: modal.gps.lat,
+          lng: modal.gps.lng,
+        }),
+      });
 
-      const newRecord: AttendanceRecord = {
-        id: `ATT-NEW-${Date.now()}`,
-        employeeId: modal.employeeId,
-        branchId: activeBranch.id,
-        date: new Date().toISOString().split("T")[0],
-        shiftId: row.es.shiftId,
-        clockIn: timeStr,
-        clockInLat: modal.gps.lat,
-        clockInLng: modal.gps.lng,
-        clockInDistance: dist,
-        clockOut: null,
-        clockOutLat: null,
-        clockOutLng: null,
-        clockOutDistance: null,
-        status: isLate ? "late" : "clocked-in",
-        workMinutes: null,
-      };
-      setRecords((prev) => [...prev, newRecord]);
-    } else {
-      setRecords((prev) =>
-        prev.map((r) => {
-          if (r.employeeId !== modal.employeeId) return r;
-          const wm = r.clockIn ? calcWorkMinutes(r.clockIn, timeStr) : null;
-          return {
-            ...r,
-            clockOut: timeStr,
-            clockOutLat: modal.gps!.lat,
-            clockOutLng: modal.gps!.lng,
-            clockOutDistance: dist,
-            status: "completed" as AttendanceStatus,
-            workMinutes: wm,
-          };
-        })
-      );
+      if (res.ok) {
+        const saved = await res.json();
+        setRecords((prev) => {
+          const idx = prev.findIndex((r) => r.employeeId === modal.employeeId && r.date === today);
+          if (idx >= 0) {
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], ...saved };
+            return updated;
+          }
+          return [...prev, saved as AttendanceRecord];
+        });
+      }
+    } finally {
+      setSubmitting(false);
+      setModal(null);
     }
+  };
 
-    setModal(null);
-  }, [modal, now, activeBranch, rows]);
-
-  // ── GPS info in modal ───────────────────────────────────────────────────────
-
-  const modalRow = modal ? rows.find((r) => r.emp.id === modal.employeeId) : null;
+  // ── Modal computed values ───────────────────────────────────────────────────
+  const modalRow    = modal ? rows.find((r) => r.emp.id === modal.employeeId) : null;
   const gpsDistance = modal?.gps
-    ? Math.round(haversineDistance(modal.gps.lat, modal.gps.lng, activeBranch.lat, activeBranch.lng))
+    ? Math.round(haversineMeters(modal.gps.lat, modal.gps.lng, activeBranch.lat, activeBranch.lng))
     : null;
   const withinRange = gpsDistance !== null && gpsDistance <= activeBranch.radiusMeters;
 
@@ -287,10 +327,18 @@ export default function AttendancePage() {
         title="Attendance"
         subtitle={activeBranch.name}
         actions={
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-            <Download size={15} />
-            Export
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchAll}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <RefreshCw size={14} className={pageLoading ? "animate-spin" : ""} />
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+              <Download size={15} />
+              Export
+            </button>
+          </div>
         }
       />
 
@@ -314,12 +362,12 @@ export default function AttendancePage() {
         {/* Summary cards */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Total Employees", value: totalCount, cls: "bg-white", valueCls: "text-slate-900" },
-            { label: "Clocked In",      value: clockedIn,  cls: "bg-white", valueCls: "text-blue-600"  },
-            { label: "Late",            value: lateCount,  cls: "bg-white", valueCls: "text-red-600"   },
-            { label: "Not Yet",         value: notYet,     cls: "bg-white", valueCls: "text-slate-500" },
-          ].map(({ label, value, cls, valueCls }) => (
-            <div key={label} className={cn("rounded-xl border border-slate-200 px-5 py-4", cls)}>
+            { label: "Total Assigned", value: rows.length,  valueCls: "text-slate-900" },
+            { label: "Clocked In",     value: clockedIn,    valueCls: "text-blue-600"  },
+            { label: "Late",           value: lateCount,    valueCls: "text-red-600"   },
+            { label: "Not Yet",        value: notYet,       valueCls: "text-slate-500" },
+          ].map(({ label, value, valueCls }) => (
+            <div key={label} className="bg-white rounded-xl border border-slate-200 px-5 py-4">
               <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{label}</p>
               <p className={cn("text-3xl font-bold mt-1", valueCls)}>{value}</p>
             </div>
@@ -329,103 +377,131 @@ export default function AttendancePage() {
         {/* Attendance table */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-800">Today&apos;s Attendance — {activeBranch.name}</h2>
+            <h2 className="text-sm font-semibold text-slate-800">
+              Today&apos;s Attendance — {activeBranch.name}
+            </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  {["Employee", "Dept", "Shift", "Scheduled Start", "Clock In", "Clock Out", "Hours", "Status", "Actions"].map((h) => (
+                  {["Employee", "Dept", "Shift", "Scheduled Start", "Clock In", "Clock Out", "Hours", "Late", "Status", "Actions"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map(({ emp, shift, record, status }) => (
+                {pageLoading && rows.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-12 text-center">
+                      <Loader2 size={20} className="animate-spin mx-auto text-slate-400" />
+                    </td>
+                  </tr>
+                )}
+                {!pageLoading && rows.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-12 text-center text-slate-400">
+                      No shift assignments found for {activeBranch.name} today. Assign shifts on the Shift Management page.
+                    </td>
+                  </tr>
+                )}
+                {rows.map(({ emp, shift, record, displayStatus }) => (
                   <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">{emp.name}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{emp.department}</td>
-                    <td className="px-4 py-3 whitespace-nowrap"><ShiftBadge shift={shift} /></td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap font-mono">{shift.startTime}</td>
-
-                    {/* Clock In */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {record?.clockIn ? (
+                      {shift ? <ShiftBadge shift={shift} /> : <span className="text-slate-300 text-xs">Day Off</span>}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap font-mono">
+                      {shift?.startTime ?? "—"}
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {record?.clockInTime ? (
                         <span className="flex items-center font-mono text-slate-800">
-                          {record.clockIn}
+                          {record.clockInTime}
                           {record.clockInDistance !== null && (
                             <DistanceBadge meters={record.clockInDistance} radius={activeBranch.radiusMeters} />
                           )}
                         </span>
-                      ) : (
-                        <span className="text-slate-300">—</span>
-                      )}
+                      ) : <span className="text-slate-300">—</span>}
                     </td>
 
-                    {/* Clock Out */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {record?.clockOut ? (
+                      {record?.clockOutTime ? (
                         <span className="flex items-center font-mono text-slate-800">
-                          {record.clockOut}
+                          {record.clockOutTime}
                           {record.clockOutDistance !== null && (
                             <DistanceBadge meters={record.clockOutDistance} radius={activeBranch.radiusMeters} />
                           )}
                         </span>
-                      ) : (
-                        <span className="text-slate-300">—</span>
-                      )}
+                      ) : <span className="text-slate-300">—</span>}
                     </td>
 
-                    {/* Hours */}
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap font-mono">
-                      {record?.workMinutes != null ? formatWorkHours(record.workMinutes) : "—"}
+                      {record?.totalMinutes != null ? (
+                        <span>
+                          {formatWorkHours(record.totalMinutes)}
+                          {record.overtimeMinutes ? (
+                            <span className="ml-1 text-xs text-violet-600">+{formatWorkHours(record.overtimeMinutes)} OT</span>
+                          ) : null}
+                        </span>
+                      ) : "—"}
                     </td>
 
-                    {/* Status */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <StatusBadge status={status} />
+                    <td className="px-4 py-3 whitespace-nowrap text-xs">
+                      {record?.lateMinutes ? (
+                        <span className="text-red-600 font-medium">{record.lateMinutes}m</span>
+                      ) : record && record.status !== "not-yet" ? (
+                        <span className="text-emerald-600">On time</span>
+                      ) : <span className="text-slate-300">—</span>}
                     </td>
 
-                    {/* Actions */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {status === "completed" ? (
+                      <StatusBadge status={displayStatus} />
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {displayStatus === "completed" ? (
                         <CheckCircle2 size={16} className="text-emerald-500" />
-                      ) : status === "clocked-in" ? (
+                      ) : displayStatus === "clocked-in" ? (
                         <button
                           onClick={() => openModal(emp.id, "out")}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
                         >
                           <LogOut size={12} /> Clock Out
                         </button>
-                      ) : (
+                      ) : shift ? (
                         <button
                           onClick={() => openModal(emp.id, "in")}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                         >
                           <LogIn size={12} /> Clock In
                         </button>
+                      ) : (
+                        <span className="text-xs text-slate-300">Day Off</span>
                       )}
                     </td>
                   </tr>
                 ))}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
-                      No employees assigned to {activeBranch.name} for today.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </div>
+
+        {/* Payroll linkage note */}
+        {rows.some((r) => r.record?.status === "completed") && (
+          <div className="bg-violet-50 border border-violet-200 rounded-xl px-5 py-3 text-xs text-violet-700 flex items-center gap-2">
+            <Clock size={13} />
+            Completed attendance records are linked to payroll. Hours and overtime will be included in the next payroll run.
+          </div>
+        )}
       </main>
 
       {/* GPS Clock Modal */}
       {modal && modalRow && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <div>
                 <h3 className="text-base font-semibold text-slate-900">
@@ -442,21 +518,21 @@ export default function AttendancePage() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
-              {/* Shift info */}
-              <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-500">Shift</p>
-                  <p className="text-sm font-medium text-slate-800">{modalRow.shift.name}</p>
+              {modalRow.shift && (
+                <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500">Shift</p>
+                    <p className="text-sm font-medium text-slate-800">{modalRow.shift.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Scheduled</p>
+                    <p className="text-sm font-mono font-medium text-slate-800">
+                      {modalRow.shift.startTime} – {modalRow.shift.endTime}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-500">Scheduled</p>
-                  <p className="text-sm font-mono font-medium text-slate-800">
-                    {modalRow.shift.startTime} – {modalRow.shift.endTime}
-                  </p>
-                </div>
-              </div>
+              )}
 
-              {/* GPS section */}
               <div className="border border-slate-200 rounded-xl px-4 py-4 space-y-3">
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <MapPin size={14} className="text-blue-500" />
@@ -475,7 +551,7 @@ export default function AttendancePage() {
                     {modal.gps.isDemo && (
                       <p className="text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                         <AlertTriangle size={12} />
-                        Location unavailable (demo mode)
+                        Location unavailable — using demo coordinates
                       </p>
                     )}
                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -493,10 +569,7 @@ export default function AttendancePage() {
                       withinRange ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
                     )}>
                       <span className="flex items-center gap-1.5">
-                        {withinRange
-                          ? <CheckCircle2 size={14} />
-                          : <AlertTriangle size={14} />
-                        }
+                        {withinRange ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
                         {withinRange ? "Within branch radius" : "Outside branch radius"}
                       </span>
                       <span className="font-mono font-semibold">
@@ -508,7 +581,6 @@ export default function AttendancePage() {
                 )}
               </div>
 
-              {/* Current time */}
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Clock size={14} />
                 <span>
@@ -520,7 +592,6 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
               <button
                 onClick={() => setModal(null)}
@@ -530,7 +601,7 @@ export default function AttendancePage() {
               </button>
               <button
                 onClick={confirmClock}
-                disabled={modal.gpsStatus === "fetching"}
+                disabled={modal.gpsStatus === "fetching" || submitting}
                 className={cn(
                   "px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors",
                   modal.action === "in"
@@ -538,8 +609,11 @@ export default function AttendancePage() {
                     : "bg-red-500 hover:bg-red-600 disabled:bg-red-300"
                 )}
               >
-                {modal.gpsStatus === "fetching" ? (
-                  <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Waiting for GPS…</span>
+                {(modal.gpsStatus === "fetching" || submitting) ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" />
+                    {submitting ? "Saving…" : "Waiting for GPS…"}
+                  </span>
                 ) : (
                   `Confirm Clock ${modal.action === "in" ? "In" : "Out"}`
                 )}

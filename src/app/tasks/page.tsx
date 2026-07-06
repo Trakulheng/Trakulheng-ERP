@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import {
   Plus, Loader2, Trash2, Pencil, X, CheckCircle2, Clock, CircleDot,
   XCircle, CalendarDays, Timer, User, Link2, ChevronDown, AlertTriangle,
+  ListTodo, ChevronRight, FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,15 @@ interface Task {
   status: Status;
   assigneeName?: string | null;
   shiftLabel?: string | null;
+  taskListId?: string | null;
+  createdAt: string;
+}
+
+interface TaskList {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
   createdAt: string;
 }
 
@@ -34,26 +44,34 @@ interface TaskForm {
   priority: Priority;
   assigneeName: string;
   shiftLabel: string;
+  taskListId: string;
 }
 
-const EMPTY_FORM: TaskForm = {
+interface ListForm {
+  name: string;
+  color: string;
+}
+
+const EMPTY_TASK_FORM: TaskForm = {
   title: "", description: "", dueDate: "", dueTime: "",
-  priority: "medium", assigneeName: "", shiftLabel: "",
+  priority: "medium", assigneeName: "", shiftLabel: "", taskListId: "",
 };
 
-// ─── Status config ─────────────────────────────────────────────────────────
+const EMPTY_LIST_FORM: ListForm = { name: "", color: "blue" };
+
+// ─── Config ────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<Status, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {
-  pending:     { label: "Pending",     icon: Clock,         color: "text-amber-700",  bg: "bg-amber-50",   border: "border-amber-200" },
-  in_progress: { label: "In Progress", icon: CircleDot,     color: "text-blue-700",   bg: "bg-blue-50",    border: "border-blue-200" },
-  done:        { label: "Done",        icon: CheckCircle2,  color: "text-emerald-700",bg: "bg-emerald-50", border: "border-emerald-200" },
-  cancelled:   { label: "Cancelled",   icon: XCircle,       color: "text-slate-500",  bg: "bg-slate-100",  border: "border-slate-200" },
+  pending:     { label: "Pending",     icon: Clock,        color: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200" },
+  in_progress: { label: "In Progress", icon: CircleDot,    color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200" },
+  done:        { label: "Done",        icon: CheckCircle2, color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+  cancelled:   { label: "Cancelled",   icon: XCircle,      color: "text-slate-500",   bg: "bg-slate-100",  border: "border-slate-200" },
 };
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; dot: string; badge: string }> = {
-  low:    { label: "Low",    dot: "bg-slate-400",   badge: "bg-slate-100 text-slate-600" },
-  medium: { label: "Medium", dot: "bg-amber-400",   badge: "bg-amber-100 text-amber-700" },
-  high:   { label: "High",   dot: "bg-red-500",     badge: "bg-red-100 text-red-700" },
+  low:    { label: "Low",    dot: "bg-slate-400", badge: "bg-slate-100 text-slate-600" },
+  medium: { label: "Medium", dot: "bg-amber-400", badge: "bg-amber-100 text-amber-700" },
+  high:   { label: "High",   dot: "bg-red-500",   badge: "bg-red-100 text-red-700" },
 };
 
 const STATUS_TABS: { value: "all" | Status; label: string }[] = [
@@ -64,7 +82,25 @@ const STATUS_TABS: { value: "all" | Status; label: string }[] = [
   { value: "cancelled",   label: "Cancelled" },
 ];
 
-// ─── Status badge ──────────────────────────────────────────────────────────
+const LIST_COLORS: Record<string, { dot: string; text: string }> = {
+  blue:   { dot: "bg-blue-500",   text: "text-blue-700" },
+  green:  { dot: "bg-green-500",  text: "text-green-700" },
+  purple: { dot: "bg-violet-500", text: "text-violet-700" },
+  amber:  { dot: "bg-amber-500",  text: "text-amber-700" },
+  red:    { dot: "bg-red-500",    text: "text-red-700" },
+  teal:   { dot: "bg-teal-500",   text: "text-teal-700" },
+};
+
+const COLOR_OPTIONS = [
+  { id: "blue",   dot: "bg-blue-500" },
+  { id: "green",  dot: "bg-green-500" },
+  { id: "purple", dot: "bg-violet-500" },
+  { id: "amber",  dot: "bg-amber-500" },
+  { id: "red",    dot: "bg-red-500" },
+  { id: "teal",   dot: "bg-teal-500" },
+];
+
+// ─── StatusBadge ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: Status }) {
   const cfg = STATUS_CONFIG[status];
@@ -77,7 +113,7 @@ function StatusBadge({ status }: { status: Status }) {
   );
 }
 
-// ─── Inline status selector ────────────────────────────────────────────────
+// ─── StatusSelect ──────────────────────────────────────────────────────────
 
 function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, status: Status) => void }) {
   const [loading, setLoading] = useState(false);
@@ -96,7 +132,7 @@ function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, s
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         disabled={loading}
         className={cn(
           "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors",
@@ -115,7 +151,7 @@ function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, s
             return (
               <button
                 key={s}
-                onClick={() => handle(s)}
+                onClick={(e) => { e.stopPropagation(); handle(s); }}
                 className={cn(
                   "w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-slate-50 transition-colors",
                   c.color,
@@ -134,7 +170,7 @@ function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, s
   );
 }
 
-// ─── Task Card ─────────────────────────────────────────────────────────────
+// ─── TaskCard ──────────────────────────────────────────────────────────────
 
 function TaskCard({
   task, onStatusUpdate, onEdit, onDelete,
@@ -148,11 +184,7 @@ function TaskCard({
   const isDone = task.status === "done" || task.status === "cancelled";
 
   return (
-    <div className={cn(
-      "bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-opacity",
-      isDone && "opacity-60"
-    )}>
-      {/* Top row */}
+    <div className={cn("bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-opacity", isDone && "opacity-60")}>
       <div className="flex items-start gap-3">
         <span className={cn("mt-1.5 w-2 h-2 rounded-full flex-shrink-0", p.dot)} />
         <div className="flex-1 min-w-0">
@@ -173,7 +205,6 @@ function TaskCard({
         </div>
       </div>
 
-      {/* Meta row */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 ml-5">
         {task.dueDate && (
           <span className="inline-flex items-center gap-1 text-xs text-slate-500">
@@ -201,7 +232,6 @@ function TaskCard({
         )}
       </div>
 
-      {/* Bottom row: priority + status selector */}
       <div className="flex items-center justify-between mt-3 ml-5 gap-2">
         <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", p.badge)}>{p.label}</span>
         <StatusSelect task={task} onUpdate={onStatusUpdate} />
@@ -210,20 +240,31 @@ function TaskCard({
   );
 }
 
-// ─── Task Form Modal ────────────────────────────────────────────────────────
+// ─── TaskModal ─────────────────────────────────────────────────────────────
+
+interface ShiftTemplate {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+}
 
 function TaskModal({
-  form, setForm, onSubmit, onClose, loading, isEdit,
+  form, setForm, onSubmit, onClose, loading, error, isEdit, lists, shifts,
 }: {
   form: TaskForm;
   setForm: React.Dispatch<React.SetStateAction<TaskForm>>;
   onSubmit: () => void;
   onClose: () => void;
   loading: boolean;
+  error: string;
   isEdit: boolean;
+  lists: TaskList[];
+  shifts: ShiftTemplate[];
 }) {
-  const set = (k: keyof TaskForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set = (k: keyof TaskForm) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
@@ -232,34 +273,42 @@ function TaskModal({
         className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
           <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit Task" : "New Task"}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
-            <X size={18} />
-          </button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={18} /></button>
         </div>
 
-        {/* Form */}
         <div className="p-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <AlertTriangle size={13} className="flex-shrink-0" />{error}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Title <span className="text-red-500">*</span></label>
             <input
-              type="text"
-              value={form.title}
-              onChange={set("title")}
-              placeholder="What needs to be done?"
-              autoFocus
+              type="text" value={form.title} onChange={set("title")}
+              placeholder="What needs to be done?" autoFocus
               className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Task List</label>
+            <select
+              value={form.taskListId} onChange={set("taskListId")}
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">— No List —</option>
+              {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
             <textarea
-              rows={2}
-              value={form.description}
-              onChange={set("description")}
+              rows={2} value={form.description} onChange={set("description")}
               placeholder="Optional details..."
               className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
@@ -270,33 +319,22 @@ function TaskModal({
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 <span className="flex items-center gap-1"><CalendarDays size={13} />Due Date</span>
               </label>
-              <input
-                type="date"
-                value={form.dueDate}
-                onChange={set("dueDate")}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="date" value={form.dueDate} onChange={set("dueDate")}
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 <span className="flex items-center gap-1"><Timer size={13} />Time (HH:MM)</span>
               </label>
-              <input
-                type="time"
-                value={form.dueTime}
-                onChange={set("dueTime")}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="time" value={form.dueTime} onChange={set("dueTime")}
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
-            <select
-              value={form.priority}
-              onChange={set("priority")}
-              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
+            <select value={form.priority} onChange={set("priority")}
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -307,40 +345,33 @@ function TaskModal({
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               <span className="flex items-center gap-1"><User size={13} />Assign to Staff</span>
             </label>
-            <input
-              type="text"
-              value={form.assigneeName}
-              onChange={set("assigneeName")}
+            <input type="text" value={form.assigneeName} onChange={set("assigneeName")}
               placeholder="Employee name"
-              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               <span className="flex items-center gap-1"><Link2 size={13} />Link to Shift (optional)</span>
             </label>
-            <input
-              type="text"
-              value={form.shiftLabel}
-              onChange={set("shiftLabel")}
-              placeholder="e.g. Morning Shift – Jul 5"
-              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <select value={form.shiftLabel} onChange={set("shiftLabel")}
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="">— None —</option>
+              {shifts.map((s) => (
+                <option key={s.id} value={s.name}>
+                  {s.name} ({s.startTime}–{s.endTime})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-            >
+            <button onClick={onClose}
+              className="flex-1 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
               Cancel
             </button>
-            <button
-              onClick={onSubmit}
-              disabled={loading || !form.title.trim()}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
+            <button onClick={onSubmit} disabled={loading || !form.title.trim()}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors">
               {loading && <Loader2 size={14} className="animate-spin" />}
               {isEdit ? "Save Changes" : "Create Task"}
             </button>
@@ -351,127 +382,377 @@ function TaskModal({
   );
 }
 
+// ─── ListModal ─────────────────────────────────────────────────────────────
+
+function ListModal({
+  form, setForm, onSubmit, onClose, loading, error, isEdit,
+}: {
+  form: ListForm;
+  setForm: React.Dispatch<React.SetStateAction<ListForm>>;
+  onSubmit: () => void;
+  onClose: () => void;
+  loading: boolean;
+  error: string;
+  isEdit: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit List" : "New Task List"}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <AlertTriangle size={13} className="flex-shrink-0" />{error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">List Name <span className="text-red-500">*</span></label>
+            <input
+              type="text" value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Opening Tasks, Closing Checklist…" autoFocus
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Color</label>
+            <div className="flex gap-2.5">
+              {COLOR_OPTIONS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setForm((f) => ({ ...f, color: c.id }))}
+                  className={cn(
+                    "w-8 h-8 rounded-full transition-transform",
+                    c.dot,
+                    form.color === c.id ? "ring-2 ring-offset-2 ring-slate-400 scale-110" : "hover:scale-105"
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+              Cancel
+            </button>
+            <button onClick={onSubmit} disabled={loading || !form.name.trim()}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors">
+              {loading && <Loader2 size={14} className="animate-spin" />}
+              {isEdit ? "Save" : "Create List"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TaskListSection ───────────────────────────────────────────────────────
+
+function TaskListSection({
+  list, tasks, isExpanded, onToggle,
+  onAddTask, onEditTask, onDeleteTask, onStatusUpdate,
+  onEditList, onDeleteList,
+}: {
+  list: TaskList | null;
+  tasks: Task[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onAddTask: (listId: string | null) => void;
+  onEditTask: (task: Task) => void;
+  onDeleteTask: (id: string) => void;
+  onStatusUpdate: (id: string, status: Status) => void;
+  onEditList?: (list: TaskList) => void;
+  onDeleteList?: (id: string) => void;
+}) {
+  const colorCfg = list ? (LIST_COLORS[list.color] ?? LIST_COLORS.blue) : null;
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors select-none"
+        onClick={onToggle}
+      >
+        <ChevronRight
+          size={15}
+          className={cn("text-slate-400 transition-transform flex-shrink-0", isExpanded && "rotate-90")}
+        />
+
+        {list === null ? (
+          <FolderOpen size={15} className="text-slate-400 flex-shrink-0" />
+        ) : (
+          <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", colorCfg!.dot)} />
+        )}
+
+        <span className={cn("text-sm font-semibold flex-1", list === null ? "text-slate-500" : colorCfg!.text)}>
+          {list === null ? "Unassigned" : list.name}
+        </span>
+
+        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
+          {tasks.length}
+        </span>
+
+        {list !== null && (
+          <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => onEditList!(list)}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              onClick={() => onDeleteList!(list.id)}
+              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddTask(list?.id ?? null); }}
+          className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
+          title="Add task to this list"
+        >
+          <Plus size={15} />
+        </button>
+      </div>
+
+      {/* Tasks */}
+      {isExpanded && (
+        <div className="border-t border-slate-100 p-3 space-y-2.5">
+          {tasks.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className="text-xs text-slate-400">No tasks here.</p>
+              <button
+                onClick={() => onAddTask(list?.id ?? null)}
+                className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                + Add a task
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onStatusUpdate={onStatusUpdate}
+                  onEdit={onEditTask}
+                  onDelete={onDeleteTask}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [lists, setLists] = useState<TaskList[]>([]);
+  const [shifts, setShifts] = useState<ShiftTemplate[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [listsLoading, setListsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<"all" | Status>("all");
-  const [showModal, setShowModal] = useState(false);
+
+  // Task modal
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [form, setForm] = useState<TaskForm>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [taskForm, setTaskForm] = useState<TaskForm>(EMPTY_TASK_FORM);
+  const [taskSaving, setTaskSaving] = useState(false);
+  const [taskError, setTaskError] = useState("");
+
+  // List modal
+  const [showListModal, setShowListModal] = useState(false);
+  const [editingList, setEditingList] = useState<TaskList | null>(null);
+  const [listForm, setListForm] = useState<ListForm>(EMPTY_LIST_FORM);
+  const [listSaving, setListSaving] = useState(false);
+  const [listError, setListError] = useState("");
+
+  // Expanded sections
+  const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set(["__unassigned__"]));
 
   // ── Fetch ──
   const fetchTasks = useCallback(async () => {
-    setLoading(true);
+    setTasksLoading(true);
     try {
-      const res = await fetch(`/api/tasks?status=${filterStatus}`);
+      const res = await fetch("/api/tasks");
       const data = await res.json();
       setTasks(Array.isArray(data) ? data : []);
     } finally {
-      setLoading(false);
+      setTasksLoading(false);
     }
-  }, [filterStatus]);
-
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
-
-  // Close status dropdowns when clicking outside
-  useEffect(() => {
-    const handler = () => document.dispatchEvent(new CustomEvent("close-dropdowns"));
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
   }, []);
 
-  // ── Open modal ──
-  const openCreate = () => { setEditingTask(null); setForm(EMPTY_FORM); setError(""); setShowModal(true); };
-  const openEdit = (task: Task) => {
-    setEditingTask(task);
-    setForm({
-      title: task.title,
-      description: task.description ?? "",
-      dueDate: task.dueDate ?? "",
-      dueTime: task.dueTime ?? "",
-      priority: task.priority,
-      assigneeName: task.assigneeName ?? "",
-      shiftLabel: task.shiftLabel ?? "",
-    });
-    setError("");
-    setShowModal(true);
+  const fetchLists = useCallback(async () => {
+    setListsLoading(true);
+    try {
+      const res = await fetch("/api/tasks/lists");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setLists(data);
+        setExpandedLists((prev) => {
+          const next = new Set(prev);
+          data.forEach((l: TaskList) => next.add(l.id));
+          return next;
+        });
+      }
+    } finally {
+      setListsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  useEffect(() => { fetchLists(); }, [fetchLists]);
+  useEffect(() => {
+    fetch("/api/hr/shifts").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setShifts(d); });
+  }, []);
+
+  // ── Computed ──
+  const filteredTasks = filterStatus === "all" ? tasks : tasks.filter((t) => t.status === filterStatus);
+  const tasksByList = (listId: string | null) =>
+    filteredTasks.filter((t) => listId === null ? !t.taskListId : t.taskListId === listId);
+
+  const totalCounts = STATUS_TABS.reduce((acc, tab) => {
+    acc[tab.value] = tab.value === "all" ? tasks.length : tasks.filter((t) => t.status === tab.value).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const today = new Date().toISOString().split("T")[0];
+  const overdue = tasks.filter((t) => t.status === "pending" && t.dueDate && t.dueDate < today).length;
+
+  // ── Toggle expand ──
+  const toggleList = (id: string) =>
+    setExpandedLists((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+
+  // ── Task modal ops ──
+  const openCreateTask = (listId?: string | null) => {
+    setEditingTask(null);
+    setTaskForm({ ...EMPTY_TASK_FORM, taskListId: listId ?? "" });
+    setTaskError("");
+    setShowTaskModal(true);
   };
 
-  // ── Submit ──
-  const handleSubmit = async () => {
-    if (!form.title.trim()) { setError("Title is required."); return; }
-    setSaving(true);
-    setError("");
+  const openEditTask = (task: Task) => {
+    setEditingTask(task);
+    setTaskForm({
+      title: task.title, description: task.description ?? "",
+      dueDate: task.dueDate ?? "", dueTime: task.dueTime ?? "",
+      priority: task.priority, assigneeName: task.assigneeName ?? "",
+      shiftLabel: task.shiftLabel ?? "", taskListId: task.taskListId ?? "",
+    });
+    setTaskError("");
+    setShowTaskModal(true);
+  };
+
+  const handleTaskSubmit = async () => {
+    if (!taskForm.title.trim()) { setTaskError("Title is required."); return; }
+    setTaskSaving(true); setTaskError("");
     try {
+      const payload = { ...taskForm, taskListId: taskForm.taskListId || null };
       if (editingTask) {
         const res = await fetch(`/api/tasks/${editingTask.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
         setTasks((prev) => prev.map((t) => (t.id === editingTask.id ? updated : t)));
       } else {
         const res = await fetch("/api/tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error();
         const created = await res.json();
         setTasks((prev) => [created, ...prev]);
       }
-      setShowModal(false);
+      setShowTaskModal(false);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setTaskError("Something went wrong. Please try again.");
     } finally {
-      setSaving(false);
+      setTaskSaving(false);
     }
   };
 
-  // ── Status update ──
   const handleStatusUpdate = async (id: string, status: Status) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
     try {
       await fetch(`/api/tasks/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
       });
-    } catch {
-      fetchTasks(); // revert on error
-    }
+    } catch { fetchTasks(); }
   };
 
-  // ── Delete ──
-  const handleDelete = async (id: string) => {
+  const handleDeleteTask = async (id: string) => {
     if (!confirm("Delete this task?")) return;
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    try { await fetch(`/api/tasks/${id}`, { method: "DELETE" }); }
+    catch { fetchTasks(); }
+  };
+
+  // ── List modal ops ──
+  const openCreateList = () => {
+    setEditingList(null); setListForm(EMPTY_LIST_FORM); setListError(""); setShowListModal(true);
+  };
+
+  const openEditList = (list: TaskList) => {
+    setEditingList(list); setListForm({ name: list.name, color: list.color }); setListError(""); setShowListModal(true);
+  };
+
+  const handleListSubmit = async () => {
+    if (!listForm.name.trim()) { setListError("Name is required."); return; }
+    setListSaving(true); setListError("");
     try {
-      await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+      if (editingList) {
+        const res = await fetch(`/api/tasks/lists/${editingList.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(listForm),
+        });
+        if (!res.ok) throw new Error();
+        const updated = await res.json();
+        setLists((prev) => prev.map((l) => (l.id === editingList.id ? updated : l)));
+      } else {
+        const res = await fetch("/api/tasks/lists", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(listForm),
+        });
+        if (!res.ok) throw new Error();
+        const created = await res.json();
+        setLists((prev) => [...prev, created]);
+        setExpandedLists((prev) => new Set([...prev, created.id]));
+      }
+      setShowListModal(false);
     } catch {
-      fetchTasks();
+      setListError("Something went wrong. Please try again.");
+    } finally {
+      setListSaving(false);
     }
   };
 
-  // ── Counts ──
-  const counts = STATUS_TABS.reduce((acc, t) => {
-    acc[t.value] = t.value === "all" ? tasks.length : tasks.filter((task) => task.status === t.value).length;
-    return acc;
-  }, {} as Record<string, number>);
+  const handleDeleteList = async (id: string) => {
+    if (!confirm("Delete this list? Tasks inside will become unassigned.")) return;
+    setLists((prev) => prev.filter((l) => l.id !== id));
+    setTasks((prev) => prev.map((t) => (t.taskListId === id ? { ...t, taskListId: null } : t)));
+    try { await fetch(`/api/tasks/lists/${id}`, { method: "DELETE" }); }
+    catch { fetchLists(); fetchTasks(); }
+  };
 
-  const displayed = filterStatus === "all" ? tasks : tasks.filter((t) => t.status === filterStatus);
-
-  // ── Pending overdue detection ──
-  const today = new Date().toISOString().split("T")[0];
-  const overdue = displayed.filter(
-    (t) => t.status === "pending" && t.dueDate && t.dueDate < today
-  ).length;
+  const loading = tasksLoading || listsLoading;
+  const showUnassigned = tasksByList(null).length > 0;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -479,13 +760,22 @@ export default function TasksPage() {
         title="Tasks"
         subtitle="Manage and track team tasks"
         actions={
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
-          >
-            <Plus size={16} />
-            <span>New Task</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openCreateList}
+              className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm border border-slate-200"
+            >
+              <ListTodo size={15} />
+              <span>New List</span>
+            </button>
+            <button
+              onClick={() => openCreateTask()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+            >
+              <Plus size={16} />
+              <span>New Task</span>
+            </button>
+          </div>
         }
       />
 
@@ -499,7 +789,7 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Filter tabs – horizontal scroll on mobile */}
+        {/* Filter tabs */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
           {STATUS_TABS.map((tab) => (
             <button
@@ -517,65 +807,90 @@ export default function TasksPage() {
                 "text-xs px-1.5 py-0.5 rounded-full font-semibold",
                 filterStatus === tab.value ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
               )}>
-                {counts[tab.value] ?? 0}
+                {totalCounts[tab.value] ?? 0}
               </span>
             </button>
           ))}
         </div>
 
-        {/* Task list */}
+        {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={28} className="animate-spin text-slate-400" />
-          </div>
-        ) : displayed.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
-              <CheckCircle2 size={26} className="text-slate-400" />
-            </div>
-            <p className="text-slate-700 font-medium">No tasks here</p>
-            <p className="text-slate-500 text-sm mt-1">
-              {filterStatus === "all" ? "Create your first task to get started." : `No ${filterStatus.replace("_", " ")} tasks.`}
-            </p>
-            {filterStatus === "all" && (
-              <button
-                onClick={openCreate}
-                className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg"
-              >
-                <Plus size={15} /> New Task
-              </button>
-            )}
+            <Loader2 size={28} className="animate-spin text-slate-300" />
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {displayed.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
+          <div className="space-y-3">
+            {/* Named task lists */}
+            {lists.map((list) => (
+              <TaskListSection
+                key={list.id}
+                list={list}
+                tasks={tasksByList(list.id)}
+                isExpanded={expandedLists.has(list.id)}
+                onToggle={() => toggleList(list.id)}
+                onAddTask={openCreateTask}
+                onEditTask={openEditTask}
+                onDeleteTask={handleDeleteTask}
                 onStatusUpdate={handleStatusUpdate}
-                onEdit={openEdit}
-                onDelete={handleDelete}
+                onEditList={openEditList}
+                onDeleteList={handleDeleteList}
               />
             ))}
+
+            {/* Unassigned section */}
+            {showUnassigned && (
+              <TaskListSection
+                list={null}
+                tasks={tasksByList(null)}
+                isExpanded={expandedLists.has("__unassigned__")}
+                onToggle={() => toggleList("__unassigned__")}
+                onAddTask={openCreateTask}
+                onEditTask={openEditTask}
+                onDeleteTask={handleDeleteTask}
+                onStatusUpdate={handleStatusUpdate}
+              />
+            )}
+
+            {/* Empty state */}
+            {lists.length === 0 && tasks.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3">
+                  <ListTodo size={22} className="text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-700">No tasks yet</p>
+                <p className="text-xs text-slate-400 mt-1">Create a list to group related tasks, or add a task directly.</p>
+                <div className="flex gap-2 mt-4">
+                  <button onClick={openCreateList}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+                    New List
+                  </button>
+                  <button onClick={() => openCreateTask()}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                    New Task
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
+      {/* Task Modal */}
+      {showTaskModal && (
         <TaskModal
-          form={form}
-          setForm={setForm}
-          onSubmit={handleSubmit}
-          onClose={() => setShowModal(false)}
-          loading={saving}
-          isEdit={!!editingTask}
+          form={taskForm} setForm={setTaskForm}
+          onSubmit={handleTaskSubmit} onClose={() => setShowTaskModal(false)}
+          loading={taskSaving} error={taskError} isEdit={!!editingTask} lists={lists} shifts={shifts}
         />
       )}
-      {error && showModal && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg z-[60]">
-          {error}
-        </div>
+
+      {/* List Modal */}
+      {showListModal && (
+        <ListModal
+          form={listForm} setForm={setListForm}
+          onSubmit={handleListSubmit} onClose={() => setShowListModal(false)}
+          loading={listSaving} error={listError} isEdit={!!editingList}
+        />
       )}
     </div>
   );

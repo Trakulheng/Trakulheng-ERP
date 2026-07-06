@@ -8,7 +8,7 @@ import {
   CreditCard, CalendarDays, ChevronDown, ChevronRight, Building2,
   Settings, GitBranch, ScanLine, CalendarClock, HeartHandshake, Gift,
   TicketCheck, Zap, PieChart, Shield, Bell, Sliders, PackageCheck,
-  ClipboardCheck, CheckSquare, X, ArrowLeftRight,
+  ClipboardCheck, CheckSquare, X, ArrowLeftRight, Layers, Fingerprint,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ const navItems = [
       { label: "Payroll", href: "/hr/payroll", icon: CreditCard },
       { label: "Leave", href: "/hr/leave", icon: CalendarDays },
       { label: "Attendance", href: "/hr/attendance", icon: ScanLine },
+      { label: "Clock In/Out", href: "/hr/clock", icon: Fingerprint },
       { label: "Shifts", href: "/hr/shifts", icon: CalendarClock },
     ],
   },
@@ -74,6 +75,7 @@ const navItems = [
       { label: "General", href: "/settings/general", icon: Settings },
       { label: "Branches", href: "/settings/branches", icon: GitBranch },
       { label: "Brands", href: "/settings/brands", icon: ArrowLeftRight },
+      { label: "Departments", href: "/settings/departments", icon: Layers },
       { label: "Users", href: "/settings/users", icon: Shield },
       { label: "Dashboard Layout", href: "/settings/dashboard", icon: LayoutDashboard },
       { label: "Role Permissions", href: "/settings/roles", icon: ClipboardCheck },

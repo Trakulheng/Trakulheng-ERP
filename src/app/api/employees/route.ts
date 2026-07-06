@@ -42,11 +42,21 @@ function mapEmployee(e: any) {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-  const employees = await prisma.employee.findMany({ orderBy: { createdAt: "asc" } });
+  const { searchParams } = new URL(req.url);
+  const branchId = searchParams.get("branchId");
+  const status   = searchParams.get("status");
+
+  const employees = await prisma.employee.findMany({
+    where: {
+      ...(branchId ? { branchId } : {}),
+      ...(status   ? { status }   : {}),
+    },
+    orderBy: { createdAt: "asc" },
+  });
   return NextResponse.json(employees.map(mapEmployee));
 }
 

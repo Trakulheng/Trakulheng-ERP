@@ -40,6 +40,7 @@ const th: Record<string, string> = {
   Branches: "สาขา",
   Brands: "แบรนด์",
   Users: "ผู้ใช้งาน",
+  "Departments": "แผนก",
   "Dashboard Layout": "เลย์เอาต์แดชบอร์ด",
   "Role Permissions": "สิทธิ์การเข้าถึง",
   "Points Config": "การตั้งค่าคะแนน",

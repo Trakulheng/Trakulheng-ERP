@@ -286,18 +286,73 @@ model PayrollRun {
   updatedAt   DateTime @updatedAt
 }
 
+model TaskList {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("blue")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tasks     Task[]
+}
+
 model Task {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   title        String
   description  String?
   dueDate      String?
   dueTime      String?
-  priority     String   @default("medium")
-  status       String   @default("pending")
+  priority     String    @default("medium")
+  status       String    @default("pending")
   assigneeName String?
   shiftLabel   String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  taskListId   String?
+  taskList     TaskList? @relation(fields: [taskListId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([taskListId])
+}
+
+model ShiftAssignment {
+  id            String   @id @default(cuid())
+  branchId      String
+  employeeId    String
+  shiftId       String?
+  date          String
+  note          String?
+  confirmStatus String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([branchId, date])
+}
+
+model AttendanceRecord {
+  id                 String   @id @default(cuid())
+  branchId           String
+  employeeId         String
+  date               String
+  shiftId            String?
+  clockInTime        String?
+  clockOutTime       String?
+  clockInLat         Float?
+  clockInLng         Float?
+  clockInDistance    Float?
+  clockOutLat        Float?
+  clockOutLng        Float?
+  clockOutDistance   Float?
+  gpsValid           Boolean  @default(false)
+  status             String   @default("not-yet")
+  totalMinutes       Int?
+  overtimeMinutes    Int?
+  lateMinutes        Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([branchId, date])
 }
 
 model ShiftChangeRequest {

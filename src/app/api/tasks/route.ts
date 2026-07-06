@@ -6,10 +6,13 @@ export async function GET(req: NextRequest) {
     const status = req.nextUrl.searchParams.get("status");
     const assignee = req.nextUrl.searchParams.get("assignee");
 
+    const listId = req.nextUrl.searchParams.get("listId");
+
     const tasks = await prisma.task.findMany({
       where: {
         ...(status && status !== "all" ? { status } : {}),
         ...(assignee ? { assigneeName: { contains: assignee, mode: "insensitive" } } : {}),
+        ...(listId === "null" ? { taskListId: null } : listId ? { taskListId: listId } : {}),
       },
       orderBy: [
         { dueDate: "asc" },
@@ -27,7 +30,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, description, dueDate, dueTime, priority, assigneeName, shiftLabel } = await req.json();
+    const { title, description, dueDate, dueTime, priority, assigneeName, shiftLabel, taskListId } = await req.json();
 
     if (!title?.trim()) {
       return NextResponse.json({ error: "Title is required." }, { status: 400 });
@@ -42,6 +45,7 @@ export async function POST(req: NextRequest) {
         priority: priority || "medium",
         assigneeName: assigneeName?.trim() || null,
         shiftLabel: shiftLabel?.trim() || null,
+        taskListId: taskListId || null,
       },
     });
 

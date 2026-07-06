@@ -3,10 +3,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { useBranch } from "@/context/BranchContext";
-import {
-  employees as allEmployees,
-  employeeShifts as initialAssignments,
-} from "@/lib/mock-data";
+import { Employee as MockEmployee } from "@/lib/mock-data";
+type Employee = MockEmployee;
 import { cn } from "@/lib/utils";
 import {
   Plus,
@@ -364,7 +362,7 @@ function ShiftCard({
   shift, assignedEmps, patterns, todos, onEdit, onDelete, onTodoChange,
 }: {
   shift: Shift;
-  assignedEmps: typeof allEmployees;
+  assignedEmps: Employee[];
   patterns: EmployeeShift[];
   todos: ShiftTodo[];
   onEdit: (s: Shift) => void;
@@ -729,15 +727,15 @@ function ShiftModal({ state, onClose, onSave }: {
 
 function CellAssignModal({
   employeeId, date, currentShiftId, isOverride, confirmStatus,
-  shiftList, onClose, onSave, onRemoveOverride,
+  shiftList, employees, onClose, onSave, onRemoveOverride,
 }: {
   employeeId: string; date: string; currentShiftId: string | null;
   isOverride: boolean; confirmStatus?: ConfirmStatus;
-  shiftList: Shift[]; onClose: () => void;
+  shiftList: Shift[]; employees: Employee[]; onClose: () => void;
   onSave: (shiftId: string | null, note: string) => void;
   onRemoveOverride?: () => void;
 }) {
-  const emp = allEmployees.find((e) => e.id === employeeId);
+  const emp = employees.find((e) => e.id === employeeId);
   const [selectedId, setSelectedId] = useState<string | null>(currentShiftId);
   const [dayOff, setDayOff] = useState(isOverride && currentShiftId === null);
   const [note, setNote] = useState("");
@@ -809,12 +807,12 @@ function CellAssignModal({
 // ─── RequestChangeModal ───────────────────────────────────────────────────────
 
 function RequestChangeModal({
-  employeeId, date, currentShiftId, shiftList, onClose, onSubmit,
+  employeeId, date, currentShiftId, shiftList, employees, onClose, onSubmit,
 }: {
   employeeId: string; date: string; currentShiftId: string;
-  shiftList: Shift[]; onClose: () => void; onSubmit: (req: ChangeRequest) => void;
+  shiftList: Shift[]; employees: Employee[]; onClose: () => void; onSubmit: (req: ChangeRequest) => void;
 }) {
-  const emp = allEmployees.find((e) => e.id === employeeId);
+  const emp = employees.find((e) => e.id === employeeId);
   const [requestedShiftId, setRequestedShiftId] = useState<string | null>(null);
   const [dayOff, setDayOff] = useState(false);
   const [reason, setReason] = useState("");
@@ -894,10 +892,10 @@ function RequestChangeModal({
 
 function WeekCalendar({
   monday, branchEmployees, patterns, overrides, shiftList,
-  empViewId, deptFilter, onCellClick, onConfirm, onRequestChange,
+  empViewId, deptFilter, onCellClick, onConfirm, onRequestChange, onAddToDay,
 }: {
   monday: Date;
-  branchEmployees: typeof allEmployees;
+  branchEmployees: Employee[];
   patterns: EmployeeShift[];
   overrides: CalendarEntry[];
   shiftList: Shift[];
@@ -906,6 +904,7 @@ function WeekCalendar({
   onCellClick: (empId: string, date: string, currentShiftId: string | null, isOverride: boolean, entry?: CalendarEntry) => void;
   onConfirm: (entryId: string) => void;
   onRequestChange: (empId: string, date: string, shiftId: string) => void;
+  onAddToDay?: (date: string) => void;
 }) {
   const dates = WEEK_DAYS_MON_SUN.map((_, i) => addDays(getMondayOf(monday), i));
 
@@ -965,6 +964,15 @@ function WeekCalendar({
                   <p className="text-xs font-normal text-slate-400">
                     {d.toLocaleDateString("en-US", { month: "short" })}
                   </p>
+                  {onAddToDay && !isPast && !empViewId && (
+                    <button
+                      onClick={() => onAddToDay(str)}
+                      title="Add staff to this day"
+                      className="mt-1 mx-auto flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                    >
+                      <Plus size={10} />
+                    </button>
+                  )}
                 </th>
               );
             })}
@@ -1097,7 +1105,7 @@ function MonthCalendar({
   year, month, branchEmployees, patterns, overrides, shiftList, selectedDate, onDayClick,
 }: {
   year: number; month: number;
-  branchEmployees: typeof allEmployees;
+  branchEmployees: Employee[];
   patterns: EmployeeShift[]; overrides: CalendarEntry[]; shiftList: Shift[];
   selectedDate: string | null; onDayClick: (date: string) => void;
 }) {
@@ -1294,7 +1302,7 @@ function RequestsTab({
             const emp = branchEmployees.find((e) => e.id === req.employeeId);
             const curShift = shiftList.find((s) => s.id === req.currentShiftId);
             const reqShift = req.requestedShiftId ? shiftList.find((s) => s.id === req.requestedShiftId) : null;
-            const resolver = req.resolvedBy ? allEmployees.find((e) => e.id === req.resolvedBy) : null;
+            const resolver = req.resolvedBy ? branchEmployees.find((e) => e.id === req.resolvedBy) : null;
             const isMyReq = empViewId === req.employeeId;
             const daysUntilShift = daysBetween(TODAY, req.date);
             const isUrgent = req.status === "pending" && daysUntilShift <= 3;
@@ -1570,6 +1578,113 @@ function DateRangePickerPopup({
   );
 }
 
+// ─── DayAssignModal ───────────────────────────────────────────────────────────
+
+function DayAssignModal({
+  date, branchEmps, alreadyAssigned, shiftList, onClose, onSave,
+}: {
+  date: string;
+  branchEmps: Employee[];
+  alreadyAssigned: string[];
+  shiftList: Shift[];
+  onClose: () => void;
+  onSave: (employeeId: string, shiftId: string | null, note: string) => void;
+}) {
+  const available = branchEmps.filter((e) => !alreadyAssigned.includes(e.id));
+  const [selectedEmpId, setSelectedEmpId] = useState(available[0]?.id ?? "");
+  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(shiftList[0]?.id ?? null);
+  const [dayOff, setDayOff] = useState(false);
+  const [note, setNote] = useState("");
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Add Staff to Day</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{fmtLong(date)}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100">
+            <X size={16} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {available.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-4">All employees are already assigned for this day.</p>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Employee</label>
+                <select
+                  value={selectedEmpId}
+                  onChange={(e) => setSelectedEmpId(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
+                >
+                  {available.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name} — {e.department}</option>
+                  ))}
+                </select>
+              </div>
+
+              <label className={cn("flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors",
+                dayOff ? "border-red-300 bg-red-50" : "border-slate-200 hover:bg-slate-50")}>
+                <input type="checkbox" checked={dayOff}
+                  onChange={(e) => { setDayOff(e.target.checked); if (e.target.checked) setSelectedShiftId(null); }}
+                  className="w-4 h-4 rounded accent-red-500" />
+                <span className="text-sm font-medium text-slate-700">Mark as Day Off</span>
+              </label>
+
+              {!dayOff && (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {shiftList.map((s) => {
+                    const c = shiftColorMap[s.color];
+                    return (
+                      <label key={s.id} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors",
+                        selectedShiftId === s.id ? `${c.bg} ${c.border} border` : "border-slate-200 hover:bg-slate-50")}>
+                        <input type="radio" name="dayShiftPick" value={s.id} checked={selectedShiftId === s.id}
+                          onChange={() => { setSelectedShiftId(s.id); setDayOff(false); }} className="sr-only" />
+                        <span className={cn("w-3 h-3 rounded-full shrink-0", c.dot)} />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-800">{s.name}</p>
+                          <p className="text-xs text-slate-400 font-mono">{s.startTime}–{s.endTime} · {calcWorkHours(s.startTime, s.endTime, s.breakMinutes)}</p>
+                        </div>
+                        <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", c.badge)}>{s.code}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Note (optional)</label>
+                <input value={note} onChange={(e) => setNote(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Reason for this assignment..." />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+            Cancel
+          </button>
+          {available.length > 0 && (
+            <button
+              onClick={() => { if (selectedEmpId) onSave(selectedEmpId, dayOff ? null : selectedShiftId, note); }}
+              disabled={!selectedEmpId || (!dayOff && !selectedShiftId)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              Add to Schedule
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShiftsPage() {
@@ -1579,8 +1694,10 @@ export default function ShiftsPage() {
   const [shiftList, setShiftList] = useState<Shift[]>([]);
   const [shiftsLoading, setShiftsLoading] = useState(true);
   const [todosByShift, setTodosByShift] = useState<Record<string, ShiftTodo[]>>({});
-  const [patterns, setPatterns] = useState<EmployeeShift[]>([...initialAssignments]);
-  const [overrides, setOverrides] = useState<CalendarEntry[]>(initialOverrides);
+  const [patterns] = useState<EmployeeShift[]>([]);
+  const [overrides, setOverrides] = useState<CalendarEntry[]>([]);
+  const [branchEmps, setBranchEmps] = useState<Employee[]>([]);
+  const [dayAssignModal, setDayAssignModal] = useState<{ date: string } | null>(null);
   const [requests, setRequests] = useState<ChangeRequest[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [monday, setMonday] = useState<Date>(() => getMondayOf(parseDate(TODAY)));
@@ -1593,8 +1710,7 @@ export default function ShiftsPage() {
   const [empViewId, setEmpViewId] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const branchEmps = useMemo(() => allEmployees.filter((e) => e.branchId === activeBranch?.id), [activeBranch?.id]);
-  const branchPatterns = useMemo(() => patterns.filter((p) => p.branchId === activeBranch?.id), [patterns, activeBranch?.id]);
+  const branchPatterns: EmployeeShift[] = [];
   const departments = useMemo(() => Array.from(new Set(branchEmps.map((e) => e.department))).sort(), [branchEmps]);
 
   const pendingConfirmations = overrides.filter((o) => o.branchId === activeBranch?.id && o.confirmStatus === "pending").length;
@@ -1602,7 +1718,7 @@ export default function ShiftsPage() {
 
   // Shift → employees mapping for template tab
   const shiftEmpMap = useMemo(() => {
-    const map: Record<string, typeof allEmployees> = {};
+    const map: Record<string, Employee[]> = {};
     shiftList.forEach((s) => {
       map[s.id] = branchEmps.filter((emp) =>
         branchPatterns.some((p) => p.employeeId === emp.id && p.shiftId === s.id)
@@ -1629,6 +1745,26 @@ export default function ShiftsPage() {
       .then((data: ChangeRequest[]) => setRequests(data))
       .catch(() => {});
   }, [activeBranch?.id]);
+
+  // Load employees from DB when branch changes
+  useEffect(() => {
+    if (!activeBranch?.id) { setBranchEmps([]); return; }
+    fetch(`/api/employees?branchId=${activeBranch.id}&status=active`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: Employee[]) => setBranchEmps(data))
+      .catch(() => {});
+  }, [activeBranch?.id]);
+
+  // Load shift assignments from DB when branch or week changes
+  useEffect(() => {
+    if (!activeBranch?.id) { setOverrides([]); return; }
+    const from = toStr(monday);
+    const to   = toStr(addDays(monday, 6));
+    fetch(`/api/hr/shifts/assignments?branchId=${activeBranch.id}&from=${from}&to=${to}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: CalendarEntry[]) => setOverrides(data))
+      .catch(() => {});
+  }, [activeBranch?.id, monday]);
 
   // Fetch todos for all loaded shifts
   useEffect(() => {
@@ -1683,10 +1819,10 @@ export default function ShiftsPage() {
     setTodosByShift((prev) => { const n = { ...prev }; delete n[id]; return n; });
   };
 
-  const handleCellSave = (shiftId: string | null, note: string) => {
+  const handleCellSave = async (shiftId: string | null, note: string) => {
     if (!cellModal) return;
-    const entry: CalendarEntry = {
-      id: cellModal.entry?.id ?? `CE-${Date.now()}`,
+    const tempEntry: CalendarEntry = {
+      id: cellModal.entry?.id ?? `CE-tmp-${Date.now()}`,
       employeeId: cellModal.empId,
       shiftId,
       date: cellModal.date,
@@ -1695,31 +1831,55 @@ export default function ShiftsPage() {
       note: note || undefined,
     };
     setOverrides((prev) => {
-      const idx = prev.findIndex((o) => o.id === entry.id || (o.date === entry.date && o.employeeId === entry.employeeId));
-      if (idx >= 0) { const n = [...prev]; n[idx] = entry; return n; }
-      return [...prev, entry];
+      const idx = prev.findIndex((o) => o.date === tempEntry.date && o.employeeId === tempEntry.employeeId);
+      if (idx >= 0) { const n = [...prev]; n[idx] = tempEntry; return n; }
+      return [...prev, tempEntry];
     });
     setCellModal(null);
+    try {
+      const isEdit = !!cellModal.entry?.id && !cellModal.entry.id.startsWith("CE-tmp");
+      const url = isEdit ? `/api/hr/shifts/assignments/${cellModal.entry!.id}` : "/api/hr/shifts/assignments";
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId: cellModal.empId, shiftId: shiftId ?? null, date: cellModal.date, branchId: activeBranch?.id, note: note || null }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setOverrides((prev) => prev.map((o) => o.date === saved.date && o.employeeId === saved.employeeId ? { ...o, id: saved.id, confirmStatus: saved.confirmStatus } : o));
+      }
+    } catch {
+      // keep optimistic
+    }
   };
 
-  const handleRemoveOverride = () => {
+  const handleRemoveOverride = async () => {
     if (!cellModal?.entry) return;
-    setOverrides((prev) => prev.filter((o) => o.id !== cellModal.entry!.id));
+    const entryId = cellModal.entry.id;
+    setOverrides((prev) => prev.filter((o) => o.id !== entryId));
     setCellModal(null);
+    if (entryId && !entryId.startsWith("CE-tmp")) {
+      try { await fetch(`/api/hr/shifts/assignments/${entryId}`, { method: "DELETE" }); } catch { /* ignore */ }
+    }
   };
 
-  const handleConfirm = (entryId: string) => {
+  const handleConfirm = async (entryId: string) => {
     setOverrides((prev) => prev.map((o) => o.id === entryId ? { ...o, confirmStatus: "confirmed" } : o));
+    try {
+      await fetch(`/api/hr/shifts/assignments/${entryId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmStatus: "confirmed" }),
+      });
+    } catch { /* keep optimistic */ }
   };
 
   const handleApproveRequest = async (id: string) => {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
-    // Optimistic update
     setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" as const, resolvedAt: new Date().toISOString() } : r));
-    // Calendar override so the approved shift shows on schedule
-    const entry: CalendarEntry = {
-      id: `CE-${Date.now()}`,
+    const tempEntry: CalendarEntry = {
+      id: `CE-tmp-${Date.now()}`,
       employeeId: req.employeeId,
       shiftId: req.requestedShiftId,
       date: req.date,
@@ -1729,10 +1889,9 @@ export default function ShiftsPage() {
     };
     setOverrides((prev) => {
       const idx = prev.findIndex((o) => o.date === req.date && o.employeeId === req.employeeId);
-      if (idx >= 0) { const n = [...prev]; n[idx] = entry; return n; }
-      return [...prev, entry];
+      if (idx >= 0) { const n = [...prev]; n[idx] = tempEntry; return n; }
+      return [...prev, tempEntry];
     });
-    // Persist
     const res = await fetch(`/api/hr/shifts/change-requests/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -1741,6 +1900,16 @@ export default function ShiftsPage() {
     if (res.ok) {
       const saved: ChangeRequest = await res.json();
       setRequests((prev) => prev.map((r) => r.id === id ? saved : r));
+    }
+    // Save the assignment to DB so it persists across reloads
+    const ar = await fetch("/api/hr/shifts/assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employeeId: req.employeeId, shiftId: req.requestedShiftId ?? null, date: req.date, branchId: activeBranch?.id, note: `Approved request ${req.id}` }),
+    });
+    if (ar.ok) {
+      const sa = await ar.json();
+      setOverrides((prev) => prev.map((o) => o.date === sa.date && o.employeeId === sa.employeeId ? { ...o, id: sa.id } : o));
     }
   };
 
@@ -1757,6 +1926,37 @@ export default function ShiftsPage() {
       const saved: ChangeRequest = await res.json();
       setRequests((prev) => prev.map((r) => r.id === id ? saved : r));
     }
+  };
+
+  const handleDayAssign = async (employeeId: string, shiftId: string | null, note: string) => {
+    if (!dayAssignModal) return;
+    const date = dayAssignModal.date;
+    const tempEntry: CalendarEntry = {
+      id: `CE-tmp-${Date.now()}`,
+      employeeId,
+      shiftId,
+      date,
+      branchId: activeBranch?.id ?? "",
+      confirmStatus: "pending",
+      note: note || undefined,
+    };
+    setOverrides((prev) => {
+      const idx = prev.findIndex((o) => o.date === date && o.employeeId === employeeId);
+      if (idx >= 0) { const n = [...prev]; n[idx] = tempEntry; return n; }
+      return [...prev, tempEntry];
+    });
+    setDayAssignModal(null);
+    try {
+      const res = await fetch("/api/hr/shifts/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId, shiftId: shiftId ?? null, date, branchId: activeBranch?.id, note: note || null }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setOverrides((prev) => prev.map((o) => o.date === saved.date && o.employeeId === saved.employeeId ? { ...o, id: saved.id, confirmStatus: saved.confirmStatus } : o));
+      }
+    } catch { /* keep optimistic */ }
   };
 
   // Summary stats for templates tab
@@ -2025,6 +2225,7 @@ export default function ShiftsPage() {
                 }}
                 onConfirm={handleConfirm}
                 onRequestChange={(empId, date, shiftId) => setReqChangeModal({ empId, date, currentShiftId: shiftId })}
+                onAddToDay={(date) => setDayAssignModal({ date })}
               />
             )}
 
@@ -2179,6 +2380,7 @@ export default function ShiftsPage() {
           employeeId={cellModal.empId} date={cellModal.date}
           currentShiftId={cellModal.currentShiftId} isOverride={cellModal.isOverride}
           confirmStatus={cellModal.entry?.confirmStatus} shiftList={shiftList}
+          employees={branchEmps}
           onClose={() => setCellModal(null)} onSave={handleCellSave}
           onRemoveOverride={cellModal.isOverride ? handleRemoveOverride : undefined}
         />
@@ -2187,6 +2389,7 @@ export default function ShiftsPage() {
         <RequestChangeModal
           employeeId={reqChangeModal.empId} date={reqChangeModal.date}
           currentShiftId={reqChangeModal.currentShiftId} shiftList={shiftList}
+          employees={branchEmps}
           onClose={() => setReqChangeModal(null)}
           onSubmit={async (req) => {
             const res = await fetch("/api/hr/shifts/change-requests", {
@@ -2198,6 +2401,16 @@ export default function ShiftsPage() {
             setRequests((prev) => [saved, ...prev]);
             setReqChangeModal(null);
           }}
+        />
+      )}
+      {dayAssignModal && (
+        <DayAssignModal
+          date={dayAssignModal.date}
+          branchEmps={branchEmps}
+          alreadyAssigned={overrides.filter((o) => o.date === dayAssignModal.date).map((o) => o.employeeId)}
+          shiftList={shiftList}
+          onClose={() => setDayAssignModal(null)}
+          onSave={handleDayAssign}
         />
       )}
     </div>

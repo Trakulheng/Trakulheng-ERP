@@ -158,6 +158,7 @@ export default function GeneralSettingsPage() {
   const [hours, setHours] = useState(initialHours);
   const [invoice, setInvoice] = useState(initialInvoice);
   const [social, setSocial] = useState(initialSocial);
+  const [attendance, setAttendance] = useState({ lateWarningMinutes: 15, clockGpsRadiusMeters: 200 });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -168,11 +169,12 @@ export default function GeneralSettingsPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         if (!d) return;
-        if (d.company)  setSettings((s) => ({ ...s, ...d.company }));
-        if (d.hours)    setHours(d.hours);
-        if (d.invoice)  setInvoice(d.invoice);
-        if (d.system)   setSettings((s) => ({ ...s, ...d.system }));
-        if (d.social)   setSocial(d.social);
+        if (d.company)    setSettings((s) => ({ ...s, ...d.company }));
+        if (d.hours)      setHours(d.hours);
+        if (d.invoice)    setInvoice(d.invoice);
+        if (d.system)     setSettings((s) => ({ ...s, ...d.system }));
+        if (d.social)     setSocial(d.social);
+        if (d.attendance) setAttendance((a) => ({ ...a, ...d.attendance }));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -216,6 +218,7 @@ export default function GeneralSettingsPage() {
           language: settings.language, fiscalYearStart: settings.fiscalYearStart,
         },
         social,
+        attendance,
       };
       const res = await fetch("/api/settings/general", {
         method: "POST",
@@ -700,6 +703,38 @@ export default function GeneralSettingsPage() {
                 </div>
               );
             })}
+          </div>
+        </SectionCard>
+
+        {/* ── Attendance & Clock-In Settings ── */}
+        <SectionCard
+          icon={Clock}
+          title={t("Attendance & Clock-In")}
+          subtitle={t("GPS radius and late-arrival grace period for employee clock-in")}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <Field
+              label={t("Late Warning Grace Period (minutes)")}
+              hint={t("Employees clocking in after shift start + this value are marked late")}
+            >
+              <input
+                type="number" min={0} max={120}
+                value={attendance.lateWarningMinutes}
+                onChange={(e) => setAttendance((a) => ({ ...a, lateWarningMinutes: Math.max(0, parseInt(e.target.value) || 0) }))}
+                className={inputCls}
+              />
+            </Field>
+            <Field
+              label={t("Clock-In GPS Radius (meters)")}
+              hint={t("Default max distance from store for clock-in. Can be overridden per branch")}
+            >
+              <input
+                type="number" min={50} max={5000}
+                value={attendance.clockGpsRadiusMeters}
+                onChange={(e) => setAttendance((a) => ({ ...a, clockGpsRadiusMeters: Math.max(50, parseInt(e.target.value) || 200) }))}
+                className={inputCls}
+              />
+            </Field>
           </div>
         </SectionCard>
       </div>

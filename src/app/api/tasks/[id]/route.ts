@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.assigneeName !== undefined ? { assigneeName: data.assigneeName } : {}),
         ...(data.shiftLabel !== undefined ? { shiftLabel: data.shiftLabel } : {}),
+        ...(data.taskListId !== undefined ? { taskListId: data.taskListId || null } : {}),
       },
     });
     return NextResponse.json(task);
