@@ -28,71 +28,80 @@ const NAV_LABEL_TO_SECTION: Record<string, string> = {
   "Settings":   "settings",
 };
 
+type PermMatrix = Record<string, { create: boolean; edit: boolean; view: boolean }>;
+
+function permAllowed(permKey: string | undefined, p: PermMatrix): boolean {
+  if (!permKey) return true;
+  const m = p[permKey];
+  if (!m) return true; // not in matrix → unrestricted
+  return m.create || m.edit || m.view;
+}
+
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Tasks", href: "/tasks", icon: CheckSquare },
   {
     label: "Finance", icon: DollarSign,
     children: [
-      { label: "Overview", href: "/finance", icon: BarChart3 },
-      { label: "Invoices", href: "/finance/invoices", icon: FileText },
-      { label: "Expenses", href: "/finance/expenses", icon: Receipt },
+      { label: "Overview",  href: "/finance",          icon: BarChart3 },
+      { label: "Invoices",  href: "/finance/invoices", icon: FileText,  permKey: "finance_invoices" },
+      { label: "Expenses",  href: "/finance/expenses", icon: Receipt,   permKey: "finance_expenses" },
     ],
   },
   {
     label: "Inventory", icon: Package,
     children: [
-      { label: "Overview", href: "/inventory", icon: BarChart3 },
-      { label: "Products", href: "/inventory/products", icon: Package },
-      { label: "Purchase Orders", href: "/inventory/purchase-orders", icon: ShoppingCart },
-      { label: "Goods Receive", href: "/inventory/goods-receive", icon: PackageCheck },
-      { label: "Suppliers", href: "/inventory/suppliers", icon: Truck },
+      { label: "Overview",        href: "/inventory",                  icon: BarChart3   },
+      { label: "Products",        href: "/inventory/products",         icon: Package,     permKey: "inv_products"  },
+      { label: "Purchase Orders", href: "/inventory/purchase-orders",  icon: ShoppingCart,permKey: "inv_po"        },
+      { label: "Goods Receive",   href: "/inventory/goods-receive",    icon: PackageCheck,permKey: "inv_gr"        },
+      { label: "Suppliers",       href: "/inventory/suppliers",        icon: Truck,       permKey: "inv_suppliers" },
     ],
   },
   {
     label: "Sales & CRM", icon: TrendingUp,
     children: [
-      { label: "Overview", href: "/sales", icon: BarChart3 },
-      { label: "Customers", href: "/sales/customers", icon: Users },
-      { label: "Orders", href: "/sales/orders", icon: ClipboardList },
+      { label: "Overview",   href: "/sales",           icon: BarChart3    },
+      { label: "Customers",  href: "/sales/customers", icon: Users,        permKey: "sales_customers" },
+      { label: "Orders",     href: "/sales/orders",    icon: ClipboardList,permKey: "sales_orders"    },
     ],
   },
   {
     label: "HR & Payroll", icon: UserCheck,
     children: [
-      { label: "Overview", href: "/hr", icon: BarChart3 },
-      { label: "Employees", href: "/hr/employees", icon: Users },
-      { label: "Payroll", href: "/hr/payroll", icon: CreditCard },
-      { label: "Leave", href: "/hr/leave", icon: CalendarDays },
-      { label: "Attendance", href: "/hr/attendance", icon: ScanLine },
-      { label: "Clock In/Out", href: "/hr/clock", icon: Fingerprint },
-      { label: "Shifts", href: "/hr/shifts", icon: CalendarClock },
+      { label: "Overview",    href: "/hr",             icon: BarChart3  },
+      { label: "Employees",   href: "/hr/employees",   icon: Users,       permKey: "hr_employees"  },
+      { label: "Payroll",     href: "/hr/payroll",     icon: CreditCard,  permKey: "hr_payroll"    },
+      { label: "Leave",       href: "/hr/leave",       icon: CalendarDays,permKey: "hr_leave"      },
+      { label: "Attendance",  href: "/hr/attendance",  icon: ScanLine,    permKey: "hr_attendance" },
+      { label: "Clock In/Out",href: "/hr/clock",       icon: Fingerprint, permKey: "hr_attendance" },
+      { label: "Shifts",      href: "/hr/shifts",      icon: CalendarClock },
     ],
   },
   {
     label: "CRM", icon: HeartHandshake,
     children: [
-      { label: "Overview", href: "/crm", icon: BarChart3 },
-      { label: "Customers", href: "/crm/customers", icon: Users },
-      { label: "Campaigns", href: "/crm/campaigns", icon: Zap },
-      { label: "Rewards", href: "/crm/rewards", icon: Gift },
-      { label: "Redemptions", href: "/crm/redemptions", icon: TicketCheck },
-      { label: "Analytics", href: "/crm/analytics", icon: PieChart },
+      { label: "Overview",     href: "/crm",              icon: BarChart3  },
+      { label: "Customers",    href: "/crm/customers",    icon: Users,      permKey: "crm_customers" },
+      { label: "Campaigns",    href: "/crm/campaigns",    icon: Zap,        permKey: "crm_campaigns" },
+      { label: "Rewards",      href: "/crm/rewards",      icon: Gift,       permKey: "crm_rewards"   },
+      { label: "Redemptions",  href: "/crm/redemptions",  icon: TicketCheck },
+      { label: "Analytics",    href: "/crm/analytics",    icon: PieChart    },
     ],
   },
   {
     label: "Settings", icon: Settings,
     children: [
-      { label: "General", href: "/settings/general", icon: Settings },
-      { label: "Branches", href: "/settings/branches", icon: GitBranch },
-      { label: "Brands", href: "/settings/brands", icon: ArrowLeftRight },
-      { label: "Departments", href: "/settings/departments", icon: Layers },
-      { label: "Users", href: "/settings/users", icon: Shield },
-      { label: "Dashboard Layout", href: "/settings/dashboard", icon: LayoutDashboard },
-      { label: "Role Permissions", href: "/settings/roles", icon: ClipboardCheck },
-      { label: "Points Config", href: "/settings/points", icon: Sliders },
-      { label: "Notifications", href: "/settings/notifications", icon: Bell },
-      { label: "Appearance", href: "/settings/appearance", icon: Sliders },
+      { label: "General",           href: "/settings/general",        icon: Settings,      permKey: "set_general"  },
+      { label: "Branches",          href: "/settings/branches",       icon: GitBranch,     permKey: "set_branches" },
+      { label: "Brands",            href: "/settings/brands",         icon: ArrowLeftRight },
+      { label: "Departments",       href: "/settings/departments",    icon: Layers         },
+      { label: "Users",             href: "/settings/users",          icon: Shield,        permKey: "set_users"    },
+      { label: "Dashboard Layout",  href: "/settings/dashboard",      icon: LayoutDashboard },
+      { label: "Role Permissions",  href: "/settings/roles",          icon: ClipboardCheck,permKey: "set_roles"    },
+      { label: "Points Config",     href: "/settings/points",         icon: Sliders        },
+      { label: "Notifications",     href: "/settings/notifications",  icon: Bell           },
+      { label: "Appearance",        href: "/settings/appearance",     icon: Sliders        },
     ],
   },
 ];
@@ -125,6 +134,7 @@ export function Sidebar() {
   const [openSections, setOpenSections] = useState<string[]>(["Finance", "Inventory", "Sales & CRM", "HR & Payroll", "CRM", "Settings"]);
   const [me, setMe] = useState<Me | null>(null);
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const [perms, setPerms] = useState<PermMatrix>({});
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -132,6 +142,18 @@ export function Sidebar() {
       .then((data) => { if (data?.email) setMe(data); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!me?.role) return;
+    const load = () =>
+      fetch("/api/settings/role-permissions")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (d?.permissions?.[me.role]) setPerms(d.permissions[me.role]); })
+        .catch(() => {});
+    load();
+    window.addEventListener("permissions-updated", load);
+    return () => window.removeEventListener("permissions-updated", load);
+  }, [me?.role]);
 
   const sortedNavItems = useMemo(() => {
     if (!me?.menuOrder?.length) return navItems;
@@ -142,6 +164,19 @@ export function Sidebar() {
       return (orderMap.get(aId) ?? 999) - (orderMap.get(bId) ?? 999);
     });
   }, [me?.menuOrder]);
+
+  const visibleNav = useMemo(() => {
+    if (!me?.role || me.role === "admin" || Object.keys(perms).length === 0) return sortedNavItems;
+    return sortedNavItems.map((item) => {
+      if (!(item as any).children) return item;
+      const children: any[] = (item as any).children;
+      const permKeyedChildren = children.filter((c) => c.permKey);
+      if (permKeyedChildren.length === 0) return item; // no permKey children — always show
+      const anyAllowed = permKeyedChildren.some((c) => permAllowed(c.permKey, perms));
+      if (!anyAllowed) return null; // hide entire section
+      return { ...item, children: children.filter((c) => permAllowed(c.permKey, perms)) };
+    }).filter(Boolean) as typeof sortedNavItems;
+  }, [sortedNavItems, perms, me?.role]);
 
   const S = {
     dark: {
@@ -229,7 +264,7 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-3 px-3">
-          {sortedNavItems.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
 
             if (!item.children) {

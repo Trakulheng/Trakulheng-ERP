@@ -404,6 +404,7 @@ export default function RolePermissionsPage() {
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+      window.dispatchEvent(new Event("permissions-updated"));
     } catch {
       setSaveError("Network error. Please try again.");
     } finally {
