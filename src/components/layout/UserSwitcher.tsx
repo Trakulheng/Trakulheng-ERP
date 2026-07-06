@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { X, Loader2, Eye, EyeOff, ChevronLeft, CheckCircle2, UserCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -229,7 +230,12 @@ export function UserSwitcher({ onClose }: Props) {
 
               {authTab === "password" ? (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Password</label>
+                    <Link href="/auth/forgot-password" onClick={onClose} className="text-xs text-blue-600 hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
                   <div className="relative">
                     <input
                       type={showPw ? "text" : "password"}

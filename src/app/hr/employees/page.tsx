@@ -173,6 +173,12 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
   const docRef    = useRef<HTMLInputElement>(null);
   const scanIdRef = useRef<HTMLInputElement>(null);
 
+  const handlePhotoChange = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => set("photo", ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
   // ── OCR scanner state ──
   const [scanOpen,    setScanOpen]    = useState(false);
   const [scanPreview, setScanPreview] = useState<string>("");
@@ -268,7 +274,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
   const set = <K extends keyof EmpForm>(k: K, v: EmpForm[K]) =>
     setForm(f => ({ ...f, [k]: v }));
 
-  const canNext1 = form.firstName.trim() && form.lastName.trim();
+  const canNext1 = form.firstName.trim() && form.lastName.trim() && (!isEdit ? !!form.photo : true);
   const canNext2 = form.department && form.position.trim() && form.hireDate;
   const canNext3 = true; // salary optional for intern
   const canSave  = canNext1 && canNext2;
@@ -335,6 +341,38 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
           {/* ── Step 1: Personal ─────────────────────────── */}
           {step === 1 && (
             <>
+              {/* ── Profile Photo ── */}
+              <input ref={photoRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoChange(f); e.target.value = ""; }} />
+              <div className="flex flex-col items-center gap-3 pb-2">
+                <div
+                  onClick={() => photoRef.current?.click()}
+                  className="relative w-24 h-24 rounded-full cursor-pointer group overflow-hidden border-4 border-white shadow-lg ring-2 ring-blue-200 hover:ring-blue-400 transition-all"
+                >
+                  {form.photo ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={form.photo} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-400">
+                      <User size={32} />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Upload size={18} className="text-white" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-slate-700">
+                    {form.photo ? "Click to change photo" : "Upload profile photo"}
+                    {!isEdit && <span className="text-red-500 ml-1">*</span>}
+                  </p>
+                  <p className="text-xs text-slate-400">JPG, PNG — max 5 MB</p>
+                </div>
+                {!form.photo && !isEdit && (
+                  <p className="text-xs text-red-500">Photo is required</p>
+                )}
+              </div>
+
               {/* ── AI OCR Scanner ── */}
               <input ref={scanIdRef} type="file" accept="image/*" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleScanFile(f); }} />
@@ -806,22 +844,21 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
           {/* ── Step 4: Documents ────────────────────────── */}
           {step === 4 && (
             <>
-              {/* Profile photo */}
+              {/* Profile photo — set in step 1, can update here */}
               <Field label="Profile Photo">
-                <input ref={photoRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) set("photo", f.name);
-                    e.target.value = "";
-                  }} />
                 <div
                   onClick={() => photoRef.current?.click()}
                   className="flex items-center gap-4 p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
-                  <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xl font-bold shrink-0">
-                    {form.firstName ? form.firstName[0].toUpperCase() : <User size={24} />}
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center text-blue-700 text-xl font-bold shrink-0">
+                    {form.photo ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={form.photo} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      form.firstName ? form.firstName[0].toUpperCase() : <User size={24} />
+                    )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{form.photo || "Click to upload profile photo"}</p>
+                    <p className="text-sm font-medium text-slate-700">{form.photo ? "Photo uploaded — click to change" : "Click to upload profile photo"}</p>
                     <p className="text-xs text-slate-400 mt-0.5">JPG, PNG — max 5 MB</p>
                   </div>
                   {form.photo && (
@@ -993,8 +1030,13 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
         <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 px-6 pt-6 pb-5 rounded-t-2xl">
           <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><X size={16} /></button>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-white text-2xl font-bold">
-              {initials}
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/20 flex items-center justify-center text-white text-2xl font-bold shrink-0">
+              {emp.photo ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={emp.photo} alt={emp.name} className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">{emp.name}</h2>
@@ -1146,9 +1188,12 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
             <section className="space-y-2 border-t border-slate-100 pt-4">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Documents</p>
               {emp.photo && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
-                  <User size={13} className="text-blue-500" />
-                  <span className="text-xs text-slate-700 flex-1">{emp.photo}</span>
+                <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 rounded-lg">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={emp.photo} alt="Profile" className="w-full h-full object-cover" />
+                  </div>
+                  <span className="text-xs text-slate-700 flex-1">Profile photo</span>
                   <span className="text-[10px] text-blue-500 font-medium">PHOTO</span>
                 </div>
               )}
@@ -1340,8 +1385,13 @@ export default function EmployeesPage() {
                     className="hover:bg-slate-50 cursor-pointer transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold shrink-0">
-                          {emp.firstName[0]}
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold shrink-0">
+                          {(emp as any).photo ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={(emp as any).photo} alt={emp.name} className="w-full h-full object-cover" />
+                          ) : (
+                            emp.firstName[0]
+                          )}
                         </div>
                         <div>
                           <p className="font-semibold text-slate-800 text-sm">{emp.name}</p>

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, DollarSign, FileText, Receipt, BarChart3, Package,
   ShoppingCart, Truck, Users, TrendingUp, ClipboardList, UserCheck,
   CreditCard, CalendarDays, ChevronDown, ChevronRight, Building2,
   Settings, GitBranch, ScanLine, CalendarClock, HeartHandshake, Gift,
   TicketCheck, Zap, PieChart, Shield, Bell, Sliders, PackageCheck,
-  ClipboardCheck, CheckSquare, X, ArrowLeftRight, Layers, Fingerprint,
+  ClipboardCheck, CheckSquare, X, ArrowLeftRight, Layers, Fingerprint, LogOut,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -101,6 +101,7 @@ interface Me { name: string | null; email: string; role: string; menuOrder?: str
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme } = useTheme();
   const { isOpen, close } = useSidebar();
   const t = useT();
@@ -165,8 +166,13 @@ export function Sidebar() {
   const isActive = (href: string) => href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   const handleLinkClick = () => {
-    // Close sidebar on mobile after navigation
     if (window.innerWidth < 1024) close();
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/auth/login");
+    router.refresh();
   };
 
   return (
@@ -284,12 +290,16 @@ export function Sidebar() {
             <button
               onClick={() => setShowSwitcher(true)}
               title="Switch user"
-              className={cn(
-                "p-1.5 rounded-lg transition-colors flex-shrink-0",
-                S.closeBtn
-              )}
+              className={cn("p-1.5 rounded-lg transition-colors flex-shrink-0", S.closeBtn)}
             >
               <ArrowLeftRight size={15} />
+            </button>
+            <button
+              onClick={handleLogout}
+              title="Log out"
+              className={cn("p-1.5 rounded-lg transition-colors flex-shrink-0", S.closeBtn)}
+            >
+              <LogOut size={15} />
             </button>
           </div>
         </div>
