@@ -2,6 +2,7 @@ import { Header } from "@/components/layout/Header";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
+import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
@@ -24,7 +25,13 @@ const stockColors: Record<string, string> = {
 async function getWidgetConfig(role: string): Promise<WidgetConfig[]> {
   try {
     const config = await prisma.dashboardConfig.findUnique({ where: { role } });
-    if (config?.widgets) return config.widgets as WidgetConfig[];
+    if (config?.widgets) {
+      const saved    = config.widgets as WidgetConfig[];
+      const defaults = DEFAULT_WIDGETS[role] ?? DEFAULT_WIDGETS.staff;
+      const savedIds = new Set(saved.map((w) => w.id));
+      const newWidgets = defaults.filter((w) => !savedIds.has(w.id));
+      return newWidgets.length > 0 ? [...saved, ...newWidgets] : saved;
+    }
   } catch {}
   return DEFAULT_WIDGETS[role] ?? DEFAULT_WIDGETS.staff;
 }
@@ -214,6 +221,9 @@ export default async function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Clock In / Out widget */}
+        {isEnabled(widgets, "clock_inout") && <ClockInOutWidget />}
 
         {/* Today's To-do List — staff widget */}
         {isEnabled(widgets, "shift_todos") && (

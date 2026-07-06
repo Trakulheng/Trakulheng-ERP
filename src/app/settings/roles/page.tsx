@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { cn } from "@/lib/utils";
 import {
@@ -310,9 +310,32 @@ export default function RolePermissionsPage() {
   const [roles,      setRoles]      = useState<RoleDef[]>(SYSTEM_ROLES);
   const [perms,      setPerms]      = useState<Record<string, PermMatrix>>(buildDefault);
   const [saved,      setSaved]      = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [saveError,  setSaveError]  = useState("");
+  const [loading,    setLoading]    = useState(true);
   const [active,     setActive]     = useState<string>("manager");
   const [showCreate, setShowCreate] = useState(false);
   const [deleteId,   setDeleteId]   = useState<string | null>(null);
+
+  // Load saved permissions from DB on mount
+  useEffect(() => {
+    fetch("/api/settings/role-permissions")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (!d || typeof d !== "object") return;
+        setPerms((prev) => {
+          const merged = { ...prev };
+          for (const [roleId, savedPerms] of Object.entries(d)) {
+            if (savedPerms && typeof savedPerms === "object") {
+              merged[roleId] = savedPerms as PermMatrix;
+            }
+          }
+          return merged;
+        });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const toggle = (roleId: string, moduleId: string, action: Action) => {
     setPerms((prev) => {
@@ -326,7 +349,28 @@ export default function RolePermissionsPage() {
     });
   };
 
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/settings/role-permissions", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ roles: perms }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setSaveError(d.error ?? "Failed to save.");
+        return;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setSaveError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCreateRole = (role: RoleDef, rolePerms: PermMatrix) => {
     setRoles((prev) => [...prev, role]);
@@ -365,11 +409,19 @@ export default function RolePermissionsPage() {
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
               <Plus size={15} /> Create Role
             </button>
-            <button onClick={handleSave}
-              className={cn("flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-                saved ? "bg-emerald-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700")}>
-              {saved ? <><Check size={15} /> Saved!</> : <><Save size={15} /> Save Permissions</>}
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button onClick={handleSave} disabled={saving || loading}
+                className={cn("flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50",
+                  saved ? "bg-emerald-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700")}>
+                {saving
+                  ? <><Save size={15} className="animate-pulse" /> Saving…</>
+                  : saved
+                    ? <><Check size={15} /> Saved!</>
+                    : <><Save size={15} /> Save Permissions</>
+                }
+              </button>
+              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+            </div>
           </div>
         }
       />

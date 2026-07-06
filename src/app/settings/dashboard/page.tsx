@@ -47,11 +47,18 @@ export default function DashboardSettingsPage() {
             .then((res) => res.ok ? res.json() : null)
         )
       );
+      function mergeWidgets(saved: WidgetConfig[] | null | undefined, role: string): WidgetConfig[] {
+        if (!saved) return [...DEFAULT_WIDGETS[role]];
+        const defaults = DEFAULT_WIDGETS[role] ?? [];
+        const savedIds = new Set(saved.map((w: WidgetConfig) => w.id));
+        const newWidgets = defaults.filter((w) => !savedIds.has(w.id));
+        return newWidgets.length > 0 ? [...saved, ...newWidgets] : saved;
+      }
       setConfigs({
-        admin:   results[0]?.widgets ?? [...DEFAULT_WIDGETS.admin],
-        manager: results[1]?.widgets ?? [...DEFAULT_WIDGETS.manager],
-        staff:   results[2]?.widgets ?? [...DEFAULT_WIDGETS.staff],
-        viewer:  results[3]?.widgets ?? [...DEFAULT_WIDGETS.viewer],
+        admin:   mergeWidgets(results[0]?.widgets, "admin"),
+        manager: mergeWidgets(results[1]?.widgets, "manager"),
+        staff:   mergeWidgets(results[2]?.widgets, "staff"),
+        viewer:  mergeWidgets(results[3]?.widgets, "viewer"),
       });
       setLoading(false);
     })();
