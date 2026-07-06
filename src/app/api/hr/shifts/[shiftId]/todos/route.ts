@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: { shiftId: string
   if (!["admin", "manager"].includes(user.role))
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const { name, expectedMinutes } = await req.json();
+  const { name, expectedMinutes, photoRequired } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required." }, { status: 400 });
 
   const last = await prisma.shiftTodo.findFirst({
@@ -33,6 +33,7 @@ export async function POST(req: Request, { params }: { params: { shiftId: string
       name: name.trim(),
       sequence: last ? last.sequence + 1 : 1,
       expectedMinutes: expectedMinutes ?? 30,
+      photoRequired: photoRequired !== false,
     },
   });
   return NextResponse.json(todo, { status: 201 });

@@ -17,7 +17,10 @@ export async function GET(req: Request) {
     orderBy: [{ shiftId: "asc" }, { sequence: "asc" }],
     include: {
       logs: {
-        where: { date, employeeId: user.employeeRecordId ?? "__none__" },
+        where: {
+          date,
+          ...(user.employeeRecordId ? { employeeId: user.employeeRecordId } : {}),
+        },
       },
     },
   });

@@ -8,13 +8,14 @@ export async function PATCH(req: Request, { params }: { params: { todoId: string
   if (!["admin", "manager"].includes(user.role))
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const { name, sequence, expectedMinutes } = await req.json();
+  const { name, sequence, expectedMinutes, photoRequired } = await req.json();
   const todo = await prisma.shiftTodo.update({
     where: { id: params.todoId },
     data: {
       ...(name !== undefined ? { name: name.trim() } : {}),
       ...(sequence !== undefined ? { sequence } : {}),
       ...(expectedMinutes !== undefined ? { expectedMinutes } : {}),
+      ...(photoRequired !== undefined ? { photoRequired } : {}),
     },
   });
   return NextResponse.json(todo);

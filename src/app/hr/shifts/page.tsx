@@ -6,7 +6,6 @@ import { useBranch } from "@/context/BranchContext";
 import {
   employees as allEmployees,
   employeeShifts as initialAssignments,
-  shifts as initialShifts,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import {
@@ -47,6 +46,7 @@ interface ShiftTodo {
   name: string;
   sequence: number;
   expectedMinutes: number;
+  photoRequired: boolean;
 }
 
 type ShiftColor = "blue" | "amber" | "violet" | "emerald";
@@ -246,6 +246,7 @@ function TodoModal({
   const [name, setName] = useState(initial?.name ?? "");
   const [hours, setHours] = useState(Math.floor((initial?.expectedMinutes ?? 30) / 60));
   const [mins, setMins] = useState((initial?.expectedMinutes ?? 30) % 60);
+  const [photoRequired, setPhotoRequired] = useState(initial?.photoRequired !== false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -261,7 +262,7 @@ function TodoModal({
       const res = await fetch(url, {
         method: initial ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), expectedMinutes: totalMinutes }),
+        body: JSON.stringify({ name: name.trim(), expectedMinutes: totalMinutes, photoRequired }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed to save."); return; }
@@ -284,7 +285,7 @@ function TodoModal({
             <X size={15} className="text-slate-500" />
           </button>
         </div>
-        <div className="px-5 py-4 space-y-3">
+        <div className="px-5 py-4 space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Task Name *</label>
             <input
@@ -295,7 +296,7 @@ function TodoModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Expected Time</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Expected Time (HH : MM)</label>
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <input
@@ -305,7 +306,7 @@ function TodoModal({
                 />
                 <p className="text-center text-[10px] text-slate-400 mt-0.5">hours</p>
               </div>
-              <span className="text-slate-400 font-bold">:</span>
+              <span className="text-slate-400 font-bold text-lg">:</span>
               <div className="flex-1">
                 <input
                   type="number" min={0} max={59} step={5} value={mins}
@@ -317,10 +318,34 @@ function TodoModal({
             </div>
             {totalMinutes > 0 && (
               <p className="text-xs text-slate-400 mt-1">
-                = {hours > 0 ? `${hours}h ` : ""}{mins > 0 ? `${mins}m` : ""}
+                ≈ {hours > 0 ? `${hours}h ` : ""}{mins > 0 ? `${mins}m` : ""}
               </p>
             )}
           </div>
+
+          {/* Photo required toggle */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-2">Completion Proof</label>
+            <button
+              type="button"
+              onClick={() => setPhotoRequired((v) => !v)}
+              className={cn(
+                "flex items-center gap-3 w-full px-4 py-3 rounded-xl border text-sm font-medium transition-all",
+                photoRequired
+                  ? "border-blue-300 bg-blue-50 text-blue-700"
+                  : "border-slate-200 bg-white text-slate-500"
+              )}
+            >
+              <div className={cn(
+                "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0",
+                photoRequired ? "bg-blue-600 border-blue-600" : "border-slate-300"
+              )}>
+                {photoRequired && <CheckCircle2 size={10} className="text-white" />}
+              </div>
+              Photo required to mark as complete
+            </button>
+          </div>
+
           {error && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
         </div>
         <div className="flex gap-3 px-5 py-4 border-t border-slate-100">
@@ -486,6 +511,9 @@ function ShiftCard({
                       ? `${todo.expectedMinutes}m`
                       : `${Math.floor(todo.expectedMinutes / 60)}h${todo.expectedMinutes % 60 ? ` ${todo.expectedMinutes % 60}m` : ""}`}
                   </span>
+                  {todo.photoRequired && (
+                    <span title="Photo required" className="text-[9px] bg-blue-100 text-blue-600 px-1 py-0.5 rounded shrink-0">📷</span>
+                  )}
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button
                       onClick={async () => {
@@ -1541,7 +1569,8 @@ export default function ShiftsPage() {
   const { activeBranch } = useBranch();
 
   const [tab, setTab] = useState<MainTab>("calendar");
-  const [shiftList, setShiftList] = useState<Shift[]>([...initialShifts]);
+  const [shiftList, setShiftList] = useState<Shift[]>([]);
+  const [shiftsLoading, setShiftsLoading] = useState(true);
   const [todosByShift, setTodosByShift] = useState<Record<string, ShiftTodo[]>>({});
   const [patterns, setPatterns] = useState<EmployeeShift[]>([...initialAssignments]);
   const [overrides, setOverrides] = useState<CalendarEntry[]>(initialOverrides);
@@ -1575,7 +1604,17 @@ export default function ShiftsPage() {
     return map;
   }, [shiftList, branchEmps, branchPatterns]);
 
-  // Fetch todos for all shifts on mount and when shiftList changes
+  // Load shifts from DB when branch changes
+  useEffect(() => {
+    if (!activeBranch?.id) { setShiftList([]); setShiftsLoading(false); return; }
+    setShiftsLoading(true);
+    fetch(`/api/hr/shifts?branchId=${activeBranch.id}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: Shift[]) => { setShiftList(data); setShiftsLoading(false); })
+      .catch(() => setShiftsLoading(false));
+  }, [activeBranch?.id]);
+
+  // Fetch todos for all loaded shifts
   useEffect(() => {
     shiftList.forEach((s) => {
       fetch(`/api/hr/shifts/${s.id}/todos`)
@@ -1597,17 +1636,30 @@ export default function ShiftsPage() {
     setTodosByShift((prev) => ({ ...prev, [shiftId]: todos }));
   };
 
-  const handleSaveShift = (shift: Shift) => {
-    setShiftList((prev) => {
-      const idx = prev.findIndex((s) => s.id === shift.id);
-      if (idx >= 0) { const n = [...prev]; n[idx] = shift; return n; }
-      return [...prev, shift];
+  const handleSaveShift = async (shift: Shift) => {
+    const isEdit = shiftList.some((s) => s.id === shift.id);
+    const url = isEdit ? `/api/hr/shifts/${shift.id}` : "/api/hr/shifts";
+    const body = { ...shift, branchId: activeBranch?.id };
+    const res = await fetch(url, {
+      method: isEdit ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
+    if (res.ok) {
+      const saved: Shift = await res.json();
+      setShiftList((prev) => {
+        const idx = prev.findIndex((s) => s.id === saved.id);
+        if (idx >= 0) { const n = [...prev]; n[idx] = saved; return n; }
+        return [...prev, saved];
+      });
+    }
     setShiftModal(null);
   };
 
-  const handleDeleteShift = (id: string) => {
+  const handleDeleteShift = async (id: string) => {
+    await fetch(`/api/hr/shifts/${id}`, { method: "DELETE" });
     setShiftList((prev) => prev.filter((s) => s.id !== id));
+    setTodosByShift((prev) => { const n = { ...prev }; delete n[id]; return n; });
   };
 
   const handleCellSave = (shiftId: string | null, note: string) => {
@@ -1730,23 +1782,33 @@ export default function ShiftsPage() {
             </div>
 
             {/* Cards grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {shiftList.map((s) => (
-                <ShiftCard key={s.id} shift={s}
-                  assignedEmps={shiftEmpMap[s.id] ?? []}
-                  patterns={branchPatterns}
-                  todos={todosByShift[s.id] ?? []}
-                  onEdit={(sh) => setShiftModal({ mode: "edit", data: sh })}
-                  onDelete={handleDeleteShift}
-                  onTodoChange={handleTodoChange}
-                />
-              ))}
-              <button onClick={() => setShiftModal({ mode: "add" })}
-                className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl p-5 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors min-h-[200px]">
-                <Plus size={22} />
-                <span className="text-sm font-medium">New Shift Template</span>
-              </button>
-            </div>
+            {shiftsLoading ? (
+              <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
+                <svg className="animate-spin mr-2 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Loading shifts…
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {shiftList.map((s) => (
+                  <ShiftCard key={s.id} shift={s}
+                    assignedEmps={shiftEmpMap[s.id] ?? []}
+                    patterns={branchPatterns}
+                    todos={todosByShift[s.id] ?? []}
+                    onEdit={(sh) => setShiftModal({ mode: "edit", data: sh })}
+                    onDelete={handleDeleteShift}
+                    onTodoChange={handleTodoChange}
+                  />
+                ))}
+                <button onClick={() => setShiftModal({ mode: "add" })}
+                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl p-5 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors min-h-[200px]">
+                  <Plus size={22} />
+                  <span className="text-sm font-medium">New Shift Template</span>
+                </button>
+              </div>
+            )}
 
             {/* Shift coverage table */}
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

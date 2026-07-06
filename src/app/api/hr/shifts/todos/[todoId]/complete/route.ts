@@ -9,8 +9,11 @@ export async function POST(req: Request, { params }: { params: { todoId: string 
   const { date, employeeId, photoUrl, notes } = await req.json();
   if (!date || !employeeId)
     return NextResponse.json({ error: "date and employeeId are required." }, { status: 400 });
-  if (!photoUrl)
-    return NextResponse.json({ error: "Photo is required to complete a to-do." }, { status: 400 });
+
+  // Check photoRequired setting on the todo
+  const todo = await prisma.shiftTodo.findUnique({ where: { id: params.todoId } });
+  if (todo?.photoRequired && !photoUrl)
+    return NextResponse.json({ error: "Photo is required to complete this to-do." }, { status: 400 });
 
   const log = await prisma.shiftTodoLog.upsert({
     where: { todoId_date_employeeId: { todoId: params.todoId, date, employeeId } },
