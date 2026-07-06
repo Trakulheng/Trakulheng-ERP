@@ -625,12 +625,22 @@ function ShiftCard({
 function ShiftModal({ state, onClose, onSave }: {
   state: { mode: "add" | "edit"; data?: Shift };
   onClose: () => void;
-  onSave: (shift: Shift) => void;
+  onSave: (shift: Shift) => Promise<string | null>;
 }) {
   const blank: Shift = { id: "", name: "", code: "", startTime: "08:00", endTime: "17:00", breakMinutes: 60, color: "blue" };
   const [form, setForm] = useState<Shift>(state.data ?? blank);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const set = <K extends keyof Shift>(k: K, v: Shift[K]) => setForm((p) => ({ ...p, [k]: v }));
   const preview = calcWorkHours(form.startTime, form.endTime, form.breakMinutes);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.code.trim()) { setError("Name and code are required."); return; }
+    setSaving(true); setError("");
+    const err = await onSave({ ...form, id: form.id || "", code: form.code.toUpperCase().slice(0, 3) });
+    setSaving(false);
+    if (err) setError(err);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -701,15 +711,19 @@ function ShiftModal({ state, onClose, onSave }: {
             </span>
           </div>
         </div>
+        {error && (
+          <div className="mx-6 mb-2 px-3 py-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+            {error}
+          </div>
+        )}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+          <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50">Cancel</button>
           <button
-            onClick={() => {
-              if (!form.name.trim() || !form.code.trim()) return;
-              onSave({ ...form, id: form.id || `SH-${Date.now()}`, code: form.code.toUpperCase().slice(0, 3) });
-            }}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
           >
+            {saving && <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>}
             {state.mode === "add" ? "Create Shift" : "Save Changes"}
           </button>
         </div>
@@ -1636,24 +1650,29 @@ export default function ShiftsPage() {
     setTodosByShift((prev) => ({ ...prev, [shiftId]: todos }));
   };
 
-  const handleSaveShift = async (shift: Shift) => {
-    const isEdit = shiftList.some((s) => s.id === shift.id);
+  const handleSaveShift = async (shift: Shift): Promise<string | null> => {
+    const isEdit = !!shift.id && shiftList.some((s) => s.id === shift.id);
     const url = isEdit ? `/api/hr/shifts/${shift.id}` : "/api/hr/shifts";
     const body = { ...shift, branchId: activeBranch?.id };
-    const res = await fetch(url, {
-      method: isEdit ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) {
-      const saved: Shift = await res.json();
+    try {
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) return data.error ?? "Failed to save shift.";
+      const saved: Shift = data;
       setShiftList((prev) => {
         const idx = prev.findIndex((s) => s.id === saved.id);
         if (idx >= 0) { const n = [...prev]; n[idx] = saved; return n; }
         return [...prev, saved];
       });
+      setShiftModal(null);
+      return null;
+    } catch {
+      return "Network error. Please try again.";
     }
-    setShiftModal(null);
   };
 
   const handleDeleteShift = async (id: string) => {
