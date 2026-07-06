@@ -1,7 +1,8 @@
 "use client";
 
-import { Bell, Search, ChevronDown, MapPin, Menu } from "lucide-react";
+import { Bell, Search, ChevronDown, MapPin, Menu, CalendarDays, ArrowLeftRight, Package, CheckSquare, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useBranch } from "@/context/BranchContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -13,20 +14,71 @@ interface HeaderProps {
   actions?: React.ReactNode;
 }
 
+type Notif = {
+  id: string;
+  type: "leave" | "shift" | "stock" | "task";
+  title: string;
+  body: string;
+  href: string;
+  createdAt: string;
+  read: boolean;
+};
+
+const NOTIF_ICON: Record<Notif["type"], React.ElementType> = {
+  leave: CalendarDays,
+  shift: ArrowLeftRight,
+  stock: Package,
+  task:  CheckSquare,
+};
+
+const NOTIF_COLOR: Record<Notif["type"], string> = {
+  leave: "bg-violet-100 text-violet-600",
+  shift: "bg-blue-100 text-blue-600",
+  stock: "bg-amber-100 text-amber-600",
+  task:  "bg-red-100 text-red-600",
+};
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 export function Header({ title, subtitle, actions }: HeaderProps) {
   const { activeBranch, setActiveBranch, branches } = useBranch();
   const { toggle } = useSidebar();
   const { lang, setLang, t } = useLanguage();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen]         = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [notifs, setNotifs]     = useState<Notif[]>([]);
+  const [readIds, setReadIds]   = useState<Set<string>>(new Set());
+  const ref     = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setBellOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/notifications")
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setNotifs(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
+  const unread = notifs.filter((n) => !readIds.has(n.id)).length;
+
+  const markAllRead = () => setReadIds(new Set(notifs.map((n) => n.id)));
+  const markRead = (id: string) => setReadIds((prev) => new Set([...prev, id]));
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4">
@@ -139,10 +191,94 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
             </button>
           </div>
 
-          <button className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors">
-            <Bell size={18} className="text-slate-600" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          {/* Notification bell */}
+          <div className="relative" ref={bellRef}>
+            <button
+              onClick={() => setBellOpen((v) => !v)}
+              className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <Bell size={18} className="text-slate-600" />
+              {unread > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </button>
+
+            {bellOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+                    {unread > 0 && (
+                      <p className="text-xs text-slate-400">{unread} unread</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {unread > 0 && (
+                      <button onClick={markAllRead} className="text-xs text-blue-600 hover:underline">
+                        Mark all read
+                      </button>
+                    )}
+                    <button onClick={() => setBellOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* List */}
+                <div className="max-h-80 overflow-y-auto">
+                  {notifs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+                      <Bell size={28} className="mb-2 opacity-30" />
+                      <p className="text-sm">No notifications</p>
+                    </div>
+                  ) : (
+                    notifs.map((n) => {
+                      const Icon = NOTIF_ICON[n.type];
+                      const isRead = readIds.has(n.id);
+                      return (
+                        <Link
+                          key={n.id}
+                          href={n.href}
+                          onClick={() => { markRead(n.id); setBellOpen(false); }}
+                          className={cn(
+                            "flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0",
+                            !isRead && "bg-blue-50/40"
+                          )}
+                        >
+                          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", NOTIF_COLOR[n.type])}>
+                            <Icon size={14} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-xs font-semibold text-slate-800", isRead && "font-medium text-slate-600")}>
+                              {n.title}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate mt-0.5">{n.body}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">{timeAgo(n.createdAt)}</p>
+                          </div>
+                          {!isRead && (
+                            <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+                          )}
+                        </Link>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Footer */}
+                {notifs.length > 0 && (
+                  <div className="border-t border-slate-100 px-4 py-2.5">
+                    <Link href="/settings/notifications" onClick={() => setBellOpen(false)}
+                      className="text-xs text-blue-600 hover:underline">
+                      Notification settings →
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
