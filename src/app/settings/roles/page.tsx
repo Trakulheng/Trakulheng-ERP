@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { cn } from "@/lib/utils";
 import {
@@ -64,25 +64,30 @@ const COLOR_OPTIONS: { label: string; color: string; badge: string }[] = [
 ];
 
 const MODULES: { id: string; label: string; group: string; description: string }[] = [
-  { id: "finance_invoices", label: "Invoices",         group: "Finance",   description: "Create, edit and view invoices" },
-  { id: "finance_expenses", label: "Expenses",         group: "Finance",   description: "Create, edit and view expense records" },
-  { id: "inv_products",     label: "Products",         group: "Inventory", description: "Manage product catalogue and stock" },
-  { id: "inv_po",           label: "Purchase Orders",  group: "Inventory", description: "Create and manage POs sent to suppliers" },
-  { id: "inv_gr",           label: "Goods Receive",    group: "Inventory", description: "Receive stock against a PO" },
-  { id: "inv_suppliers",    label: "Suppliers",        group: "Inventory", description: "Manage supplier list and details" },
-  { id: "sales_customers",  label: "Customers",        group: "Sales",     description: "Customer profiles and records" },
-  { id: "sales_orders",     label: "Sales Orders",     group: "Sales",     description: "Create and manage sales orders" },
-  { id: "hr_employees",     label: "Employees",        group: "HR",        description: "Employee records and profiles" },
-  { id: "hr_payroll",       label: "Payroll",          group: "HR",        description: "Payroll runs and salary data" },
-  { id: "hr_leave",         label: "Leave",            group: "HR",        description: "Leave requests and approvals" },
-  { id: "hr_attendance",    label: "Attendance",       group: "HR",        description: "Clock-in/out and attendance records" },
-  { id: "crm_customers",    label: "CRM Customers",    group: "CRM",       description: "Loyalty members and points" },
-  { id: "crm_campaigns",    label: "Campaigns",        group: "CRM",       description: "Marketing campaigns" },
-  { id: "crm_rewards",      label: "Rewards",          group: "CRM",       description: "Reward catalogue management" },
-  { id: "set_general",      label: "General Settings", group: "Settings",  description: "Company information and preferences" },
-  { id: "set_branches",     label: "Branches",         group: "Settings",  description: "Branch management" },
-  { id: "set_users",        label: "Users",            group: "Settings",  description: "System user management" },
-  { id: "set_roles",        label: "Role Permissions", group: "Settings",  description: "This permissions matrix" },
+  { id: "finance_overview",  label: "Overview",         group: "Finance",   description: "Finance dashboard and summary" },
+  { id: "finance_invoices",  label: "Invoices",         group: "Finance",   description: "Create, edit and view invoices" },
+  { id: "finance_expenses",  label: "Expenses",         group: "Finance",   description: "Create, edit and view expense records" },
+  { id: "inv_overview",      label: "Overview",         group: "Inventory", description: "Inventory dashboard and summary" },
+  { id: "inv_products",      label: "Products",         group: "Inventory", description: "Manage product catalogue and stock" },
+  { id: "inv_po",            label: "Purchase Orders",  group: "Inventory", description: "Create and manage POs sent to suppliers" },
+  { id: "inv_gr",            label: "Goods Receive",    group: "Inventory", description: "Receive stock against a PO" },
+  { id: "inv_suppliers",     label: "Suppliers",        group: "Inventory", description: "Manage supplier list and details" },
+  { id: "sales_overview",    label: "Overview",         group: "Sales",     description: "Sales dashboard and summary" },
+  { id: "sales_customers",   label: "Customers",        group: "Sales",     description: "Customer profiles and records" },
+  { id: "sales_orders",      label: "Sales Orders",     group: "Sales",     description: "Create and manage sales orders" },
+  { id: "hr_overview",       label: "Overview",         group: "HR",        description: "HR dashboard and summary" },
+  { id: "hr_employees",      label: "Employees",        group: "HR",        description: "Employee records and profiles" },
+  { id: "hr_payroll",        label: "Payroll",          group: "HR",        description: "Payroll runs and salary data" },
+  { id: "hr_leave",          label: "Leave",            group: "HR",        description: "Leave requests and approvals" },
+  { id: "hr_attendance",     label: "Attendance",       group: "HR",        description: "Clock-in/out and attendance records" },
+  { id: "crm_overview",      label: "Overview",         group: "CRM",       description: "CRM dashboard and summary" },
+  { id: "crm_customers",     label: "CRM Customers",    group: "CRM",       description: "Loyalty members and points" },
+  { id: "crm_campaigns",     label: "Campaigns",        group: "CRM",       description: "Marketing campaigns" },
+  { id: "crm_rewards",       label: "Rewards",          group: "CRM",       description: "Reward catalogue management" },
+  { id: "set_general",       label: "General Settings", group: "Settings",  description: "Company information and preferences" },
+  { id: "set_branches",      label: "Branches",         group: "Settings",  description: "Branch management" },
+  { id: "set_users",         label: "Users",            group: "Settings",  description: "System user management" },
+  { id: "set_roles",         label: "Role Permissions", group: "Settings",  description: "This permissions matrix" },
 ];
 
 const GROUPS = Array.from(new Set(MODULES.map((m) => m.group)));
@@ -102,18 +107,22 @@ function buildDefault(): Record<string, PermMatrix> {
 
   const admin: PermMatrix   = Object.fromEntries(ids.map((id) => [id, { ...FULL }]));
 
+  const OVERVIEW_IDS = ["finance_overview","inv_overview","sales_overview","hr_overview","crm_overview"];
+
   const manager: PermMatrix = Object.fromEntries(ids.map((id) => {
-    if (["set_users","set_roles"].includes(id))        return [id, { ...NO_ACCESS }];
-    if (["set_general","set_branches"].includes(id))   return [id, { ...VIEW_ONLY }];
-    if (["hr_payroll","crm_campaigns"].includes(id))   return [id, { ...VIEW_ONLY }];
+    if (OVERVIEW_IDS.includes(id))                                     return [id, { ...VIEW_ONLY }];
+    if (["set_users","set_roles"].includes(id))                        return [id, { ...NO_ACCESS }];
+    if (["set_general","set_branches"].includes(id))                   return [id, { ...VIEW_ONLY }];
+    if (["hr_payroll","crm_campaigns"].includes(id))                   return [id, { ...VIEW_ONLY }];
     return [id, { ...FULL }];
   }));
 
   const staff: PermMatrix   = Object.fromEntries(ids.map((id) => {
-    if (id.startsWith("set_"))                                          return [id, { ...NO_ACCESS }];
-    if (["hr_employees","hr_payroll"].includes(id))                     return [id, { ...NO_ACCESS }];
-    if (["inv_suppliers","crm_campaigns","crm_rewards"].includes(id))   return [id, { ...VIEW_ONLY }];
-    if (["finance_invoices","finance_expenses"].includes(id))           return [id, { ...VIEW_ONLY }];
+    if (OVERVIEW_IDS.includes(id))                                     return [id, { ...VIEW_ONLY }];
+    if (id.startsWith("set_"))                                         return [id, { ...NO_ACCESS }];
+    if (["hr_employees","hr_payroll"].includes(id))                    return [id, { ...NO_ACCESS }];
+    if (["inv_suppliers","crm_campaigns","crm_rewards"].includes(id))  return [id, { ...VIEW_ONLY }];
+    if (["finance_invoices","finance_expenses"].includes(id))          return [id, { ...VIEW_ONLY }];
     return [id, { ...FULL }];
   }));
 
@@ -285,8 +294,8 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
               </thead>
               <tbody>
                 {GROUPS.map((group) => (
-                  <>
-                    <tr key={`g-${group}`} className="bg-slate-50 border-y border-slate-100">
+                  <React.Fragment key={group}>
+                    <tr className="bg-slate-50 border-y border-slate-100">
                       <td colSpan={4} className="px-4 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">{group}</td>
                     </tr>
                     {MODULES.filter((m) => m.group === group).map((mod) => {
@@ -300,7 +309,7 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
                         </tr>
                       );
                     })}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -608,8 +617,8 @@ export default function RolePermissionsPage() {
                 const groupMods = MODULES.filter((m) => m.group === group);
                 const isLocked  = activeRole?.locked ?? false;
                 return (
-                  <>
-                    <tr key={`grp-${group}`} className="bg-slate-50 border-y border-slate-100">
+                  <React.Fragment key={group}>
+                    <tr className="bg-slate-50 border-y border-slate-100">
                       <td colSpan={5} className="px-5 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">{group}</td>
                     </tr>
                     {groupMods.map((mod) => {
@@ -625,7 +634,7 @@ export default function RolePermissionsPage() {
                         </tr>
                       );
                     })}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>

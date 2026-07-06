@@ -43,7 +43,7 @@ const navItems = [
   {
     label: "Finance", icon: DollarSign,
     children: [
-      { label: "Overview",  href: "/finance",          icon: BarChart3 },
+      { label: "Overview",  href: "/finance",          icon: BarChart3, permKey: "finance_overview" },
       { label: "Invoices",  href: "/finance/invoices", icon: FileText,  permKey: "finance_invoices" },
       { label: "Expenses",  href: "/finance/expenses", icon: Receipt,   permKey: "finance_expenses" },
     ],
@@ -51,7 +51,7 @@ const navItems = [
   {
     label: "Inventory", icon: Package,
     children: [
-      { label: "Overview",        href: "/inventory",                  icon: BarChart3   },
+      { label: "Overview",        href: "/inventory",                  icon: BarChart3,   permKey: "inv_overview"      },
       { label: "Products",        href: "/inventory/products",         icon: Package,     permKey: "inv_products"  },
       { label: "Purchase Orders", href: "/inventory/purchase-orders",  icon: ShoppingCart,permKey: "inv_po"        },
       { label: "Goods Receive",   href: "/inventory/goods-receive",    icon: PackageCheck,permKey: "inv_gr"        },
@@ -61,7 +61,7 @@ const navItems = [
   {
     label: "Sales & CRM", icon: TrendingUp,
     children: [
-      { label: "Overview",   href: "/sales",           icon: BarChart3    },
+      { label: "Overview",   href: "/sales",           icon: BarChart3,    permKey: "sales_overview"    },
       { label: "Customers",  href: "/sales/customers", icon: Users,        permKey: "sales_customers" },
       { label: "Orders",     href: "/sales/orders",    icon: ClipboardList,permKey: "sales_orders"    },
     ],
@@ -69,7 +69,7 @@ const navItems = [
   {
     label: "HR & Payroll", icon: UserCheck,
     children: [
-      { label: "Overview",    href: "/hr",             icon: BarChart3  },
+      { label: "Overview",    href: "/hr",             icon: BarChart3,   permKey: "hr_overview"       },
       { label: "Employees",   href: "/hr/employees",   icon: Users,       permKey: "hr_employees"  },
       { label: "Payroll",     href: "/hr/payroll",     icon: CreditCard,  permKey: "hr_payroll"    },
       { label: "Leave",       href: "/hr/leave",       icon: CalendarDays,permKey: "hr_leave"      },
@@ -81,7 +81,7 @@ const navItems = [
   {
     label: "CRM", icon: HeartHandshake,
     children: [
-      { label: "Overview",     href: "/crm",              icon: BarChart3  },
+      { label: "Overview",     href: "/crm",              icon: BarChart3,  permKey: "crm_overview"      },
       { label: "Customers",    href: "/crm/customers",    icon: Users,      permKey: "crm_customers" },
       { label: "Campaigns",    href: "/crm/campaigns",    icon: Zap,        permKey: "crm_campaigns" },
       { label: "Rewards",      href: "/crm/rewards",      icon: Gift,       permKey: "crm_rewards"   },
