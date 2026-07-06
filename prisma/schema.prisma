@@ -333,6 +333,7 @@ model RolePermission {
   id          String   @id @default(cuid())
   role        String   @unique
   permissions Json
+  menuOrder   Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

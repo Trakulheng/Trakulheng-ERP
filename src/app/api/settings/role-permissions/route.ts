@@ -7,11 +7,13 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
   const rows = await prisma.rolePermission.findMany();
-  const result: Record<string, unknown> = {};
+  const permissions: Record<string, unknown> = {};
+  const menuOrders: Record<string, unknown> = {};
   for (const row of rows) {
-    result[row.role] = row.permissions;
+    permissions[row.role] = row.permissions;
+    if (row.menuOrder) menuOrders[row.role] = row.menuOrder;
   }
-  return NextResponse.json(result);
+  return NextResponse.json({ permissions, menuOrders });
 }
 
 export async function POST(req: Request) {
@@ -19,32 +21,30 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   if (user.role !== "admin") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  // Accepts: { roleId: string, permissions: PermMatrix }
-  // or: { roles: Record<string, PermMatrix> } for bulk save
   const body = await req.json();
+  const { roles, menuOrders } = body as {
+    roles?: Record<string, unknown>;
+    menuOrders?: Record<string, string[]>;
+  };
 
-  if (body.roles && typeof body.roles === "object") {
-    // Bulk upsert all roles at once
-    const ops = Object.entries(body.roles).map(([role, permissions]) =>
-      prisma.rolePermission.upsert({
-        where:  { role },
-        update: { permissions: permissions as any },
-        create: { role, permissions: permissions as any },
-      })
-    );
-    await Promise.all(ops);
-    return NextResponse.json({ ok: true });
+  if (!roles || typeof roles !== "object") {
+    return NextResponse.json({ error: "roles required." }, { status: 400 });
   }
 
-  // Single role upsert
-  const { roleId, permissions } = body;
-  if (!roleId || !permissions) {
-    return NextResponse.json({ error: "roleId and permissions required." }, { status: 400 });
-  }
-  await prisma.rolePermission.upsert({
-    where:  { role: roleId },
-    update: { permissions },
-    create: { role: roleId, permissions },
-  });
+  const ops = Object.entries(roles).map(([role, permissions]) =>
+    prisma.rolePermission.upsert({
+      where:  { role },
+      update: {
+        permissions: permissions as any,
+        ...(menuOrders?.[role] ? { menuOrder: menuOrders[role] as any } : {}),
+      },
+      create: {
+        role,
+        permissions: permissions as any,
+        menuOrder: menuOrders?.[role] ? (menuOrders[role] as any) : null,
+      },
+    })
+  );
+  await Promise.all(ops);
   return NextResponse.json({ ok: true });
 }

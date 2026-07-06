@@ -5,7 +5,22 @@ import { Header } from "@/components/layout/Header";
 import { cn } from "@/lib/utils";
 import {
   Shield, Check, X, Eye, Pencil, Plus, Save, Lock, Info, Trash2, Tag,
+  ChevronUp, ChevronDown, LayoutDashboard, CheckSquare, DollarSign,
+  Package, TrendingUp, UserCheck, HeartHandshake, Settings as SettingsIcon,
 } from "lucide-react";
+
+const MENU_SECTIONS = [
+  { id: "dashboard",  label: "Dashboard",   icon: LayoutDashboard },
+  { id: "tasks",      label: "Tasks",        icon: CheckSquare     },
+  { id: "finance",    label: "Finance",      icon: DollarSign      },
+  { id: "inventory",  label: "Inventory",    icon: Package         },
+  { id: "sales_crm",  label: "Sales & CRM",  icon: TrendingUp      },
+  { id: "hr_payroll", label: "HR & Payroll", icon: UserCheck       },
+  { id: "crm",        label: "CRM",          icon: HeartHandshake  },
+  { id: "settings",   label: "Settings",     icon: SettingsIcon    },
+];
+
+const DEFAULT_MENU_ORDER = MENU_SECTIONS.map((s) => s.id);
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -309,6 +324,9 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
 export default function RolePermissionsPage() {
   const [roles,      setRoles]      = useState<RoleDef[]>(SYSTEM_ROLES);
   const [perms,      setPerms]      = useState<Record<string, PermMatrix>>(buildDefault);
+  const [menuOrders, setMenuOrders] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(SYSTEM_ROLES.map((r) => [r.id, [...DEFAULT_MENU_ORDER]]))
+  );
   const [saved,      setSaved]      = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [saveError,  setSaveError]  = useState("");
@@ -317,21 +335,32 @@ export default function RolePermissionsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [deleteId,   setDeleteId]   = useState<string | null>(null);
 
-  // Load saved permissions from DB on mount
+  // Load saved permissions and menu orders from DB on mount
   useEffect(() => {
     fetch("/api/settings/role-permissions")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         if (!d || typeof d !== "object") return;
-        setPerms((prev) => {
-          const merged = { ...prev };
-          for (const [roleId, savedPerms] of Object.entries(d)) {
-            if (savedPerms && typeof savedPerms === "object") {
-              merged[roleId] = savedPerms as PermMatrix;
+        if (d.permissions && typeof d.permissions === "object") {
+          setPerms((prev) => {
+            const merged = { ...prev };
+            for (const [roleId, savedPerms] of Object.entries(d.permissions)) {
+              if (savedPerms && typeof savedPerms === "object") {
+                merged[roleId] = savedPerms as PermMatrix;
+              }
             }
-          }
-          return merged;
-        });
+            return merged;
+          });
+        }
+        if (d.menuOrders && typeof d.menuOrders === "object") {
+          setMenuOrders((prev) => {
+            const merged = { ...prev };
+            for (const [roleId, order] of Object.entries(d.menuOrders)) {
+              if (Array.isArray(order)) merged[roleId] = order as string[];
+            }
+            return merged;
+          });
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -349,6 +378,16 @@ export default function RolePermissionsPage() {
     });
   };
 
+  const moveMenuItem = (roleId: string, idx: number, dir: -1 | 1) => {
+    setMenuOrders((prev) => {
+      const order = [...(prev[roleId] ?? DEFAULT_MENU_ORDER)];
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= order.length) return prev;
+      [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
+      return { ...prev, [roleId]: order };
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError("");
@@ -356,7 +395,7 @@ export default function RolePermissionsPage() {
       const res = await fetch("/api/settings/role-permissions", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ roles: perms }),
+        body:    JSON.stringify({ roles: perms, menuOrders }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -489,6 +528,60 @@ export default function RolePermissionsPage() {
           {activeRole?.locked && (
             <span className="flex items-center gap-1 text-amber-600"><Lock size={12} /> Admin is always full access (locked)</span>
           )}
+        </div>
+
+        {/* Menu Order */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Sidebar Menu Order</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Drag or use arrows to set the menu order for{" "}
+                <span className={activeRole?.color + " font-semibold"}>{activeRole?.label}</span> users
+              </p>
+            </div>
+            <button
+              onClick={() => setMenuOrders((prev) => ({ ...prev, [active]: [...DEFAULT_MENU_ORDER] }))}
+              className="text-xs text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
+            >
+              Reset order
+            </button>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {(menuOrders[active] ?? DEFAULT_MENU_ORDER).map((sectionId, idx) => {
+              const section = MENU_SECTIONS.find((s) => s.id === sectionId);
+              if (!section) return null;
+              const Icon = section.icon;
+              const order = menuOrders[active] ?? DEFAULT_MENU_ORDER;
+              return (
+                <div key={sectionId} className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50 transition-colors">
+                  <span className="w-6 h-6 flex items-center justify-center text-xs font-semibold text-slate-400 bg-slate-100 rounded shrink-0">
+                    {idx + 1}
+                  </span>
+                  <Icon size={15} className="text-slate-400 shrink-0" />
+                  <span className="flex-1 text-sm font-medium text-slate-800">{section.label}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => moveMenuItem(active, idx, -1)}
+                      disabled={idx === 0}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                      title="Move up"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      onClick={() => moveMenuItem(active, idx, 1)}
+                      disabled={idx === order.length - 1}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                      title="Move down"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Permissions matrix */}

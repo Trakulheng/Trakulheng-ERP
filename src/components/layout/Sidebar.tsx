@@ -10,12 +10,23 @@ import {
   TicketCheck, Zap, PieChart, Shield, Bell, Sliders, PackageCheck,
   ClipboardCheck, CheckSquare, X, ArrowLeftRight, Layers, Fingerprint,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useT } from "@/context/LanguageContext";
 import { UserSwitcher } from "./UserSwitcher";
+
+const NAV_LABEL_TO_SECTION: Record<string, string> = {
+  "Dashboard":  "dashboard",
+  "Tasks":      "tasks",
+  "Finance":    "finance",
+  "Inventory":  "inventory",
+  "Sales & CRM":"sales_crm",
+  "HR & Payroll":"hr_payroll",
+  "CRM":        "crm",
+  "Settings":   "settings",
+};
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -86,7 +97,7 @@ const navItems = [
   },
 ];
 
-interface Me { name: string | null; email: string; role: string }
+interface Me { name: string | null; email: string; role: string; menuOrder?: string[] | null }
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -103,6 +114,16 @@ export function Sidebar() {
       .then((data) => { if (data?.email) setMe(data); })
       .catch(() => {});
   }, []);
+
+  const sortedNavItems = useMemo(() => {
+    if (!me?.menuOrder?.length) return navItems;
+    const orderMap = new Map(me.menuOrder.map((id, i) => [id, i]));
+    return [...navItems].sort((a, b) => {
+      const aId = NAV_LABEL_TO_SECTION[a.label] ?? a.label;
+      const bId = NAV_LABEL_TO_SECTION[b.label] ?? b.label;
+      return (orderMap.get(aId) ?? 999) - (orderMap.get(bId) ?? 999);
+    });
+  }, [me?.menuOrder]);
 
   const S = {
     dark: {
@@ -185,7 +206,7 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-3 px-3">
-          {navItems.map((item) => {
+          {sortedNavItems.map((item) => {
             const Icon = item.icon;
 
             if (!item.children) {
