@@ -95,22 +95,10 @@ interface ChangeRequest {
   managerNote?: string;
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const initialOverrides: CalendarEntry[] = [
-  { id: "CE-001", employeeId: "EMP-001", shiftId: "SH-004", date: "2026-07-15", branchId: "BR-001", confirmStatus: "confirmed", note: "Half-day — approved change request" },
-  { id: "CE-002", employeeId: "EMP-010", shiftId: null,     date: "2026-07-10", branchId: "BR-001", confirmStatus: "pending",   note: "Approved leave" },
-  { id: "CE-003", employeeId: "EMP-007", shiftId: "SH-002", date: "2026-07-08", branchId: "BR-001", confirmStatus: "pending",   note: "Reassigned — pending employee confirmation" },
-  { id: "CE-004", employeeId: "EMP-002", shiftId: "SH-001", date: "2026-07-28", branchId: "BR-001", confirmStatus: "pending",   note: "Extended coverage shift" },
-  { id: "CE-005", employeeId: "EMP-003", shiftId: "SH-002", date: "2026-08-05", branchId: "BR-001", confirmStatus: "pending",   note: "Temporary schedule change" },
-];
-
-// Change Requests are now DB-backed — no mock data
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TODAY = "2026-07-05";
-const MAX_FUTURE = "2027-07-04";
+const TODAY = new Date().toISOString().slice(0, 10);
+const MAX_FUTURE = (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().slice(0, 10); })();
 const COLOR_OPTIONS: ShiftColor[] = ["blue", "amber", "violet", "emerald"];
 const WEEK_DAYS_MON_SUN = [1, 2, 3, 4, 5, 6, 0];
 const MON_SUN_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

@@ -887,8 +887,7 @@ export default function GoodsReceivePage() {
   const [completedGRN, setCompletedGRN] = useState<GRNRecord | null>(null);
   const [grnHistory, setGrnHistory] = useState<GRNRecord[]>([]);
 
-  // Session context (mock current user)
-  const currentUser = employees.find((e) => e.department === "Operations") ?? employees[0] ?? null;
+  const currentUser = employees[0] ?? null;
   const currentBranch = branches[0] ?? null;
 
   const awaitingPOs = useMemo(() =>

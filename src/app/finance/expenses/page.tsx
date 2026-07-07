@@ -517,7 +517,7 @@ export default function ExpensesPage() {
   const handleApprove = (id: string) => {
     const today = new Date().toISOString().split("T")[0];
     setList((p) => p.map((e) => e.id === id
-      ? { ...e, status: "approved" as ExpenseStatus, approvedBy: "EMP-003", approvedAt: today }
+      ? { ...e, status: "approved" as ExpenseStatus, approvedBy: "", approvedAt: today }
       : e));
     setViewId(null);
   };

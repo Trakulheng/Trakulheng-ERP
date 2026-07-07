@@ -74,7 +74,7 @@ function NewInvoiceModal({ nextId, onClose, onSave }: NewInvoiceModalProps) {
       date, dueDate: dueDate || "N/A",
       amount: total, tax: taxAmt, discount,
       status: "sent" as InvoiceStatus,
-      paymentTerms, notes, paidDate: null, createdBy: "EMP-003",
+      paymentTerms, notes, paidDate: null, createdBy: "",
     };
     const newItems: InvItem[] = lines.map((l, i) => ({
       id: `IVI-NEW-${i}`, invoiceId: nextId,

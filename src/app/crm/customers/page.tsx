@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
+import { useBranch } from "@/context/BranchContext";
 import {
   crmCustomers as initialCrmCustomers,
   pointsTransactions as initialPointsTransactions,
@@ -88,6 +89,7 @@ interface AddCustomerModalProps {
 }
 
 function AddCustomerModal({ onClose, onSave, count }: AddCustomerModalProps) {
+  const { branches, activeBranch } = useBranch();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -95,7 +97,7 @@ function AddCustomerModal({ onClose, onSave, count }: AddCustomerModalProps) {
     email: "",
     address: "",
     birthDate: "",
-    branchId: "BR-001",
+    branchId: activeBranch?.id ?? "",
     notes: "",
   });
 
@@ -201,9 +203,9 @@ function AddCustomerModal({ onClose, onSave, count }: AddCustomerModalProps) {
                 value={form.branchId}
                 onChange={(e) => set("branchId", e.target.value)}
               >
-                <option value="BR-001">Head Office</option>
-                <option value="BR-002">Chiang Mai</option>
-                <option value="BR-003">Phuket</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
               </select>
             </div>
           </div>
