@@ -32,6 +32,7 @@ interface SystemUser {
 interface Employee {
   id: string; name: string; department: string; position: string;
   hireDate: string; status: string; branchId?: string;
+  workEmail?: string; personalEmail?: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -222,10 +223,8 @@ function UserModal({ initial, onClose, onSave, onResendInvite, resending, saving
   const handleEmployeePick = (emp: Employee) => {
     setEmployeeId(emp.id);
     setName(emp.name);
-    if (!email) {
-      const slug = emp.name.toLowerCase().replace(/\s+/g, ".");
-      setEmail(`${slug}@trakulheng.co.th`);
-    }
+    const realEmail = emp.workEmail || emp.personalEmail || "";
+    if (realEmail) setEmail(realEmail);
     if (emp.hireDate) setStartDate(emp.hireDate);
     if (emp.branchId && !branchIds.includes(emp.branchId)) {
       setBranchIds([emp.branchId]);
