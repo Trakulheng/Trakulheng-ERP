@@ -98,8 +98,9 @@ const navItems = [
     children: [
       { label: "General",           href: "/settings/general",        icon: Settings,       permKey: "set_general"       },
       { label: "Branches",          href: "/settings/branches",       icon: GitBranch,      permKey: "set_branches"      },
-      { label: "Brands",            href: "/settings/brands",         icon: ArrowLeftRight, permKey: "set_brands"        },
-      { label: "Departments",       href: "/settings/departments",    icon: Layers,         permKey: "set_departments"   },
+      { label: "Brands",            href: "/settings/brands",             icon: ArrowLeftRight, permKey: "set_brands"        },
+      { label: "Product Categories", href: "/settings/product-categories", icon: Layers,        permKey: "set_product_cats"  },
+      { label: "Departments",       href: "/settings/departments",        icon: Layers,         permKey: "set_departments"   },
       { label: "Users",             href: "/settings/users",          icon: Shield,         permKey: "set_users"         },
       { label: "Dashboard Layout",  href: "/settings/dashboard",      icon: LayoutDashboard, permKey: "set_dashboard"   },
       { label: "Role Permissions",  href: "/settings/roles",          icon: ClipboardCheck, permKey: "set_roles"         },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import {
   products as initialProducts,
@@ -74,8 +74,22 @@ interface AddEditModalProps {
 
 function AddEditModal({ initial, editId, onClose, onSave, nextSku }: AddEditModalProps) {
   const [form, setForm] = useState({ ...emptyForm, ...initial });
+  const [apiCategories, setApiCategories] = useState<string[]>([]);
   const set = <K extends keyof typeof emptyForm>(k: K, v: (typeof emptyForm)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    fetch("/api/settings/product-categories")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { name: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = data.map((c) => c.name);
+          setApiCategories(names);
+          setForm((f) => ({ ...f, category: f.category || names[0] }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleBranch = (id: string) =>
     setForm((f) => ({
@@ -113,7 +127,7 @@ function AddEditModal({ initial, editId, onClose, onSave, nextSku }: AddEditModa
               <label className="block text-xs font-medium text-slate-600 mb-1">Category *</label>
               <select value={form.category} onChange={(e) => set("category", e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {(apiCategories.length > 0 ? apiCategories : PRODUCT_CATEGORIES as readonly string[]).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
