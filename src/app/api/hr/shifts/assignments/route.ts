@@ -46,6 +46,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "branchId, employeeId, and date are required." }, { status: 400 });
   }
 
+  // Reject if the employee already has an assignment at a DIFFERENT branch on the same date
+  const existing = await prisma.shiftAssignment.findUnique({
+    where: { employeeId_date: { employeeId, date } },
+  });
+  if (existing && existing.branchId !== branchId) {
+    return NextResponse.json(
+      { error: `This employee is already assigned to a different branch on ${date}. Remove that assignment first.` },
+      { status: 409 }
+    );
+  }
+
   const assignment = await prisma.shiftAssignment.upsert({
     where: { employeeId_date: { employeeId, date } },
     create: {
@@ -54,13 +65,13 @@ export async function POST(req: NextRequest) {
       shiftId:       shiftId ?? null,
       date,
       note:          note ?? null,
-      confirmStatus: "pending",
+      confirmStatus: "draft",
     },
     update: {
       branchId,
       shiftId:       shiftId ?? null,
       note:          note ?? null,
-      confirmStatus: "pending",
+      confirmStatus: "draft",
     },
   });
 

@@ -34,6 +34,8 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
+  Send,
+  Loader2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,7 +52,7 @@ interface ShiftTodo {
 type ShiftColor = "blue" | "amber" | "violet" | "emerald";
 type ViewMode = "week" | "month";
 type MainTab = "templates" | "calendar" | "requests";
-type ConfirmStatus = "pending" | "confirmed" | "rejected";
+type ConfirmStatus = "draft" | "pending" | "confirmed" | "rejected";
 
 interface Shift {
   id: string;
@@ -1006,9 +1008,12 @@ function WeekCalendar({
                             title={`${shift.name} ${shift.startTime}–${shift.endTime}`}
                             onClick={() => canAct && !empViewId && onCellClick(emp.id, dateStr, shiftId, isOv, override)}
                             className={cn("w-full px-1 py-1.5 rounded-lg text-xs font-semibold transition-colors relative group",
-                              c.badge, !empViewId && canAct ? "hover:opacity-75 cursor-pointer" : "cursor-default",
-                              isOv && "ring-2 ring-offset-1",
-                              isOv && override?.confirmStatus === "confirmed" ? "ring-emerald-400" : isOv && override?.confirmStatus === "pending" ? "ring-amber-400" : isOv ? "ring-slate-300" : "")}>
+                              isOv && override?.confirmStatus === "confirmed"
+                                ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-400"
+                                : isOv && override?.confirmStatus === "draft"
+                                  ? cn(c.badge, "ring-2 ring-offset-1 ring-dashed ring-slate-400 opacity-70")
+                                  : cn(c.badge, isOv && "ring-2 ring-offset-1", isOv && override?.confirmStatus === "pending" ? "ring-amber-400" : isOv ? "ring-slate-300" : ""),
+                              !empViewId && canAct ? "hover:opacity-75 cursor-pointer" : "cursor-default")}>
                             {shift.code}
                             {isOv && (
                               <span className="absolute -top-1.5 -right-1.5">
@@ -1762,11 +1767,17 @@ export default function ShiftsPage() {
   const [reqChangeModal, setReqChangeModal] = useState<{ empId: string; date: string; currentShiftId: string } | null>(null);
   const [empViewId, setEmpViewId] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCopyMenu, setShowCopyMenu] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const branchPatterns: EmployeeShift[] = [];
   const departments = useMemo(() => Array.from(new Set(branchEmps.map((e) => e.department))).sort(), [branchEmps]);
 
   const pendingConfirmations = overrides.filter((o) => o.branchId === activeBranch?.id && o.confirmStatus === "pending").length;
+  const draftCount = overrides.filter((o) => o.branchId === activeBranch?.id && o.confirmStatus === "draft").length;
   const pendingRequests = requests.filter((r) => r.status === "pending").length;
 
   // Shift → employees mapping for template tab
@@ -1837,6 +1848,96 @@ export default function ShiftsPage() {
   const nextMonth = () => setCalMonth((m) => { const d = new Date(m.year, m.month + 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; });
   const goToday = () => { const d = parseDate(TODAY); setMonday(getMondayOf(d)); setCalMonth({ year: d.getFullYear(), month: d.getMonth() }); };
 
+  const handleSendToEmployees = async () => {
+    if (!activeBranch?.id || sending) return;
+    setSending(true);
+    try {
+      const from = viewMode === "week"
+        ? toStr(monday)
+        : `${calMonth.year}-${String(calMonth.month + 1).padStart(2, "0")}-01`;
+      const to = viewMode === "week"
+        ? toStr(new Date(monday.getTime() + 6 * 86400000))
+        : (() => { const d = new Date(calMonth.year, calMonth.month + 1, 0); return toStr(d); })();
+      const res = await fetch("/api/hr/shifts/assignments/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branchId: activeBranch.id, from, to }),
+      });
+      if (res.ok) {
+        const { assignments } = await res.json();
+        const mapped: CalendarEntry[] = assignments.map((a: any) => ({
+          id: a.id, employeeId: a.employeeId, shiftId: a.shiftId ?? null,
+          date: a.date, branchId: a.branchId, confirmStatus: a.confirmStatus, note: a.note ?? undefined,
+        }));
+        setOverrides((prev) => {
+          const kept = prev.filter((o) => !mapped.some((m) => m.id === o.id));
+          return [...kept, ...mapped];
+        });
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCopyToNextWeek = async () => {
+    setShowCopyMenu(false);
+    setCopying(true);
+    setCopyError(null);
+    const from = toStr(monday);
+    const to = toStr(addDays(monday, 6));
+    const weekEntries = overrides.filter((o) => o.date >= from && o.date <= to);
+    let failed = 0;
+    for (const entry of weekEntries) {
+      const newDate = toStr(addDays(parseDate(entry.date), 7));
+      if (newDate > MAX_FUTURE) continue;
+      try {
+        const res = await fetch("/api/hr/shifts/assignments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeeId: entry.employeeId, shiftId: entry.shiftId ?? null, date: newDate, branchId: entry.branchId, note: entry.note ?? null }),
+        });
+        if (!res.ok && res.status !== 409) failed++;
+      } catch { failed++; }
+    }
+    setCopying(false);
+    if (failed > 0) setCopyError(`${failed} assignment(s) could not be copied.`);
+    setMonday((d) => addDays(d, 7));
+  };
+
+  const handleCopyToNextMonth = async () => {
+    setShowCopyMenu(false);
+    setCopying(true);
+    setCopyError(null);
+    const monthStart = `${calMonth.year}-${String(calMonth.month + 1).padStart(2, "0")}-01`;
+    const monthEnd = toStr(new Date(calMonth.year, calMonth.month + 1, 0));
+    try {
+      const res = await fetch(`/api/hr/shifts/assignments?branchId=${activeBranch?.id}&from=${monthStart}&to=${monthEnd}`);
+      const monthEntries: CalendarEntry[] = res.ok ? await res.json() : [];
+      let failed = 0;
+      for (const entry of monthEntries) {
+        const d = parseDate(entry.date);
+        const next = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        if (next.getMonth() !== (d.getMonth() + 1) % 12) continue; // skip days that overflow (e.g. Jan 31 has no Feb 31)
+        const newDate = toStr(next);
+        if (newDate > MAX_FUTURE) continue;
+        try {
+          const r = await fetch("/api/hr/shifts/assignments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employeeId: entry.employeeId, shiftId: entry.shiftId ?? null, date: newDate, branchId: entry.branchId, note: entry.note ?? null }),
+          });
+          if (!r.ok && r.status !== 409) failed++;
+        } catch { failed++; }
+      }
+      setCopying(false);
+      if (failed > 0) setCopyError(`${failed} assignment(s) could not be copied.`);
+      nextMonth();
+    } catch {
+      setCopying(false);
+      setCopyError("Could not load current month assignments.");
+    }
+  };
+
   const handleTodoChange = (shiftId: string, todos: ShiftTodo[]) => {
     setTodosByShift((prev) => ({ ...prev, [shiftId]: todos }));
   };
@@ -1880,7 +1981,7 @@ export default function ShiftsPage() {
       shiftId,
       date: cellModal.date,
       branchId: activeBranch?.id ?? "",
-      confirmStatus: "pending",
+      confirmStatus: "draft",
       note: note || undefined,
     };
     setOverrides((prev) => {
@@ -1900,6 +2001,10 @@ export default function ShiftsPage() {
       if (res.ok) {
         const saved = await res.json();
         setOverrides((prev) => prev.map((o) => o.date === saved.date && o.employeeId === saved.employeeId ? { ...o, id: saved.id, confirmStatus: saved.confirmStatus } : o));
+      } else if (res.status === 409) {
+        const err = await res.json();
+        setOverrides((prev) => prev.filter((o) => o.id !== tempEntry.id));
+        setAssignError(err.error ?? "Assignment conflict.");
       }
     } catch {
       // keep optimistic
@@ -1990,7 +2095,7 @@ export default function ShiftsPage() {
       shiftId,
       date,
       branchId: activeBranch?.id ?? "",
-      confirmStatus: "pending",
+      confirmStatus: "draft",
       note: note || undefined,
     };
     setOverrides((prev) => {
@@ -2008,6 +2113,10 @@ export default function ShiftsPage() {
       if (res.ok) {
         const saved = await res.json();
         setOverrides((prev) => prev.map((o) => o.date === saved.date && o.employeeId === saved.employeeId ? { ...o, id: saved.id, confirmStatus: saved.confirmStatus } : o));
+      } else if (res.status === 409) {
+        const err = await res.json();
+        setOverrides((prev) => prev.filter((o) => o.id !== tempEntry.id));
+        setAssignError(err.error ?? "Assignment conflict.");
       }
     } catch { /* keep optimistic */ }
   };
@@ -2218,6 +2327,40 @@ export default function ShiftsPage() {
                 Today
               </button>
 
+              {/* Copy schedule dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowCopyMenu((v) => !v)}
+                  disabled={copying}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {copying ? <span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> : <ArrowLeftRight size={14} />}
+                  Copy Schedule
+                  <ChevronDown size={12} className="text-slate-400" />
+                </button>
+                {showCopyMenu && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setShowCopyMenu(false)} />
+                  <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 min-w-[180px] overflow-hidden">
+                    <button
+                      onClick={handleCopyToNextWeek}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    >
+                      <ChevronRight size={13} className="text-slate-400" />
+                      Copy to next week
+                    </button>
+                    <button
+                      onClick={handleCopyToNextMonth}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100"
+                    >
+                      <ChevronRight size={13} className="text-slate-400" />
+                      Copy to next month
+                    </button>
+                  </div>
+                  </>
+                )}
+              </div>
+
               {/* Dept filter (week view) */}
               {viewMode === "week" && (
                 <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
@@ -2240,6 +2383,24 @@ export default function ShiftsPage() {
               </div>
             </div>
 
+            {/* Draft assignments banner */}
+            {draftCount > 0 && !empViewId && (
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700">
+                <span className="flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0 text-slate-400" />
+                  <span className="font-semibold">{draftCount}</span> draft assignment{draftCount !== 1 ? "s" : ""} — not yet visible to employees
+                </span>
+                <button
+                  onClick={handleSendToEmployees}
+                  disabled={sending}
+                  className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-60 transition-colors"
+                >
+                  {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                  {sending ? "Sending…" : "Send to Employees"}
+                </button>
+              </div>
+            )}
+
             {/* Pending banner */}
             {pendingConfirmations > 0 && (
               <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
@@ -2251,10 +2412,27 @@ export default function ShiftsPage() {
               </div>
             )}
 
+            {/* Copy error banner */}
+            {copyError && (
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                <span className="flex items-center gap-2"><AlertCircle size={14} className="shrink-0" />{copyError}</span>
+                <button onClick={() => setCopyError(null)} className="p-0.5 hover:bg-red-100 rounded"><X size={13} /></button>
+              </div>
+            )}
+
+            {/* Cross-branch conflict error */}
+            {assignError && (
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                <span className="flex items-center gap-2"><AlertCircle size={14} className="shrink-0" />{assignError}</span>
+                <button onClick={() => setAssignError(null)} className="p-0.5 hover:bg-red-100 rounded"><X size={13} /></button>
+              </div>
+            )}
+
             {/* Legend */}
             <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
               <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-emerald-400 ring-offset-1" />Confirmed override</span>
               <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-300 ring-2 ring-amber-400 ring-offset-1" />Pending confirmation</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-slate-300 ring-2 ring-dashed ring-slate-400 ring-offset-1 opacity-70" />Draft (not sent)</span>
               <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-400" />Recurring pattern</span>
               <span className="flex items-center gap-1.5"><span className="w-6 h-3 rounded bg-red-100 border border-red-200 text-red-400 text-[8px] font-bold flex items-center justify-center">OFF</span>Day off</span>
               {viewMode === "month" && <>

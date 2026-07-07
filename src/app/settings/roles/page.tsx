@@ -82,14 +82,23 @@ const MODULES: { id: string; label: string; group: string; description: string }
   { id: "hr_payroll",        label: "Payroll",          group: "HR",        description: "Payroll runs and salary data" },
   { id: "hr_leave",          label: "Leave",            group: "HR",        description: "Leave requests and approvals" },
   { id: "hr_attendance",     label: "Attendance",       group: "HR",        description: "Clock-in/out and attendance records" },
+  { id: "hr_shifts",         label: "Shift Management", group: "HR",        description: "Schedule shifts and manage assignments" },
   { id: "crm_overview",      label: "Overview",         group: "CRM",       description: "CRM dashboard and summary" },
   { id: "crm_customers",     label: "CRM Customers",    group: "CRM",       description: "Loyalty members and points" },
   { id: "crm_campaigns",     label: "Campaigns",        group: "CRM",       description: "Marketing campaigns" },
   { id: "crm_rewards",       label: "Rewards",          group: "CRM",       description: "Reward catalogue management" },
+  { id: "crm_redemptions",   label: "Redemptions",      group: "CRM",       description: "Redeem and manage customer rewards" },
+  { id: "crm_analytics",     label: "CRM Analytics",    group: "CRM",       description: "CRM performance analytics and reports" },
   { id: "set_general",       label: "General Settings", group: "Settings",  description: "Company information and preferences" },
   { id: "set_branches",      label: "Branches",         group: "Settings",  description: "Branch management" },
+  { id: "set_brands",        label: "Brands",           group: "Settings",  description: "Brand configuration" },
+  { id: "set_departments",   label: "Departments",      group: "Settings",  description: "Department structure" },
   { id: "set_users",         label: "Users",            group: "Settings",  description: "System user management" },
+  { id: "set_dashboard",     label: "Dashboard Layout", group: "Settings",  description: "Configure dashboard widgets per role" },
   { id: "set_roles",         label: "Role Permissions", group: "Settings",  description: "This permissions matrix" },
+  { id: "set_points",        label: "Points Config",    group: "Settings",  description: "Loyalty points rules and configuration" },
+  { id: "set_notifications", label: "Notifications",    group: "Settings",  description: "Notification preferences" },
+  { id: "set_appearance",    label: "Appearance",       group: "Settings",  description: "Theme and display settings" },
 ];
 
 const GROUPS = Array.from(new Set(MODULES.map((m) => m.group)));
@@ -142,7 +151,9 @@ function buildDefault(): Record<string, PermMatrix> {
 function ToggleCell({ checked, locked, onChange, action }: {
   checked: boolean; locked: boolean; onChange: () => void; action: Action;
 }) {
-  const icons = { create: <Plus size={11} />, edit: <Pencil size={11} />, view: <Eye size={11} /> };
+  const icons: Record<Action, React.ReactNode> = {
+    create: <Plus size={11} />, edit: <Pencil size={11} />, view: <Eye size={11} />, sidebar: <PanelLeft size={11} />,
+  };
   return (
     <button
       onClick={locked ? undefined : onChange}

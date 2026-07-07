@@ -25,6 +25,7 @@ export const ALL_WIDGETS: WidgetDef[] = [
   { id: "leave_requests",  label: "Leave Requests",      description: "Pending leave requests to review",              type: "list",  size: "md" },
   { id: "shift_todos",     label: "Today's To-do List",  description: "Shift to-do tasks for today (staff view)",      type: "list",  size: "md" },
   { id: "clock_inout",     label: "Clock In / Out",      description: "GPS-based clock-in and clock-out widget",       type: "list",  size: "md" },
+  { id: "pending_shifts",  label: "Pending Shift Confirmations", description: "Shift assignments waiting for your confirmation", type: "list", size: "md" },
 ];
 
 const mkDefault = (ids: string[]): WidgetConfig[] =>
@@ -33,6 +34,6 @@ const mkDefault = (ids: string[]): WidgetConfig[] =>
 export const DEFAULT_WIDGETS: Record<string, WidgetConfig[]> = {
   admin:   mkDefault(["revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","payroll","tasks","leave_requests"]),
   manager: mkDefault(["clock_inout","revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","tasks","leave_requests"]),
-  staff:   mkDefault(["clock_inout","shift_todos","inventory_value","stock_alerts","tasks"]),
+  staff:   mkDefault(["pending_shifts","clock_inout","shift_todos","inventory_value","stock_alerts","tasks"]),
   viewer:  mkDefault(["revenue","expenses","inventory_value","tasks"]),
 };

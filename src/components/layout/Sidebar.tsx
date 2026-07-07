@@ -9,6 +9,7 @@ import {
   Settings, GitBranch, ScanLine, CalendarClock, HeartHandshake, Gift,
   TicketCheck, Zap, PieChart, Shield, Bell, Sliders, PackageCheck,
   ClipboardCheck, CheckSquare, X, ArrowLeftRight, Layers, Fingerprint, LogOut,
+  Lock, AlertTriangle, KeyRound,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -78,7 +79,7 @@ const navItems = [
       { label: "Leave",       href: "/hr/leave",       icon: CalendarDays,permKey: "hr_leave"      },
       { label: "Attendance",  href: "/hr/attendance",  icon: ScanLine,    permKey: "hr_attendance" },
       { label: "Clock In/Out",href: "/hr/clock",       icon: Fingerprint, permKey: "hr_attendance" },
-      { label: "Shifts",      href: "/hr/shifts",      icon: CalendarClock },
+      { label: "Shifts",      href: "/hr/shifts",      icon: CalendarClock, permKey: "hr_shifts" },
     ],
   },
   {
@@ -88,23 +89,23 @@ const navItems = [
       { label: "Customers",    href: "/crm/customers",    icon: Users,      permKey: "crm_customers" },
       { label: "Campaigns",    href: "/crm/campaigns",    icon: Zap,        permKey: "crm_campaigns" },
       { label: "Rewards",      href: "/crm/rewards",      icon: Gift,       permKey: "crm_rewards"   },
-      { label: "Redemptions",  href: "/crm/redemptions",  icon: TicketCheck },
-      { label: "Analytics",    href: "/crm/analytics",    icon: PieChart    },
+      { label: "Redemptions",  href: "/crm/redemptions",  icon: TicketCheck, permKey: "crm_redemptions" },
+      { label: "Analytics",    href: "/crm/analytics",    icon: PieChart,    permKey: "crm_analytics"   },
     ],
   },
   {
     label: "Settings", icon: Settings,
     children: [
-      { label: "General",           href: "/settings/general",        icon: Settings,      permKey: "set_general"  },
-      { label: "Branches",          href: "/settings/branches",       icon: GitBranch,     permKey: "set_branches" },
-      { label: "Brands",            href: "/settings/brands",         icon: ArrowLeftRight },
-      { label: "Departments",       href: "/settings/departments",    icon: Layers         },
-      { label: "Users",             href: "/settings/users",          icon: Shield,        permKey: "set_users"    },
-      { label: "Dashboard Layout",  href: "/settings/dashboard",      icon: LayoutDashboard },
-      { label: "Role Permissions",  href: "/settings/roles",          icon: ClipboardCheck,permKey: "set_roles"    },
-      { label: "Points Config",     href: "/settings/points",         icon: Sliders        },
-      { label: "Notifications",     href: "/settings/notifications",  icon: Bell           },
-      { label: "Appearance",        href: "/settings/appearance",     icon: Sliders        },
+      { label: "General",           href: "/settings/general",        icon: Settings,       permKey: "set_general"       },
+      { label: "Branches",          href: "/settings/branches",       icon: GitBranch,      permKey: "set_branches"      },
+      { label: "Brands",            href: "/settings/brands",         icon: ArrowLeftRight, permKey: "set_brands"        },
+      { label: "Departments",       href: "/settings/departments",    icon: Layers,         permKey: "set_departments"   },
+      { label: "Users",             href: "/settings/users",          icon: Shield,         permKey: "set_users"         },
+      { label: "Dashboard Layout",  href: "/settings/dashboard",      icon: LayoutDashboard, permKey: "set_dashboard"   },
+      { label: "Role Permissions",  href: "/settings/roles",          icon: ClipboardCheck, permKey: "set_roles"         },
+      { label: "Points Config",     href: "/settings/points",         icon: Sliders,        permKey: "set_points"        },
+      { label: "Notifications",     href: "/settings/notifications",  icon: Bell,           permKey: "set_notifications" },
+      { label: "Appearance",        href: "/settings/appearance",     icon: Sliders,        permKey: "set_appearance"    },
     ],
   },
 ];
@@ -137,6 +138,8 @@ export function Sidebar() {
   const [openSections, setOpenSections] = useState<string[]>(["Finance", "Inventory", "Sales & CRM", "HR & Payroll", "CRM", "Settings"]);
   const [me, setMe] = useState<Me | null>(null);
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [perms, setPerms] = useState<PermMatrix>({});
 
   useEffect(() => {
@@ -331,36 +334,83 @@ export function Sidebar() {
         </nav>
 
         {/* User area */}
-        <div className={cn("border-t px-4 py-3 flex-shrink-0", S.footerBorder)}>
-          <div className="flex items-center gap-3">
+        <div className={cn("border-t px-4 py-3 flex-shrink-0 relative", S.footerBorder)}>
+          <button
+            onClick={() => setShowUserMenu((v) => !v)}
+            className={cn("w-full flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors", S.sectionHover)}
+          >
             <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", AVATAR_COLOR[me?.role ?? ""] ?? "bg-slate-500")}>
               {me ? initials(me.name, me.email) : "?"}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <p className={cn("text-sm font-medium truncate", S.userName)}>
                 {me?.name ?? me?.email ?? "Loading…"}
               </p>
               <p className={cn("text-xs truncate", S.userEmail)}>{me?.email ?? ""}</p>
             </div>
-            <button
-              onClick={() => setShowSwitcher(true)}
-              title="Switch user"
-              className={cn("p-1.5 rounded-lg transition-colors flex-shrink-0", S.closeBtn)}
-            >
-              <ArrowLeftRight size={15} />
-            </button>
-            <button
-              onClick={handleLogout}
-              title="Log out"
-              className={cn("p-1.5 rounded-lg transition-colors flex-shrink-0", S.closeBtn)}
-            >
-              <LogOut size={15} />
-            </button>
-          </div>
+            <ChevronDown size={14} className={cn("text-slate-400 transition-transform shrink-0", showUserMenu && "rotate-180")} />
+          </button>
+
+          {showUserMenu && (
+            <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50">
+              <button
+                onClick={() => { setShowSwitcher(true); setShowUserMenu(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <ArrowLeftRight size={15} className="text-slate-400" />
+                Switch account
+              </button>
+              <Link
+                href="/auth/set-pin"
+                onClick={() => setShowUserMenu(false)}
+                className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <KeyRound size={15} className="text-slate-400" />
+                Set / Change PIN
+              </Link>
+              <div className="border-t border-slate-100 my-1" />
+              <button
+                onClick={() => { setShowLogoutConfirm(true); setShowUserMenu(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut size={15} />
+                Log out
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
       {showSwitcher && <UserSwitcher onClose={() => setShowSwitcher(false)} />}
+
+      {/* Logout confirmation dialog */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                <AlertTriangle size={26} className="text-red-500" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900 mb-1">Log out?</h2>
+              <p className="text-sm text-slate-500 mb-6">You will be redirected to the login page.</p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { setShowLogoutConfirm(false); handleLogout(); }}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
+                >
+                  Log out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

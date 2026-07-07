@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Loader2, CheckCircle2, Lock } from "lucide-react";
+import { LayoutDashboard, Loader2, CheckCircle2, Lock, Fingerprint } from "lucide-react";
 
 export default function SetPinPage() {
   const router = useRouter();
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false);
+  const [bioStatus, setBioStatus] = useState<"idle" | "registered" | "unsupported">("idle");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
@@ -18,6 +20,40 @@ export default function SetPinPage() {
       const val = e.target.value.replace(/\D/g, "").slice(0, 6);
       setter(val);
     };
+  }
+
+  async function handleEnrollBiometric() {
+    setBioLoading(true);
+    try {
+      if (!window.PublicKeyCredential) { setBioStatus("unsupported"); return; }
+      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (!available) { setBioStatus("unsupported"); return; }
+
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rp: { name: "Trakulheng ERP", id: window.location.hostname },
+          user: { id: crypto.getRandomValues(new Uint8Array(16)), name: "user", displayName: "User" },
+          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+          timeout: 60000,
+        },
+      }) as PublicKeyCredential;
+
+      const credId = btoa(Array.from(new Uint8Array(credential.rawId), (b) => String.fromCharCode(b)).join(""));
+      localStorage.setItem("webauthn_cred_id", credId);
+
+      await fetch("/api/auth/webauthn/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credentialId: credId }),
+      });
+      setBioStatus("registered");
+    } catch (err: any) {
+      if (err?.name !== "NotAllowedError") setBioStatus("unsupported");
+    } finally {
+      setBioLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,7 +115,7 @@ export default function SetPinPage() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Choose a 6-digit PIN</label>
                   <input
-                    type="text"
+                    type="password"
                     inputMode="numeric"
                     required
                     autoFocus
@@ -124,6 +160,38 @@ export default function SetPinPage() {
                   </Link>
                 </p>
               </form>
+
+              {/* Biometric enrollment */}
+              <div className="mt-6 pt-6 border-t border-slate-100">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Fingerprint size={16} className="text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Biometric Login</p>
+                    <p className="text-xs text-slate-500">Enable fingerprint or face ID for quick login.</p>
+                  </div>
+                </div>
+                {bioStatus === "registered" ? (
+                  <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 flex items-center gap-2">
+                    <CheckCircle2 size={14} /> Biometric login enabled!
+                  </p>
+                ) : bioStatus === "unsupported" ? (
+                  <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2">
+                    Biometric authentication is not available on this device/browser.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleEnrollBiometric}
+                    disabled={bioLoading}
+                    className="w-full flex items-center justify-center gap-2 border border-violet-300 text-violet-700 hover:bg-violet-50 disabled:opacity-50 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {bioLoading ? <Loader2 size={14} className="animate-spin" /> : <Fingerprint size={14} />}
+                    {bioLoading ? "Registering…" : "Enable Biometric Login"}
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>

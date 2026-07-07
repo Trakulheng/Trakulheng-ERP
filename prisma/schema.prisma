@@ -21,6 +21,9 @@ model User {
   password          String?
   pin               String?
   pinSetAt          DateTime?
+  webauthnCredId    String?
+  webauthnPubKey    String?
+  webauthnCounter   Int?      @default(0)
   role              UserRole  @default(staff)
   emailVerified     Boolean   @default(false)
   employeeRecordId  String?

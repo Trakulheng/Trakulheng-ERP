@@ -3,6 +3,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
+import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
 import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
@@ -53,6 +54,32 @@ export default async function DashboardPage() {
 
   const recentInvoices   = invoices.slice(0, 5);
   const lowStockProducts = products.filter((p) => p.status !== "ok").slice(0, 5);
+
+  // Fetch pending shift assignments for this employee
+  const pendingShiftRows = user?.employeeRecordId
+    ? await prisma.shiftAssignment.findMany({
+        where: { employeeId: user.employeeRecordId, confirmStatus: "pending" },
+        orderBy: { date: "asc" },
+        take: 20,
+      })
+    : [];
+  const shiftTemplateIds = Array.from(new Set(pendingShiftRows.map((s) => s.shiftId).filter(Boolean))) as string[];
+  const shiftTemplates = shiftTemplateIds.length > 0
+    ? await prisma.shiftTemplate.findMany({ where: { id: { in: shiftTemplateIds } } })
+    : [];
+  const pendingShifts = pendingShiftRows.map((row) => {
+    const tpl = row.shiftId ? shiftTemplates.find((t) => t.id === row.shiftId) : null;
+    return {
+      id:         row.id,
+      date:       row.date,
+      shiftCode:  tpl?.code   ?? null,
+      shiftName:  tpl?.name   ?? null,
+      shiftStart: tpl?.startTime ?? null,
+      shiftEnd:   tpl?.endTime   ?? null,
+      branchId:   row.branchId,
+      note:       row.note ?? null,
+    };
+  });
 
   const kpiIds    = ["revenue", "expenses", "inventory_value", "headcount"];
   const kpiWidgets = enabled.filter((w) => kpiIds.includes(w.id));
@@ -220,6 +247,11 @@ export default async function DashboardPage() {
               Leave request management coming soon.
             </div>
           </div>
+        )}
+
+        {/* Pending shift confirmations — employee widget */}
+        {isEnabled(widgets, "pending_shifts") && (
+          <PendingShiftsWidget initialShifts={pendingShifts} />
         )}
 
         {/* Clock In / Out widget */}
