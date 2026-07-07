@@ -1035,6 +1035,22 @@ function WeekCalendar({
                             </div>
                           )}
                         </div>
+                      ) : isOv && override?.shiftId === null ? (
+                        /* Day-off override — show OFF badge */
+                        <button
+                          title="Day off (click to edit)"
+                          onClick={() => canAct && !empViewId && onCellClick(emp.id, dateStr, null, true, override)}
+                          className={cn("w-full h-10 rounded-lg border-2 flex items-center justify-center gap-1 text-xs font-semibold transition-colors relative",
+                            canAct && !empViewId ? "cursor-pointer hover:opacity-80" : "cursor-default",
+                            "border-red-200 bg-red-50 text-red-400",
+                            override?.confirmStatus === "pending" && "ring-2 ring-offset-1 ring-amber-400")}>
+                          OFF
+                          {override?.confirmStatus === "pending" && (
+                            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-amber-400 rounded-full flex items-center justify-center">
+                              <span className="w-1.5 h-1.5 bg-white rounded-full" />
+                            </span>
+                          )}
+                        </button>
                       ) : (
                         <button
                           onClick={() => canAct && !empViewId && onCellClick(emp.id, dateStr, null, false)}
@@ -2240,6 +2256,7 @@ export default function ShiftsPage() {
               <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-emerald-400 ring-offset-1" />Confirmed override</span>
               <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-300 ring-2 ring-amber-400 ring-offset-1" />Pending confirmation</span>
               <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-400" />Recurring pattern</span>
+              <span className="flex items-center gap-1.5"><span className="w-6 h-3 rounded bg-red-100 border border-red-200 text-red-400 text-[8px] font-bold flex items-center justify-center">OFF</span>Day off</span>
               {viewMode === "month" && <>
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />Staffed ≥{MIN_STAFF}</span>
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" />Understaffed</span>
