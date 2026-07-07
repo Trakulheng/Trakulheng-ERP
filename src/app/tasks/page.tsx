@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/Header";
 import {
   Plus, Loader2, Trash2, Pencil, X, CheckCircle2, Clock, CircleDot,
   XCircle, CalendarDays, Timer, User, Link2, ChevronDown, AlertTriangle,
-  ListTodo, ChevronRight, FolderOpen, Search,
+  ListTodo, ChevronRight, FolderOpen, Search, Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
@@ -26,6 +26,7 @@ interface Task {
   assigneeName?: string | null;
   shiftLabel?: string | null;
   taskListId?: string | null;
+  requiresPhoto: boolean;
   createdAt: string;
 }
 
@@ -46,6 +47,7 @@ interface TaskForm {
   assigneeName: string;
   shiftLabel: string;
   taskListId: string;
+  requiresPhoto: boolean;
 }
 
 interface ListForm {
@@ -55,7 +57,7 @@ interface ListForm {
 
 const EMPTY_TASK_FORM: TaskForm = {
   title: "", description: "", dueDate: "", dueTime: "",
-  priority: "medium", assigneeName: "", shiftLabel: "", taskListId: "",
+  priority: "medium", assigneeName: "", shiftLabel: "", taskListId: "", requiresPhoto: false,
 };
 
 const EMPTY_LIST_FORM: ListForm = { name: "", color: "blue" };
@@ -406,6 +408,21 @@ function TaskModal({
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <span className="flex items-center gap-1"><Link2 size={13} />Link to Shift (optional)</span>
+            </label>
+            <select value={form.shiftLabel} onChange={set("shiftLabel")}
+              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="">— None —</option>
+              {shifts.map((s) => (
+                <option key={s.id} value={s.name}>
+                  {s.name} ({s.startTime}–{s.endTime})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Task List</label>
             <select
               value={form.taskListId} onChange={set("taskListId")}
@@ -463,20 +480,22 @@ function TaskModal({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              <span className="flex items-center gap-1"><Link2 size={13} />Link to Shift (optional)</span>
-            </label>
-            <select value={form.shiftLabel} onChange={set("shiftLabel")}
-              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-              <option value="">— None —</option>
-              {shifts.map((s) => (
-                <option key={s.id} value={s.name}>
-                  {s.name} ({s.startTime}–{s.endTime})
-                </option>
-              ))}
-            </select>
-          </div>
+          <label className={cn(
+            "flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors select-none",
+            form.requiresPhoto ? "border-violet-300 bg-violet-50" : "border-slate-200 hover:bg-slate-50"
+          )}>
+            <input
+              type="checkbox"
+              checked={form.requiresPhoto}
+              onChange={(e) => setForm((f) => ({ ...f, requiresPhoto: e.target.checked }))}
+              className="w-4 h-4 rounded accent-violet-600"
+            />
+            <Camera size={15} className={form.requiresPhoto ? "text-violet-600" : "text-slate-400"} />
+            <div>
+              <p className="text-sm font-medium text-slate-800">Require photo proof</p>
+              <p className="text-xs text-slate-400">Staff must attach a photo when marking this task done</p>
+            </div>
+          </label>
 
           <div className="flex gap-3 pt-2">
             <button onClick={onClose}
@@ -780,7 +799,7 @@ export default function TasksPage() {
       title: task.title, description: task.description ?? "",
       dueDate: task.dueDate ?? "", dueTime: task.dueTime ?? "",
       priority: task.priority, assigneeName: task.assigneeName ?? "",
-      shiftLabel: task.shiftLabel ?? "", taskListId: task.taskListId ?? "",
+      shiftLabel: task.shiftLabel ?? "", taskListId: task.taskListId ?? "", requiresPhoto: task.requiresPhoto ?? false,
     });
     setTaskError("");
     setShowTaskModal(true);

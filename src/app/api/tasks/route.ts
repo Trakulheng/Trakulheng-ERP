@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, description, dueDate, dueTime, priority, assigneeName, shiftLabel, taskListId } = await req.json();
+    const { title, description, dueDate, dueTime, priority, assigneeName, shiftLabel, taskListId, requiresPhoto } = await req.json();
 
     if (!title?.trim()) {
       return NextResponse.json({ error: "Title is required." }, { status: 400 });
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         assigneeName: assigneeName?.trim() || null,
         shiftLabel: shiftLabel?.trim() || null,
         taskListId: taskListId || null,
+        requiresPhoto: requiresPhoto === true,
       },
     });
 

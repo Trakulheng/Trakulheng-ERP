@@ -307,9 +307,10 @@ model Task {
   dueTime      String?
   priority     String    @default("medium")
   status       String    @default("pending")
-  assigneeName String?
-  shiftLabel   String?
-  taskListId   String?
+  assigneeName  String?
+  shiftLabel    String?
+  taskListId    String?
+  requiresPhoto Boolean  @default(false)
   taskList     TaskList? @relation(fields: [taskListId], references: [id], onDelete: SetNull)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
