@@ -1027,7 +1027,9 @@ function WeekCalendar({
                                 {override?.confirmStatus === "confirmed" ? (
                                   <span className="w-3.5 h-3.5 bg-emerald-500 rounded-full flex items-center justify-center text-white text-[8px]">✓</span>
                                 ) : override?.confirmStatus === "pending" ? (
-                                  <span className="w-3.5 h-3.5 bg-amber-400 rounded-full" />
+                                  <span className="w-3.5 h-3.5 bg-amber-400 rounded-full flex items-center justify-center">
+                                    <span className="w-1.5 h-1.5 bg-white rounded-full" />
+                                  </span>
                                 ) : null}
                               </span>
                             )}
@@ -1591,10 +1593,20 @@ function DayAssignModal({
   onSave: (employeeId: string, shiftId: string | null, note: string) => void;
 }) {
   const available = branchEmps.filter((e) => !alreadyAssigned.includes(e.id));
+  const [search, setSearch] = useState("");
   const [selectedEmpId, setSelectedEmpId] = useState(available[0]?.id ?? "");
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(shiftList[0]?.id ?? null);
   const [dayOff, setDayOff] = useState(false);
   const [note, setNote] = useState("");
+
+  const filteredEmps = search.trim()
+    ? available.filter((e) =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        e.department.toLowerCase().includes(search.toLowerCase())
+      )
+    : available;
+
+  const selectedEmp = available.find((e) => e.id === selectedEmpId);
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1616,15 +1628,52 @@ function DayAssignModal({
             <>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Employee</label>
-                <select
-                  value={selectedEmpId}
-                  onChange={(e) => setSelectedEmpId(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
-                >
-                  {available.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name} — {e.department}</option>
-                  ))}
-                </select>
+                {/* Search input */}
+                <div className="relative mb-1">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name or department…"
+                    className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {/* Selected employee chip */}
+                {selectedEmp && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 mb-1 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                      {selectedEmp.name.charAt(0)}
+                    </div>
+                    <span className="font-medium flex-1 truncate">{selectedEmp.name}</span>
+                    <span className="text-xs text-blue-500">{selectedEmp.department}</span>
+                  </div>
+                )}
+                {/* Filtered list */}
+                <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                  {filteredEmps.length === 0 ? (
+                    <p className="px-3 py-3 text-sm text-slate-400 text-center">No employees match &ldquo;{search}&rdquo;</p>
+                  ) : (
+                    filteredEmps.map((e) => (
+                      <button
+                        key={e.id}
+                        type="button"
+                        onClick={() => setSelectedEmpId(e.id)}
+                        className={cn(
+                          "w-full text-left flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                          selectedEmpId === e.id ? "bg-blue-50 text-blue-800" : "text-slate-700 hover:bg-slate-50"
+                        )}
+                      >
+                        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 text-white",
+                          selectedEmpId === e.id ? "bg-blue-600" : "bg-slate-300")}>
+                          {e.name.charAt(0)}
+                        </div>
+                        <span className="flex-1 font-medium truncate">{e.name}</span>
+                        <span className="text-xs text-slate-400 shrink-0">{e.department}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
 
               <label className={cn("flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors",
