@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import { ALL_WIDGETS, DEFAULT_WIDGETS, type WidgetConfig } from "@/lib/dashboard-widgets";
 import { cn } from "@/lib/utils";
-import { GripVertical, Eye, EyeOff, RotateCcw, Save, Check } from "lucide-react";
+import { GripVertical, Eye, EyeOff, RotateCcw, Save, Check, LayoutDashboard } from "lucide-react";
+import Link from "next/link";
 
 const ROLES = [
   { id: "admin",   label: "Admin",   color: "bg-red-100 text-red-700" },
@@ -49,7 +50,7 @@ export default function DashboardSettingsPage() {
             .then((res) => res.ok ? res.json() : null)
         ),
       ]);
-      setIsAdmin(meRes?.role === "admin");
+      setIsAdmin(["admin", "manager"].includes(meRes?.role));
       function mergeWidgets(saved: WidgetConfig[] | null | undefined, role: string): WidgetConfig[] {
         if (!saved) return [...DEFAULT_WIDGETS[role]];
         const defaults = DEFAULT_WIDGETS[role] ?? [];
@@ -161,13 +162,20 @@ export default function DashboardSettingsPage() {
                   <RotateCcw size={12} /> Reset defaults
                 </button>
                 {isAdmin ? (
-                  <button onClick={handleSave} disabled={saving}
-                    className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                    {saved ? <Check size={12} /> : <Save size={12} />}
-                    {saved ? "Saved!" : saving ? "Saving…" : "Save Layout"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {saved && (
+                      <Link href="/" className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100">
+                        <LayoutDashboard size={12} /> View Dashboard
+                      </Link>
+                    )}
+                    <button onClick={handleSave} disabled={saving}
+                      className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                      {saved ? <Check size={12} /> : <Save size={12} />}
+                      {saved ? "Saved!" : saving ? "Saving…" : "Save Layout"}
+                    </button>
+                  </div>
                 ) : (
-                  <span className="text-xs text-slate-400 italic">View only — admin access required to save</span>
+                  <span className="text-xs text-slate-400 italic">View only — admin or manager access required</span>
                 )}
               </div>
             </div>
@@ -229,7 +237,7 @@ export default function DashboardSettingsPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
           <strong>How it works:</strong> Each user role sees only their configured widgets on the Dashboard.
           Changes saved here take effect immediately for all users with that role.
-          Users cannot modify their own layout — only admins can configure this.
+          Users cannot modify their own layout — only admins and managers can configure this.
         </div>
       </div>
     </div>

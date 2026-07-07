@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { customerProfiles, salesOrders, invoices, crmCustomers, getTier, tierColors } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -48,10 +48,10 @@ type Profile = IndividualProfile | CorporateProfile;
 
 // ── Constants ─────────────────────────────────────────────────────────
 
-const BUSINESS_TYPES = [
+const FALLBACK_BUSINESS_TYPES = [
   "Manufacturing","Trading","Construction","Technology","Retail",
   "Logistics","Services","Healthcare","Education","Food & Beverage","Other",
-] as const;
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -93,11 +93,12 @@ function TagBadge({ tag }: { tag: string }) {
 interface CustomerModalProps {
   initial?: Profile;
   nextId: string;
+  businessTypes: string[];
   onClose: () => void;
   onSave: (p: Profile) => void;
 }
 
-function CustomerModal({ initial, nextId, onClose, onSave }: CustomerModalProps) {
+function CustomerModal({ initial, nextId, businessTypes, onClose, onSave }: CustomerModalProps) {
   const [type, setType] = useState<"individual" | "corporate">(initial?.customerType ?? "individual");
 
   // Individual
@@ -254,7 +255,7 @@ function CustomerModal({ initial, nextId, onClose, onSave }: CustomerModalProps)
                 <label className="block text-xs font-medium text-slate-600 mb-1">Business Type</label>
                 <select value={businessType} onChange={(e) => setBusinessType(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {BUSINESS_TYPES.map((t) => <option key={t}>{t}</option>)}
+                  {businessTypes.map((t) => <option key={t}>{t}</option>)}
                 </select>
               </div>
               <div className="pt-2 border-t border-slate-100">
@@ -618,6 +619,17 @@ export default function CustomersPage() {
   const [editProfile, setEditProfile] = useState<Profile | undefined>(undefined);
   const [viewId, setViewId]       = useState<string | null>(null);
   const [deleteId, setDeleteId]   = useState<string | null>(null);
+  const [businessTypes, setBusinessTypes] = useState<string[]>(FALLBACK_BUSINESS_TYPES);
+
+  useEffect(() => {
+    fetch("/api/settings/lookup-values?type=business_type")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { label: string; isActive: boolean }[]) => {
+        const active = data.filter((d) => d.isActive).map((d) => d.label);
+        if (active.length > 0) setBusinessTypes(active);
+      })
+      .catch(() => {});
+  }, []);
 
   const nextId = `CP-${String(profiles.length + 1).padStart(3, "0")}`;
 
@@ -809,6 +821,7 @@ export default function CustomersPage() {
         <CustomerModal
           initial={editProfile}
           nextId={nextId}
+          businessTypes={businessTypes}
           onClose={() => setShowModal(false)}
           onSave={handleSave}
         />

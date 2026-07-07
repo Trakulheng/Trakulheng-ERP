@@ -64,14 +64,16 @@ interface SupplierModalProps {
   initial?: Supplier;
   nextId: string;
   apiCategories: string[];
+  apiPaymentTerms: string[];
   onClose: () => void;
   onSave: (s: Supplier) => void;
 }
 
 const EMPTY_CONTACT: ContactPerson = { name: "", email: "", phone: "" };
 
-function SupplierModal({ initial, nextId, apiCategories, onClose, onSave }: SupplierModalProps) {
-  const categories = apiCategories.length > 0 ? apiCategories : [...FALLBACK_CATEGORIES];
+function SupplierModal({ initial, nextId, apiCategories, apiPaymentTerms, onClose, onSave }: SupplierModalProps) {
+  const categories    = apiCategories.length    > 0 ? apiCategories    : [...FALLBACK_CATEGORIES];
+  const paymentTerms  = apiPaymentTerms.length  > 0 ? apiPaymentTerms  : [...PAYMENT_TERMS];
 
   const [form, setForm] = useState<Supplier>(initial ?? {
     id: nextId, name: "", contact: "", email: "", phone: "",
@@ -223,7 +225,7 @@ function SupplierModal({ initial, nextId, apiCategories, onClose, onSave }: Supp
                 <label className="block text-xs font-medium text-slate-600 mb-1">Payment Terms</label>
                 <select value={form.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {PAYMENT_TERMS.map((t) => <option key={t}>{t}</option>)}
+                  {paymentTerms.map((t) => <option key={t}>{t}</option>)}
                 </select>
               </div>
               <div>
@@ -461,12 +463,20 @@ export default function SuppliersPage() {
   const [editSupplier, setEditSupplier] = useState<Supplier | undefined>(undefined);
   const [viewId, setViewId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [apiCategories, setApiCategories] = useState<string[]>([]);
+  const [apiCategories,   setApiCategories]   = useState<string[]>([]);
+  const [apiPaymentTerms, setApiPaymentTerms] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/settings/supplier-categories")
       .then((r) => r.ok ? r.json() : [])
       .then((data: { name: string }[]) => { if (data.length > 0) setApiCategories(data.map((c) => c.name)); })
+      .catch(() => {});
+    fetch("/api/settings/lookup-values?type=payment_term")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { label: string; isActive: boolean }[]) => {
+        const active = data.filter((d) => d.isActive).map((d) => d.label);
+        if (active.length > 0) setApiPaymentTerms(active);
+      })
       .catch(() => {});
   }, []);
 
@@ -661,6 +671,7 @@ export default function SuppliersPage() {
           initial={editSupplier}
           nextId={nextId}
           apiCategories={apiCategories}
+          apiPaymentTerms={apiPaymentTerms}
           onClose={() => setShowModal(false)}
           onSave={handleSave}
         />

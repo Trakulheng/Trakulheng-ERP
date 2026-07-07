@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  if (user.role !== "admin") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!["admin", "manager"].includes(user.role)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const { role, widgets } = await req.json() as { role: string; widgets: WidgetConfig[] };
   if (!role || !Array.isArray(widgets)) {

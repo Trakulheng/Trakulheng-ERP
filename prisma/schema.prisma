@@ -468,3 +468,16 @@ model ShiftTodoLog {
 
   @@unique([todoId, date, employeeId])
 }
+
+model LookupValue {
+  id        String   @id @default(cuid())
+  type      String
+  label     String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, label])
+  @@index([type])
+}
