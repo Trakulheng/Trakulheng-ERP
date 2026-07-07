@@ -7,6 +7,7 @@ import {
   Shield, Check, X, Eye, Pencil, Plus, Save, Lock, Info, Trash2, Tag,
   ChevronUp, ChevronDown, LayoutDashboard, CheckSquare, DollarSign,
   Package, TrendingUp, UserCheck, HeartHandshake, Settings as SettingsIcon,
+  PanelLeft,
 } from "lucide-react";
 
 const MENU_SECTIONS = [
@@ -24,12 +25,13 @@ const DEFAULT_MENU_ORDER = MENU_SECTIONS.map((s) => s.id);
 
 // ── Types ─────────────────────────────────────────────────────────────
 
-type Action = "create" | "edit" | "view";
+type Action = "create" | "edit" | "view" | "sidebar";
 
 interface ModulePerms {
-  create: boolean;
-  edit:   boolean;
-  view:   boolean;
+  create:   boolean;
+  edit:     boolean;
+  view:     boolean;
+  sidebar?: boolean;
 }
 
 type PermMatrix = Record<string, ModulePerms>;
@@ -94,9 +96,9 @@ const GROUPS = Array.from(new Set(MODULES.map((m) => m.group)));
 
 // ── Defaults ──────────────────────────────────────────────────────────
 
-const FULL: ModulePerms      = { create: true,  edit: true,  view: true  };
-const VIEW_ONLY: ModulePerms = { create: false, edit: false, view: true  };
-const NO_ACCESS: ModulePerms = { create: false, edit: false, view: false };
+const FULL: ModulePerms      = { create: true,  edit: true,  view: true,  sidebar: true  };
+const VIEW_ONLY: ModulePerms = { create: false, edit: false, view: true,  sidebar: true  };
+const NO_ACCESS: ModulePerms = { create: false, edit: false, view: false, sidebar: false };
 
 function emptyPermMatrix(): PermMatrix {
   return Object.fromEntries(MODULES.map((m) => [m.id, { ...NO_ACCESS }]));
@@ -159,6 +161,25 @@ function ToggleCell({ checked, locked, onChange, action }: {
   );
 }
 
+function SidebarCell({ checked, locked, onChange }: { checked: boolean; locked: boolean; onChange: () => void }) {
+  return (
+    <button
+      onClick={locked ? undefined : onChange}
+      disabled={locked}
+      title={locked ? "Admin always has full access" : "Toggle sidebar visibility"}
+      className={cn(
+        "w-8 h-8 rounded-lg flex items-center justify-center transition-colors mx-auto",
+        locked
+          ? "cursor-default bg-slate-100 text-slate-300"
+          : checked
+            ? "bg-indigo-500 text-white hover:bg-indigo-600"
+            : "bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-500"
+      )}>
+      {locked ? <Lock size={10} /> : checked ? <PanelLeft size={11} /> : <X size={10} />}
+    </button>
+  );
+}
+
 // ── Create Role Modal ─────────────────────────────────────────────────
 
 interface CreateRoleModalProps {
@@ -187,10 +208,13 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
 
   const toggle = (moduleId: string, action: Action) => {
     setLocalPerms((prev) => {
-      const next = { ...prev, [moduleId]: { ...prev[moduleId], [action]: !prev[moduleId][action] } };
-      if ((action === "create" || action === "edit") && !next[moduleId].view) next[moduleId].view = true;
-      if (action === "view" && !next[moduleId].view) { next[moduleId].create = false; next[moduleId].edit = false; }
-      return next;
+      const existing = prev[moduleId] ?? { ...NO_ACCESS };
+      const sidebar  = existing.sidebar !== undefined ? existing.sidebar : existing.view;
+      const cur      = { ...existing, sidebar };
+      const updated  = { ...cur, [action]: !cur[action] };
+      if ((action === "create" || action === "edit") && !updated.view) updated.view = true;
+      if (action === "view" && !updated.view) { updated.create = false; updated.edit = false; updated.sidebar = false; }
+      return { ...prev, [moduleId]: updated };
     });
   };
 
@@ -290,22 +314,27 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
                   <th className="text-center px-3 py-2.5 text-xs font-semibold text-slate-500 w-16">
                     <div className="flex items-center justify-center gap-1"><Eye size={10} /> View</div>
                   </th>
+                  <th className="text-center px-3 py-2.5 text-xs font-semibold text-indigo-500 w-16">
+                    <div className="flex items-center justify-center gap-1"><PanelLeft size={10} /> Sidebar</div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {GROUPS.map((group) => (
                   <React.Fragment key={group}>
                     <tr className="bg-slate-50 border-y border-slate-100">
-                      <td colSpan={4} className="px-4 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">{group}</td>
+                      <td colSpan={5} className="px-4 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">{group}</td>
                     </tr>
                     {MODULES.filter((m) => m.group === group).map((mod) => {
-                      const p = localPerms[mod.id] ?? { ...NO_ACCESS };
+                      const p       = localPerms[mod.id] ?? { ...NO_ACCESS };
+                      const sidebar = p.sidebar !== undefined ? p.sidebar : p.view;
                       return (
                         <tr key={mod.id} className={cn("border-b border-slate-50 hover:bg-slate-50/50", !p.view && "opacity-40")}>
                           <td className="px-4 py-2 text-xs font-medium text-slate-800">{mod.label}</td>
                           <td className="px-3 py-2 text-center"><ToggleCell checked={p.create} locked={false} action="create" onChange={() => toggle(mod.id, "create")} /></td>
                           <td className="px-3 py-2 text-center"><ToggleCell checked={p.edit}   locked={false} action="edit"   onChange={() => toggle(mod.id, "edit")}   /></td>
                           <td className="px-3 py-2 text-center"><ToggleCell checked={p.view}   locked={false} action="view"   onChange={() => toggle(mod.id, "view")}   /></td>
+                          <td className="px-3 py-2 text-center"><SidebarCell checked={sidebar} locked={false} onChange={() => toggle(mod.id, "sidebar")} /></td>
                         </tr>
                       );
                     })}
@@ -355,7 +384,8 @@ export default function RolePermissionsPage() {
             const merged = { ...prev };
             for (const [roleId, savedPerms] of Object.entries(d.permissions)) {
               if (savedPerms && typeof savedPerms === "object") {
-                merged[roleId] = savedPerms as PermMatrix;
+                // Merge on top of defaults so newly-added modules keep their defaults
+                merged[roleId] = { ...(prev[roleId] ?? {}), ...(savedPerms as PermMatrix) };
               }
             }
             return merged;
@@ -377,13 +407,13 @@ export default function RolePermissionsPage() {
 
   const toggle = (roleId: string, moduleId: string, action: Action) => {
     setPerms((prev) => {
-      const next = {
-        ...prev,
-        [roleId]: { ...prev[roleId], [moduleId]: { ...prev[roleId][moduleId], [action]: !prev[roleId][moduleId][action] } },
-      };
-      if ((action === "create" || action === "edit") && !next[roleId][moduleId].view) next[roleId][moduleId].view = true;
-      if (action === "view" && !next[roleId][moduleId].view) { next[roleId][moduleId].create = false; next[roleId][moduleId].edit = false; }
-      return next;
+      const existing = prev[roleId]?.[moduleId] ?? { ...NO_ACCESS };
+      const sidebar  = existing.sidebar !== undefined ? existing.sidebar : existing.view;
+      const cur      = { ...existing, sidebar };
+      const updated  = { ...cur, [action]: !cur[action] };
+      if ((action === "create" || action === "edit") && !updated.view) updated.view = true;
+      if (action === "view" && !updated.view) { updated.create = false; updated.edit = false; updated.sidebar = false; }
+      return { ...prev, [roleId]: { ...prev[roleId], [moduleId]: updated } };
     });
   };
 
@@ -609,6 +639,9 @@ export default function RolePermissionsPage() {
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 w-24">
                   <div className="flex items-center justify-center gap-1"><Eye size={11} /> View</div>
                 </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-indigo-500 w-24">
+                  <div className="flex items-center justify-center gap-1"><PanelLeft size={11} /> Sidebar</div>
+                </th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500">Description</th>
               </tr>
             </thead>
@@ -619,10 +652,11 @@ export default function RolePermissionsPage() {
                 return (
                   <React.Fragment key={group}>
                     <tr className="bg-slate-50 border-y border-slate-100">
-                      <td colSpan={5} className="px-5 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">{group}</td>
+                      <td colSpan={6} className="px-5 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">{group}</td>
                     </tr>
                     {groupMods.map((mod) => {
                       const p          = perms[active]?.[mod.id] ?? { ...NO_ACCESS };
+                      const sidebar    = p.sidebar !== undefined ? p.sidebar : p.view;
                       const isNoAccess = !p.view;
                       return (
                         <tr key={mod.id} className={cn("border-b border-slate-50 hover:bg-slate-50/50", isNoAccess && "opacity-50")}>
@@ -630,6 +664,7 @@ export default function RolePermissionsPage() {
                           <td className="px-4 py-3 text-center"><ToggleCell checked={p.create} locked={isLocked} action="create" onChange={() => toggle(active, mod.id, "create")} /></td>
                           <td className="px-4 py-3 text-center"><ToggleCell checked={p.edit}   locked={isLocked} action="edit"   onChange={() => toggle(active, mod.id, "edit")}   /></td>
                           <td className="px-4 py-3 text-center"><ToggleCell checked={p.view}   locked={isLocked} action="view"   onChange={() => toggle(active, mod.id, "view")}   /></td>
+                          <td className="px-4 py-3 text-center"><SidebarCell checked={sidebar} locked={isLocked} onChange={() => toggle(active, mod.id, "sidebar")} /></td>
                           <td className="px-5 py-3 text-xs text-slate-400">{mod.description}</td>
                         </tr>
                       );

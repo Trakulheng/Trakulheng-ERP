@@ -28,13 +28,16 @@ const NAV_LABEL_TO_SECTION: Record<string, string> = {
   "Settings":   "settings",
 };
 
-type PermMatrix = Record<string, { create: boolean; edit: boolean; view: boolean }>;
+type PermMatrix = Record<string, { create: boolean; edit: boolean; view: boolean; sidebar?: boolean }>;
 
 function permAllowed(permKey: string | undefined, p: PermMatrix): boolean {
   if (!permKey) return true;
   const m = p[permKey];
   if (!m) return true; // not in matrix → unrestricted
-  return m.create || m.edit || m.view;
+  if (!m.view) return false; // no view access → hide
+  // sidebar=false means explicitly hidden; undefined means visible by default
+  if (m.sidebar === false) return false;
+  return true;
 }
 
 const navItems = [
