@@ -785,7 +785,12 @@ function CellAssignModal({
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
           <div>{isOverride && onRemoveOverride && (<button onClick={onRemoveOverride} className="text-xs text-red-500 hover:underline">Revert to recurring pattern</button>)}</div>
           <div className="flex gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+            <button
+              onClick={isOverride && onRemoveOverride ? onRemoveOverride : onClose}
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
+            >
+              Cancel
+            </button>
             <button onClick={() => onSave(dayOff ? null : selectedId, note)} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Save Assignment</button>
           </div>
         </div>
