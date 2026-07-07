@@ -139,22 +139,23 @@ interface NewPOModalProps {
 
 function NewPOModal({ nextId, currentRole, onClose, onSave }: NewPOModalProps) {
   const [step, setStep]         = useState<1 | 2>(1);
-  const [supplierId, setSupplierId] = useState(suppliers[0].id);
+  const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? "");
   const [orderDate, setOrderDate]   = useState(new Date().toISOString().split("T")[0]);
   const [expectedDate, setExpectedDate] = useState("");
   const [notes, setNotes]           = useState("");
   const [lines, setLines]           = useState<DraftLineItem[]>([]);
-  const [lineProductId, setLineProductId] = useState(products[0].id);
+  const [lineProductId, setLineProductId] = useState(products[0]?.id ?? "");
   const [lineSize, setLineSize]     = useState("");
   const [lineQty, setLineQty]       = useState(1);
-  const [linePrice, setLinePrice]   = useState(products[0].unitPrice);
+  const [linePrice, setLinePrice]   = useState(products[0]?.unitPrice ?? 0);
 
   const canSeePrice = CAN_SEE_PRICE.includes(currentRole);
-  const supplier    = suppliers.find((s) => s.id === supplierId)!;
+  const supplier    = suppliers.find((s) => s.id === supplierId);
   const total       = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
 
   const addLine = () => {
-    const prod = products.find((p) => p.id === lineProductId)!;
+    const prod = products.find((p) => p.id === lineProductId);
+    if (!prod) return;
     setLines((prev) => [...prev, {
       tempId: `tmp-${Date.now()}`,
       productId: prod.id, productName: prod.name,
@@ -168,7 +169,7 @@ function NewPOModal({ nextId, currentRole, onClose, onSave }: NewPOModalProps) {
   const handleSubmit = () => {
     const now = new Date().toISOString();
     const newPO: PO = {
-      id: nextId, supplierId, supplier: supplier.name,
+      id: nextId, supplierId, supplier: supplier?.name ?? "",
       date: orderDate, expectedDate: expectedDate || "TBD",
       items: lines.length, total, status: "pending",
       approvalStatus: "pending_approval",

@@ -1,21 +1,31 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { suppliers as initialSuppliers, purchaseOrders, products, POStatus } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
   Plus, Search, Eye, Pencil, Trash2, X, Star,
   Globe, Phone, Mail, Building2, Tag, CreditCard, FileText, Package,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, UserPlus,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
-type Supplier = (typeof initialSuppliers)[number];
+interface ContactPerson { name: string; email: string; phone: string; }
+
+interface Supplier {
+  id: string; name: string;
+  contact: string; email: string; phone: string;
+  contacts?: ContactPerson[];
+  category: string; rating: number;
+  address: string; country: string; paymentTerms: string;
+  taxId: string; notes: string; status: "active" | "inactive";
+}
+
 type SupplierStatus = "active" | "inactive";
 
-const CATEGORIES = ["General","Equipment","Parts","Fittings","Mechanical","Electrical","Safety","Materials"] as const;
+const FALLBACK_CATEGORIES = ["General","Equipment","Parts","Fittings","Mechanical","Electrical","Safety","Materials"] as const;
 const COUNTRIES   = ["Thailand","Singapore","Hong Kong","Malaysia","Japan","China","Germany","USA"] as const;
 const PAYMENT_TERMS = ["COD","Net 15","Net 30","Net 45","Net 60"] as const;
 
@@ -53,22 +63,52 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
 interface SupplierModalProps {
   initial?: Supplier;
   nextId: string;
+  apiCategories: string[];
   onClose: () => void;
   onSave: (s: Supplier) => void;
 }
 
-function SupplierModal({ initial, nextId, onClose, onSave }: SupplierModalProps) {
+const EMPTY_CONTACT: ContactPerson = { name: "", email: "", phone: "" };
+
+function SupplierModal({ initial, nextId, apiCategories, onClose, onSave }: SupplierModalProps) {
+  const categories = apiCategories.length > 0 ? apiCategories : [...FALLBACK_CATEGORIES];
+
   const [form, setForm] = useState<Supplier>(initial ?? {
     id: nextId, name: "", contact: "", email: "", phone: "",
-    category: "General", rating: 4.0,
+    category: categories[0] ?? "General", rating: 4.0,
     address: "", country: "Thailand", paymentTerms: "Net 30",
     taxId: "", notes: "", status: "active" as const,
+    contacts: [{ ...EMPTY_CONTACT }],
+  });
+
+  // Sync contacts array from legacy contact/email/phone on init
+  const [contacts, setContacts] = useState<ContactPerson[]>(() => {
+    if (initial?.contacts && initial.contacts.length > 0) return initial.contacts;
+    return [{ name: initial?.contact ?? "", email: initial?.email ?? "", phone: initial?.phone ?? "" }];
   });
 
   const set = (key: keyof Supplier, val: string | number) =>
     setForm((p) => ({ ...p, [key]: val }));
 
+  const addContact = () => setContacts((prev) => [...prev, { ...EMPTY_CONTACT }]);
+  const removeContact = (i: number) => setContacts((prev) => prev.filter((_, idx) => idx !== i));
+  const updateContact = (i: number, field: keyof ContactPerson, val: string) =>
+    setContacts((prev) => prev.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
+
   const isEdit = !!initial;
+
+  const handleSave = () => {
+    const primary = contacts[0] ?? EMPTY_CONTACT;
+    onSave({
+      ...form,
+      contact: primary.name,
+      email:   primary.email,
+      phone:   primary.phone,
+      contacts,
+    });
+  };
+
+  const canSave = form.name && contacts[0]?.name && contacts[0]?.email;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -82,6 +122,7 @@ function SupplierModal({ initial, nextId, onClose, onSave }: SupplierModalProps)
         </div>
 
         <div className="p-6 space-y-5">
+          {/* Company Info */}
           <div className="space-y-3">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Company Info</p>
             <div>
@@ -95,7 +136,7 @@ function SupplierModal({ initial, nextId, onClose, onSave }: SupplierModalProps)
                 <label className="block text-xs font-medium text-slate-600 mb-1">Category *</label>
                 <select value={form.category} onChange={(e) => set("category", e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  {categories.map((c) => <option key={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -120,30 +161,61 @@ function SupplierModal({ initial, nextId, onClose, onSave }: SupplierModalProps)
             </div>
           </div>
 
+          {/* Contact Persons */}
           <div className="space-y-3 pt-2 border-t border-slate-100">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</p>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Contact Person *</label>
-              <input value={form.contact} onChange={(e) => set("contact", e.target.value)}
-                placeholder="Full name"
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact Persons</p>
+              <button
+                type="button"
+                onClick={addContact}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <UserPlus size={12} /> Add Contact
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
-                <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)}
-                  placeholder="contact@example.com"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+            {contacts.map((c, i) => (
+              <div key={i} className="rounded-xl border border-slate-200 p-4 space-y-3 relative">
+                {contacts.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeContact(i)}
+                    className="absolute top-3 right-3 p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
+                    {i + 1}
+                  </div>
+                  <span className="text-xs font-medium text-slate-500">{i === 0 ? "Primary Contact" : `Contact ${i + 1}`}</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Name {i === 0 && <span className="text-red-400">*</span>}</label>
+                  <input value={c.name} onChange={(e) => updateContact(i, "name", e.target.value)}
+                    placeholder="Full name"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Email {i === 0 && <span className="text-red-400">*</span>}</label>
+                    <input type="email" value={c.email} onChange={(e) => updateContact(i, "email", e.target.value)}
+                      placeholder="contact@example.com"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Phone</label>
+                    <input type="tel" value={c.phone} onChange={(e) => updateContact(i, "phone", e.target.value)}
+                      placeholder="+66-2-000-0000"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Phone</label>
-                <input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)}
-                  placeholder="+66-2-000-0000"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
+            ))}
           </div>
 
+          {/* Commercial Terms */}
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Commercial Terms</p>
             <div className="grid grid-cols-2 gap-3">
@@ -171,6 +243,7 @@ function SupplierModal({ initial, nextId, onClose, onSave }: SupplierModalProps)
             </div>
           </div>
 
+          {/* Notes */}
           <div className="pt-2 border-t border-slate-100">
             <label className="block text-xs font-medium text-slate-600 mb-1">Notes</label>
             <textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)}
@@ -182,8 +255,8 @@ function SupplierModal({ initial, nextId, onClose, onSave }: SupplierModalProps)
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <button
-            disabled={!form.name || !form.contact || !form.email}
-            onClick={() => onSave(form)}
+            disabled={!canSave}
+            onClick={handleSave}
             className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
             {isEdit ? "Save Changes" : "Add Supplier"}
           </button>
@@ -205,6 +278,10 @@ function DetailModal({ supplier, onClose, onEdit }: DetailModalProps) {
   const myPOs = purchaseOrders.filter((po) => po.supplierId === supplier.id);
   const myProducts = products.filter((p) => p.supplierId === supplier.id);
   const totalSpend = myPOs.filter((po) => po.status === "received").reduce((s, po) => s + po.total, 0);
+
+  const allContacts: ContactPerson[] = supplier.contacts && supplier.contacts.length > 0
+    ? supplier.contacts
+    : [{ name: supplier.contact ?? "", email: supplier.email ?? "", phone: supplier.phone ?? "" }];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -257,13 +334,21 @@ function DetailModal({ supplier, onClose, onEdit }: DetailModalProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            {/* Contacts */}
             <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</p>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-slate-700"><Building2 size={14} className="text-slate-400 shrink-0" />{supplier.contact}</div>
-                <div className="flex items-center gap-2 text-slate-700"><Mail size={14} className="text-slate-400 shrink-0" />{supplier.email}</div>
-                <div className="flex items-center gap-2 text-slate-700"><Phone size={14} className="text-slate-400 shrink-0" />{supplier.phone}</div>
-                <div className="flex items-center gap-2 text-slate-700"><Globe size={14} className="text-slate-400 shrink-0" />{supplier.address}</div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contacts</p>
+              <div className="space-y-3">
+                {allContacts.map((c, i) => (
+                  <div key={i} className={cn("space-y-1 text-sm", i > 0 && "pt-3 border-t border-slate-200")}>
+                    {allContacts.length > 1 && (
+                      <p className="text-xs text-slate-400 font-medium">{i === 0 ? "Primary" : `Contact ${i + 1}`}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-slate-700"><Building2 size={14} className="text-slate-400 shrink-0" />{c.name || "—"}</div>
+                    <div className="flex items-center gap-2 text-slate-700"><Mail size={14} className="text-slate-400 shrink-0" />{c.email || "—"}</div>
+                    <div className="flex items-center gap-2 text-slate-700"><Phone size={14} className="text-slate-400 shrink-0" />{c.phone || "—"}</div>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 text-slate-700 text-sm pt-1"><Globe size={14} className="text-slate-400 shrink-0" />{supplier.address || "—"}</div>
                 <div className="flex items-center gap-2 text-slate-500 text-xs"><Tag size={13} className="text-slate-300 shrink-0" />{supplier.country}</div>
               </div>
             </div>
@@ -376,6 +461,14 @@ export default function SuppliersPage() {
   const [editSupplier, setEditSupplier] = useState<Supplier | undefined>(undefined);
   const [viewId, setViewId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [apiCategories, setApiCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/settings/supplier-categories")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { name: string }[]) => { if (data.length > 0) setApiCategories(data.map((c) => c.name)); })
+      .catch(() => {});
+  }, []);
 
   const nextId = `SUP-${String(supplierList.length + 1).padStart(3, "0")}`;
   const categories = useMemo(() => {
@@ -385,7 +478,7 @@ export default function SuppliersPage() {
 
   const filtered = useMemo(() => supplierList.filter((s) => {
     const q = search.toLowerCase();
-    const matchSearch = !q || s.name.toLowerCase().includes(q) || s.contact.toLowerCase().includes(q) || s.category.toLowerCase().includes(q) || s.country.toLowerCase().includes(q);
+    const matchSearch = !q || s.name.toLowerCase().includes(q) || (s.contact ?? "").toLowerCase().includes(q) || s.category.toLowerCase().includes(q) || s.country.toLowerCase().includes(q);
     const matchCat = categoryFilter === "all" || s.category === categoryFilter;
     return matchSearch && matchCat;
   }), [supplierList, search, categoryFilter]);
@@ -492,6 +585,7 @@ export default function SuppliersPage() {
               const myPOs = purchaseOrders.filter((po) => po.supplierId === s.id);
               const poTotal = myPOs.filter((po) => po.status === "received").reduce((acc, po) => acc + po.total, 0);
               const isActive = s.status === "active";
+              const contactCount = s.contacts ? s.contacts.length : 1;
               return (
                 <div key={s.id}
                   className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow p-5 group">
@@ -518,10 +612,15 @@ export default function SuppliersPage() {
                   <div className="mb-3"><StarRating rating={s.rating} size={13} /></div>
 
                   <div className="space-y-1.5 mb-4 text-xs text-slate-500">
-                    <div className="flex items-center gap-2"><Building2 size={12} className="shrink-0" />{s.contact}</div>
-                    <div className="flex items-center gap-2"><Mail size={12} className="shrink-0" /><span className="truncate">{s.email}</span></div>
+                    <div className="flex items-center gap-2"><Building2 size={12} className="shrink-0" />{s.contact || "—"}</div>
+                    <div className="flex items-center gap-2"><Mail size={12} className="shrink-0" /><span className="truncate">{s.email || "—"}</span></div>
                     <div className="flex items-center gap-2"><Globe size={12} className="shrink-0" />{s.country}</div>
                     <div className="flex items-center gap-2"><CreditCard size={12} className="shrink-0" />{s.paymentTerms}</div>
+                    {contactCount > 1 && (
+                      <div className="flex items-center gap-2 text-blue-500">
+                        <UserPlus size={12} className="shrink-0" />{contactCount} contacts
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3 py-3 border-t border-slate-100 text-xs text-slate-500 mb-4">
@@ -561,6 +660,7 @@ export default function SuppliersPage() {
         <SupplierModal
           initial={editSupplier}
           nextId={nextId}
+          apiCategories={apiCategories}
           onClose={() => setShowModal(false)}
           onSave={handleSave}
         />
