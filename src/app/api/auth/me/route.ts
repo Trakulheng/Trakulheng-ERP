@@ -12,6 +12,23 @@ export async function GET() {
     if (Array.isArray(rolePerm?.menuOrder)) menuOrder = rolePerm.menuOrder as string[];
   } catch {}
 
+  // Resolve linked employee record
+  let employeeRecord: { id: string; employeeId: string; name: string; branchId: string | null } | null = null;
+  try {
+    if (user.employeeRecordId) {
+      employeeRecord = await prisma.employee.findUnique({
+        where: { id: user.employeeRecordId },
+        select: { id: true, employeeId: true, name: true, branchId: true },
+      });
+    }
+    if (!employeeRecord) {
+      employeeRecord = await prisma.employee.findFirst({
+        where: { OR: [{ workEmail: user.email }, { personalEmail: user.email }] },
+        select: { id: true, employeeId: true, name: true, branchId: true },
+      });
+    }
+  } catch {}
+
   return NextResponse.json({
     id: user.id,
     name: user.name,
@@ -19,5 +36,9 @@ export async function GET() {
     role: user.role,
     hasPIN: !!user.pinSetAt,
     menuOrder,
+    employeePrismaId: employeeRecord?.id ?? null,
+    employeeCode:     employeeRecord?.employeeId ?? null,
+    employeeName:     employeeRecord?.name ?? null,
+    employeeBranchId: employeeRecord?.branchId ?? null,
   });
 }

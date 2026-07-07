@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 
 function mapEmployee(e: any) {
   return {
+    prismaId:           e.id,
     id:                 e.employeeId,
     firstName:          e.firstName ?? "",
     lastName:           e.lastName ?? "",

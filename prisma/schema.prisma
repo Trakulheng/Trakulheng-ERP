@@ -183,6 +183,22 @@ model SupplierCategory {
   updatedAt   DateTime @updatedAt
 }
 
+model LeaveType {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  daysPerYear  Int      @default(0)
+  isPaid       Boolean  @default(true)
+  carryOver    Boolean  @default(false)
+  maxCarryOver Int      @default(0)
+  requireDoc   Boolean  @default(false)
+  color        String   @default("blue")
+  thaiLawRef   String?
+  isActive     Boolean  @default(true)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model ProductCategory {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -282,16 +298,20 @@ model Employee {
 }
 
 model LeaveRequest {
-  id         String   @id @default(cuid())
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  type       String
-  fromDate   DateTime
-  toDate     DateTime
-  days       Int
-  status     String   @default("pending")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  type        String
+  fromDate    DateTime
+  toDate      DateTime
+  days        Int
+  status      String   @default("pending")
+  note        String?
+  reviewNote  String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model PayrollRun {
