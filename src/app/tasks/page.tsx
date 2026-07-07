@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import {
   Plus, Loader2, Trash2, Pencil, X, CheckCircle2, Clock, CircleDot,
   XCircle, CalendarDays, Timer, User, Link2, ChevronDown, AlertTriangle,
-  ListTodo, ChevronRight, FolderOpen,
+  ListTodo, ChevronRight, FolderOpen, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBranch } from "@/context/BranchContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -249,8 +250,117 @@ interface ShiftTemplate {
   endTime: string;
 }
 
+interface BranchEmployee {
+  id: string;
+  name: string;
+  position: string;
+  department: string;
+}
+
+// ─── StaffPicker ───────────────────────────────────────────────────────────
+
+function StaffPicker({ value, onChange, employees }: {
+  value: string;
+  onChange: (name: string) => void;
+  employees: BranchEmployee[];
+}) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() =>
+    employees.filter((e) =>
+      e.name.toLowerCase().includes(q.toLowerCase()) ||
+      e.position.toLowerCase().includes(q.toLowerCase())
+    ).slice(0, 8),
+  [q, employees]);
+
+  useEffect(() => {
+    const fn = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "flex items-center gap-2 px-3.5 py-2.5 text-sm border rounded-lg cursor-pointer transition-colors",
+          open ? "border-blue-500 ring-2 ring-blue-500" : "border-slate-200 hover:border-slate-300"
+        )}
+      >
+        {value ? (
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+              {value[0]?.toUpperCase()}
+            </div>
+            <span className="text-slate-800 truncate">{value}</span>
+          </div>
+        ) : (
+          <span className="text-slate-400 flex-1">Search staff by name…</span>
+        )}
+        <div className="flex items-center gap-1 shrink-0">
+          {value && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onChange(""); }}
+              className="text-slate-300 hover:text-slate-500"
+            >
+              <X size={12} />
+            </button>
+          )}
+          <ChevronDown size={13} className={cn("text-slate-400 transition-transform", open && "rotate-180")} />
+        </div>
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50">
+          <div className="p-2 border-b border-slate-100">
+            <div className="relative">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search staff…"
+                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto py-1">
+            {filtered.map((emp) => (
+              <button
+                key={emp.id}
+                type="button"
+                onClick={() => { onChange(emp.name); setOpen(false); setQ(""); }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 text-left",
+                  value === emp.name && "bg-blue-50"
+                )}
+              >
+                <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+                  {emp.name[0]}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-800 truncate">{emp.name}</p>
+                  <p className="text-xs text-slate-400">{emp.position} · {emp.department}</p>
+                </div>
+                {value === emp.name && <CheckCircle2 size={13} className="text-blue-600 shrink-0" />}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="text-xs text-slate-400 px-3 py-2">No staff found</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskModal({
-  form, setForm, onSubmit, onClose, loading, error, isEdit, lists, shifts,
+  form, setForm, onSubmit, onClose, loading, error, isEdit, lists, shifts, branchEmployees,
 }: {
   form: TaskForm;
   setForm: React.Dispatch<React.SetStateAction<TaskForm>>;
@@ -261,6 +371,7 @@ function TaskModal({
   isEdit: boolean;
   lists: TaskList[];
   shifts: ShiftTemplate[];
+  branchEmployees: BranchEmployee[];
 }) {
   const set = (k: keyof TaskForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -345,9 +456,11 @@ function TaskModal({
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               <span className="flex items-center gap-1"><User size={13} />Assign to Staff</span>
             </label>
-            <input type="text" value={form.assigneeName} onChange={set("assigneeName")}
-              placeholder="Employee name"
-              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <StaffPicker
+              value={form.assigneeName}
+              onChange={(name) => setForm((f) => ({ ...f, assigneeName: name }))}
+              employees={branchEmployees}
+            />
           </div>
 
           <div>
@@ -565,9 +678,11 @@ function TaskListSection({
 // ─── Main Page ─────────────────────────────────────────────────────────────
 
 export default function TasksPage() {
+  const { activeBranch } = useBranch();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [lists, setLists] = useState<TaskList[]>([]);
   const [shifts, setShifts] = useState<ShiftTemplate[]>([]);
+  const [branchEmployees, setBranchEmployees] = useState<BranchEmployee[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [listsLoading, setListsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<"all" | Status>("all");
@@ -624,6 +739,15 @@ export default function TasksPage() {
   useEffect(() => {
     fetch("/api/hr/shifts").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setShifts(d); });
   }, []);
+
+  useEffect(() => {
+    const url = activeBranch?.id
+      ? `/api/employees?branchId=${activeBranch.id}&status=active`
+      : "/api/employees?status=active";
+    fetch(url).then((r) => r.ok ? r.json() : []).then((d) => {
+      if (Array.isArray(d)) setBranchEmployees(d.map((e: any) => ({ id: e.id, name: e.name, position: e.position, department: e.department })));
+    }).catch(() => {});
+  }, [activeBranch?.id]);
 
   // ── Computed ──
   const filteredTasks = filterStatus === "all" ? tasks : tasks.filter((t) => t.status === filterStatus);
@@ -880,7 +1004,7 @@ export default function TasksPage() {
         <TaskModal
           form={taskForm} setForm={setTaskForm}
           onSubmit={handleTaskSubmit} onClose={() => setShowTaskModal(false)}
-          loading={taskSaving} error={taskError} isEdit={!!editingTask} lists={lists} shifts={shifts}
+          loading={taskSaving} error={taskError} isEdit={!!editingTask} lists={lists} shifts={shifts} branchEmployees={branchEmployees}
         />
       )}
 
