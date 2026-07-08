@@ -103,6 +103,7 @@ const navItems = [
       { label: "Users",             href: "/settings/users",          icon: Shield,         permKey: "set_users"         },
       { label: "Dashboard Layout",  href: "/settings/dashboard",      icon: LayoutDashboard, permKey: "set_dashboard"   },
       { label: "Role Permissions",  href: "/settings/roles",          icon: ClipboardCheck, permKey: "set_roles"         },
+      { label: "Expense Limits",    href: "/settings/expense-limits", icon: DollarSign,     permKey: "set_general"       },
       { label: "Security",          href: "/settings/security",       icon: ShieldCheck,    permKey: "set_security"      },
       { label: "Audit Log",         href: "/settings/audit",          icon: History,        permKey: "set_audit"         },
       { label: "Notifications",     href: "/settings/notifications",  icon: Bell,           permKey: "set_notifications" },

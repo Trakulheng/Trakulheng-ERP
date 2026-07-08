@@ -61,11 +61,13 @@ model Session {
 
 model Customer {
   id          String       @id @default(cuid())
+  number      String       @unique
   name        String
   contact     String?
   email       String?
   phone       String?
-  type        String       @default("SME")
+  address     String?
+  type        String       @default("individual")
   status      String       @default("active")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -87,14 +89,33 @@ model Invoice {
 }
 
 model Expense {
-  id          String   @id @default(cuid())
-  category    String
-  description String
-  date        DateTime
-  amount      Float
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  number              String   @unique
+  employeeId          String
+  branchId            String?
+  category            String
+  description         String
+  date                String
+  amount              Float
+  status              String   @default("pending")
+  items               Json     @default("[]")
+  attachments         Json     @default("[]")
+  notes               String?
+  approvedBy          String?
+  approvedAt          String?
+  reimbursedInPayroll String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ExpenseLimit {
+  id           String   @id @default(cuid())
+  employeeId   String   @unique
+  amountLimit  Float?
+  dailyLimit   Float?
+  monthlyLimit Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Product {
@@ -137,17 +158,66 @@ model PurchaseOrder {
 }
 
 model SalesOrder {
-  id          String   @id @default(cuid())
-  number      String   @unique
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id])
-  date        DateTime
-  items       Int
-  amount      Float
-  stage       String   @default("prospect")
-  probability Int      @default(50)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String          @id @default(cuid())
+  number       String          @unique
+  customerId   String
+  customer     Customer        @relation(fields: [customerId], references: [id])
+  date         String
+  deliveryDate String?
+  items        Int
+  amount       Float
+  stage        String          @default("prospect")
+  probability  Int             @default(50)
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  lines        SalesOrderLine[]
+}
+
+model SalesOrderLine {
+  id          String     @id @default(cuid())
+  orderId     String
+  order       SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  productName String
+  productSku  String?
+  qty         Int
+  unitPrice   Float
+  total       Float
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([orderId])
+}
+
+model CustomerProfile {
+  id             String   @id @default(cuid())
+  customerId     String?
+  customerType   String   @default("individual")
+  firstName      String?
+  lastName       String?
+  companyName    String?
+  gender         String?
+  dob            String?
+  nationalId     String?
+  taxId          String?
+  registrationNo String?
+  contactPerson  String?
+  contactTitle   String?
+  businessType   String?
+  website        String?
+  phone          String
+  email          String?
+  address        String?
+  notes          String?
+  tags           Json     @default("[]")
+  branchId       String?
+  source         String   @default("manual")
+  status         String   @default("active")
+  joinDate       String?
+  totalSpend     Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Department {

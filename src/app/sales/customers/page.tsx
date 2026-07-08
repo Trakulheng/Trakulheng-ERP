@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
 import { usePermissions } from "@/lib/use-permissions";
-import { customerProfiles, salesOrders, invoices, crmCustomers, getTier, tierColors } from "@/lib/mock-data";
+import { crmCustomers, getTier, tierColors } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
   Plus, Search, Eye, Pencil, Trash2, X, User, Building2,
   Phone, Mail, MapPin, Calendar, Tag, CreditCard, FileText,
-  XCircle, Star, Receipt, Gift,
+  XCircle, Star, Receipt, Gift, QrCode, Download, Copy, CheckCheck,
 } from "lucide-react";
 
 // ── Explicit types (avoids Extract<> returning never on inferred union) ─
@@ -369,15 +369,8 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
     ? `${(profile as IndividualProfile).firstName} ${(profile as IndividualProfile).lastName}`
     : (profile as CorporateProfile).companyName;
 
-  // Match orders by customer name (best available link without customerId on profiles)
-  const relatedOrders = salesOrders.filter((o) =>
-    o.customer.toLowerCase().includes(displayedName.toLowerCase().split(" ")[0])
-  );
-
-  // Match invoices similarly
-  const relatedInvoices = invoices.filter((inv) =>
-    inv.customer.toLowerCase().includes(displayedName.toLowerCase().split(" ")[0])
-  );
+  const relatedOrders:   any[] = [];
+  const relatedInvoices: any[] = [];
 
   // CRM — match by email
   const crmRecord = crmCustomers.find(
@@ -611,19 +604,82 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
 
 // ── Main Page ─────────────────────────────────────────────────────────
 
+// ── QR Code Modal ──────────────────────────────────────────────────────
+
+function QRModal({ branchId, branchName, onClose }: { branchId?: string; branchName?: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const regUrl  = `${baseUrl}/customer-register${branchId ? `?branch=${branchId}` : ""}${branchName ? `&name=${encodeURIComponent(branchName)}` : ""}`;
+  const qrSrc   = `/api/qrcode?url=${encodeURIComponent(regUrl)}`;
+
+  const copy = () => {
+    navigator.clipboard.writeText(regUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Customer QR Registration</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Customers scan this to self-register</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
+        </div>
+        <div className="p-6 flex flex-col items-center gap-4">
+          {/* QR image from server-side API */}
+          <div className="border-2 border-slate-100 rounded-2xl p-3 bg-white shadow-sm">
+            <img src={qrSrc} alt="Customer registration QR code" className="w-48 h-48 rounded-lg" />
+          </div>
+          {branchName && <p className="text-xs text-slate-500 text-center">{branchName}</p>}
+          <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <p className="text-xs text-slate-500 mb-1">Registration URL</p>
+            <p className="text-xs text-blue-600 font-mono break-all">{regUrl}</p>
+          </div>
+          <div className="flex gap-2 w-full">
+            <button onClick={copy}
+              className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-700 transition-colors">
+              {copied ? <CheckCheck size={14} className="text-emerald-600" /> : <Copy size={14} />}
+              {copied ? "Copied!" : "Copy URL"}
+            </button>
+            <a href={qrSrc} download="customer-register-qr.png"
+              className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <Download size={14} /> Download QR
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────
+
 export default function CustomersPage() {
   const { can } = usePermissions();
-  const [profiles, setProfiles]   = useState<Profile[]>(customerProfiles as unknown as Profile[]);
+  const [profiles, setProfiles]   = useState<Profile[]>([]);
   const [tab, setTab]             = useState<"all" | "individual" | "corporate">("all");
   const [search, setSearch]       = useState("");
   const [statusF, setStatusF]     = useState<"all"|"active"|"inactive">("all");
   const [showModal, setShowModal] = useState(false);
+  const [showQR,    setShowQR]    = useState(false);
   const [editProfile, setEditProfile] = useState<Profile | undefined>(undefined);
   const [viewId, setViewId]       = useState<string | null>(null);
   const [deleteId, setDeleteId]   = useState<string | null>(null);
   const [businessTypes, setBusinessTypes] = useState<string[]>(FALLBACK_BUSINESS_TYPES);
+  const [loading,   setLoading]   = useState(true);
+
+  const loadProfiles = useCallback(() => {
+    fetch("/api/sales/customers")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: any[]) => setProfiles(data as unknown as Profile[]))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
+    loadProfiles();
     fetch("/api/settings/lookup-values?type=business_type")
       .then((r) => r.ok ? r.json() : [])
       .then((data: { label: string; isActive: boolean }[]) => {
@@ -631,7 +687,7 @@ export default function CustomersPage() {
         if (active.length > 0) setBusinessTypes(active);
       })
       .catch(() => {});
-  }, []);
+  }, [loadProfiles]);
 
   const nextId = `CP-${String(profiles.length + 1).padStart(3, "0")}`;
 
@@ -661,16 +717,34 @@ export default function CustomersPage() {
   const openAdd  = () => { setEditProfile(undefined); setShowModal(true); };
   const openEdit = (p: Profile) => { setEditProfile(p); setShowModal(true); setViewId(null); };
 
-  const handleSave = (p: Profile) => {
-    setProfiles((prev) => {
-      const idx = prev.findIndex((x) => x.id === p.id);
-      if (idx >= 0) { const next = [...prev]; next[idx] = p; return next; }
-      return [...prev, p];
-    });
+  const handleSave = async (p: Profile) => {
+    const isExisting = profiles.some((x) => x.id === p.id);
+    if (isExisting) {
+      const res = await fetch(`/api/sales/customers/${p.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(p),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setProfiles((prev) => prev.map((x) => x.id === p.id ? updated as unknown as Profile : x));
+      }
+    } else {
+      const res = await fetch("/api/sales/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(p),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setProfiles((prev) => [created as unknown as Profile, ...prev]);
+      }
+    }
     setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/sales/customers/${id}`, { method: "DELETE" });
     setProfiles((prev) => prev.filter((p) => p.id !== id));
     setDeleteId(null);
     if (viewId === id) setViewId(null);
@@ -681,12 +755,20 @@ export default function CustomersPage() {
       <Header
         title="Customers"
         subtitle={`${stats.total} customers · ${formatCurrency(stats.totalSpend)} total spend`}
-        actions={can("sales_customers", "create") ? (
-          <button onClick={openAdd}
-            className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-            <Plus size={16} /> Add Customer
-          </button>
-        ) : undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowQR(true)}
+              className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 font-medium">
+              <QrCode size={16} /> QR Register
+            </button>
+            {can("sales_customers", "create") && (
+              <button onClick={openAdd}
+                className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                <Plus size={16} /> Add Customer
+              </button>
+            )}
+          </div>
+        }
       />
 
       <div className="p-6 space-y-6">
@@ -741,7 +823,8 @@ export default function CustomersPage() {
 
         {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          {loading && <div className="py-16 text-center text-sm text-slate-400">Loading…</div>}
+          {!loading && <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
@@ -809,8 +892,8 @@ export default function CustomersPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-          {filtered.length === 0 && (
+          </div>}
+          {!loading && filtered.length === 0 && (
             <div className="py-16 text-center">
               <User size={32} className="mx-auto text-slate-300 mb-3" />
               <p className="text-sm text-slate-400">No customers match your filter.</p>
@@ -818,6 +901,8 @@ export default function CustomersPage() {
           )}
         </div>
       </div>
+
+      {showQR && <QRModal onClose={() => setShowQR(false)} />}
 
       {showModal && (
         <CustomerModal
