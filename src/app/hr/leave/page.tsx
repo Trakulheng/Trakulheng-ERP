@@ -38,7 +38,7 @@ interface LeaveRow {
 interface Employee { prismaId: string; id: string; name: string; }
 interface LeaveTypeOption { id: string; name: string; color: string; daysPerYear: number; isPaid: boolean; requireDoc: boolean; }
 interface BalanceItem { id: string; name: string; color: string; daysPerYear: number; used: number; pending: number; remaining: number | null; }
-interface Me { id: string; role: string; employeePrismaId?: string | null; employeeName?: string | null; }
+interface Me { id: string; name: string; role: string; employeePrismaId?: string | null; employeeName?: string | null; }
 
 function calcDays(from: string, to: string) {
   if (!from || !to) return 0;
@@ -171,7 +171,6 @@ function LeaveModal({ leaveTypes, defaultEmployeeId, employeeName, myLeaveRows, 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!employeeId) { setError("Please select an employee."); return; }
     if (!fromDate || !toDate) { setError("Please select a date range on the calendar."); return; }
     if (toDate < fromDate) { setError("End date must be after start date."); return; }
     setSubmitting(true);
@@ -179,7 +178,8 @@ function LeaveModal({ leaveTypes, defaultEmployeeId, employeeName, myLeaveRows, 
       const res = await fetch("/api/hr/leave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId, type, fromDate, toDate, days: calcDays(fromDate, toDate), note }),
+        // employeeId may be empty — server will fall back to session user's employee record
+        body: JSON.stringify({ employeeId: employeeId || undefined, type, fromDate, toDate, days: calcDays(fromDate, toDate), note }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed to submit."); return; }
@@ -382,7 +382,7 @@ export default function LeavePage() {
   // Load current user
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((d) => {
-      if (d) setMe({ id: d.id, role: d.role, employeePrismaId: d.employeePrismaId, employeeName: d.employeeName });
+      if (d) setMe({ id: d.id, name: d.name ?? "", role: d.role, employeePrismaId: d.employeePrismaId, employeeName: d.employeeName });
     }).catch(() => {});
   }, []);
 
@@ -708,7 +708,7 @@ export default function LeavePage() {
         <LeaveModal
           leaveTypes={leaveTypes.length > 0 ? leaveTypes : [{ id: "al", name: "Annual Leave", color: "blue", daysPerYear: 6, isPaid: true, requireDoc: false }]}
           defaultEmployeeId={me?.employeePrismaId ?? ""}
-          employeeName={me?.employeeName ?? ""}
+          employeeName={me?.employeeName || me?.name || ""}
           myLeaveRows={rows}
           onClose={() => setShowModal(false)}
           onSubmitted={handleSubmitted}

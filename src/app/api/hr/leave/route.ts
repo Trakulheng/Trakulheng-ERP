@@ -42,15 +42,21 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
   const { employeeId, type, fromDate, toDate, days, note } = await req.json();
-  if (!employeeId || !type || !fromDate || !toDate) {
-    return NextResponse.json({ error: "employeeId, type, fromDate, and toDate are required." }, { status: 400 });
+  if (!type || !fromDate || !toDate) {
+    return NextResponse.json({ error: "type, fromDate, and toDate are required." }, { status: 400 });
   }
 
-  // employeeId may be a CUID (prismaId) or an EMP-xxx code — resolve to CUID
-  let empPrismaId = employeeId;
-  if (!employeeId.startsWith("cl") || employeeId.startsWith("EMP-")) {
+  // If no employeeId sent, fall back to the session user's linked employee record
+  const rawId = employeeId || user.employeeRecordId;
+  if (!rawId) {
+    return NextResponse.json({ error: "No employee record linked to your account. Contact HR." }, { status: 400 });
+  }
+
+  // Resolve to prisma CUID: accept cuid directly, EMP-xxx code, or any string that needs lookup
+  let empPrismaId = rawId;
+  if (rawId.startsWith("EMP-") || !rawId.match(/^c[a-z0-9]{24,}$/i)) {
     const found = await prisma.employee.findFirst({
-      where: { OR: [{ id: employeeId }, { employeeId }] },
+      where: { OR: [{ id: rawId }, { employeeId: rawId }] },
       select: { id: true },
     });
     if (!found) return NextResponse.json({ error: "Employee not found." }, { status: 404 });

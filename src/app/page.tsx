@@ -4,7 +4,7 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
-import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff } from "lucide-react";
+import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff, CheckCircle2, XCircle } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { getSessionUser } from "@/lib/auth";
@@ -80,6 +80,29 @@ export default async function DashboardPage() {
       note:       row.note ?? null,
     };
   });
+
+  // Fetch own leave requests for the dashboard widget
+  const myLeaveRequests = user?.employeeRecordId
+    ? await prisma.leaveRequest.findMany({
+        where: { employeeId: user.employeeRecordId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, type: true, fromDate: true, toDate: true, days: true, status: true, note: true },
+      })
+    : [];
+
+  // For managers/admins: also fetch pending team requests (other employees)
+  const teamPendingLeave = (role === "admin" || role === "manager")
+    ? await prisma.leaveRequest.findMany({
+        where: {
+          status: "pending",
+          ...(user?.employeeRecordId ? { employeeId: { not: user.employeeRecordId } } : {}),
+        },
+        orderBy: { createdAt: "asc" },
+        take: 5,
+        include: { employee: { select: { name: true, employeeId: true } } },
+      })
+    : [];
 
   const kpiIds    = ["revenue", "expenses", "inventory_value", "headcount"];
   const kpiWidgets = enabled.filter((w) => kpiIds.includes(w.id));
@@ -236,16 +259,79 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Leave requests — placeholder */}
+        {/* Leave requests widget */}
         {isEnabled(widgets, "leave_requests") && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
-              <CalendarOff size={16} className="text-violet-500" />
-              <h3 className="text-base font-semibold text-slate-900">Leave Requests</h3>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <CalendarOff size={16} className="text-violet-500" />
+                <h3 className="text-base font-semibold text-slate-900">
+                  {(role === "admin" || role === "manager") && teamPendingLeave.length > 0
+                    ? `Leave Requests · ${teamPendingLeave.length} pending approval`
+                    : "My Leave Requests"}
+                </h3>
+              </div>
+              <a href="/hr/leave" className="text-sm text-blue-600 hover:underline">View all</a>
             </div>
-            <div className="px-5 py-8 text-center text-sm text-slate-400">
-              Leave request management coming soon.
-            </div>
+
+            {/* Manager: pending team requests */}
+            {(role === "admin" || role === "manager") && teamPendingLeave.length > 0 && (
+              <div>
+                <p className="px-5 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Pending Approval</p>
+                <div className="divide-y divide-slate-50">
+                  {teamPendingLeave.map((lr) => (
+                    <div key={lr.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">{lr.employee.name}</p>
+                        <p className="text-xs text-slate-500">{lr.type} · {lr.fromDate.toISOString().slice(0,10)} → {lr.toDate.toISOString().slice(0,10)} ({lr.days}d)</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">
+                          <Clock size={10} /> Pending
+                        </span>
+                        <a href="/hr/leave" className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium">Review</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {myLeaveRequests.length > 0 && <div className="border-t border-slate-100 mt-1" />}
+              </div>
+            )}
+
+            {/* Own leave requests */}
+            {myLeaveRequests.length > 0 ? (
+              <div>
+                {(role === "admin" || role === "manager") && teamPendingLeave.length > 0 && (
+                  <p className="px-5 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">My Requests</p>
+                )}
+                <div className="divide-y divide-slate-50">
+                  {myLeaveRequests.map((lr) => {
+                    const statusStyle =
+                      lr.status === "approved" ? "bg-emerald-100 text-emerald-700" :
+                      lr.status === "rejected"  ? "bg-red-100 text-red-700" :
+                      "bg-amber-100 text-amber-700";
+                    const StatusIcon = lr.status === "approved" ? CheckCircle2 : lr.status === "rejected" ? XCircle : Clock;
+                    return (
+                      <div key={lr.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">{lr.type}</p>
+                          <p className="text-xs text-slate-500">{lr.fromDate.toISOString().slice(0,10)} → {lr.toDate.toISOString().slice(0,10)} ({lr.days} day{lr.days !== 1 ? "s" : ""})</p>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusStyle}`}>
+                          <StatusIcon size={10} /> {lr.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (myLeaveRequests.length === 0 && (role !== "admin" && role !== "manager" || teamPendingLeave.length === 0)) ? (
+              <div className="px-5 py-8 text-center">
+                <CalendarOff size={24} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-sm text-slate-400">No leave requests yet.</p>
+                <a href="/hr/leave" className="mt-2 inline-block text-sm text-blue-600 hover:underline">Submit a request</a>
+              </div>
+            ) : null}
           </div>
         )}
 
