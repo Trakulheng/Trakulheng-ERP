@@ -231,7 +231,7 @@ function UserModal({ initial, onClose, onSave, onResendInvite, resending, saving
     }
   };
 
-  const canSave = name.trim() && email.trim() && branchIds.length > 0;
+  const canSave = name.trim() && email.trim() && branchIds.length > 0 && !!employeeId;
 
   const handleSave = async () => {
     const u: SystemUser = {
@@ -271,7 +271,9 @@ function UserModal({ initial, onClose, onSave, onResendInvite, resending, saving
         <div className="p-6 space-y-5">
           {/* Link to Employee */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Link to Employee Record</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Link to Employee Record <span className="text-red-500">*</span>
+            </label>
             <EmpCombobox value={employeeId} onChange={handleEmployeePick} employees={empList} />
             {linkedEmp && (
               <div className="mt-2 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 space-y-1">

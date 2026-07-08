@@ -9,7 +9,7 @@ import {
   Settings, GitBranch, ScanLine, CalendarClock, HeartHandshake, Gift,
   TicketCheck, Zap, PieChart, Shield, Bell, Sliders, PackageCheck,
   ClipboardCheck, CheckSquare, X, ArrowLeftRight, Layers, Fingerprint, LogOut,
-  Lock, AlertTriangle, KeyRound, Database,
+  Lock, AlertTriangle, KeyRound, Database, History, ShieldCheck,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -91,6 +91,7 @@ const navItems = [
       { label: "Rewards",      href: "/crm/rewards",      icon: Gift,       permKey: "crm_rewards"   },
       { label: "Redemptions",  href: "/crm/redemptions",  icon: TicketCheck, permKey: "crm_redemptions" },
       { label: "Analytics",    href: "/crm/analytics",    icon: PieChart,    permKey: "crm_analytics"   },
+      { label: "Points Config", href: "/settings/points",  icon: Sliders,    permKey: "set_points"       },
     ],
   },
   {
@@ -98,13 +99,12 @@ const navItems = [
     children: [
       { label: "General",           href: "/settings/general",        icon: Settings,       permKey: "set_general"       },
       { label: "Branches",          href: "/settings/branches",       icon: GitBranch,      permKey: "set_branches"      },
-      { label: "Brands",            href: "/settings/brands",             icon: ArrowLeftRight, permKey: "set_brands"        },
-      { label: "Master Data",  href: "/settings/master-data", icon: Database, permKey: "set_product_cats" },
-      { label: "Departments", href: "/settings/departments", icon: Layers,   permKey: "set_departments"  },
+      { label: "Master Data",       href: "/settings/master-data",    icon: Database,       permKey: "set_product_cats"  },
       { label: "Users",             href: "/settings/users",          icon: Shield,         permKey: "set_users"         },
       { label: "Dashboard Layout",  href: "/settings/dashboard",      icon: LayoutDashboard, permKey: "set_dashboard"   },
       { label: "Role Permissions",  href: "/settings/roles",          icon: ClipboardCheck, permKey: "set_roles"         },
-      { label: "Points Config",     href: "/settings/points",         icon: Sliders,        permKey: "set_points"        },
+      { label: "Security",          href: "/settings/security",       icon: ShieldCheck,    permKey: "set_security"      },
+      { label: "Audit Log",         href: "/settings/audit",          icon: History,        permKey: "set_audit"         },
       { label: "Notifications",     href: "/settings/notifications",  icon: Bell,           permKey: "set_notifications" },
       { label: "Appearance",        href: "/settings/appearance",     icon: Sliders,        permKey: "set_appearance"    },
     ],
@@ -142,11 +142,16 @@ export function Sidebar() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [perms, setPerms] = useState<PermMatrix>({});
+  const [branding, setBranding] = useState({ appName: "Trakulheng", appSubtitle: "Enterprise System", logoBase64: null as string | null });
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data?.email) setMe(data); })
+      .catch(() => {});
+    fetch("/api/settings/general")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.branding) setBranding((b) => ({ ...b, ...d.branding })); })
       .catch(() => {});
   }, []);
 
@@ -253,12 +258,17 @@ export function Sidebar() {
       )}>
         {/* Logo */}
         <div className={cn("flex items-center gap-3 px-5 py-4 border-b flex-shrink-0", S.logoBorder)}>
-          <div className={cn("flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0", S.logoIcon)}>
-            <Building2 size={20} className="text-white" />
+          <div className={cn("flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden", S.logoIcon)}>
+            {branding.logoBase64 ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logoBase64} alt="logo" className="w-full h-full object-contain" />
+            ) : (
+              <Building2 size={20} className="text-white" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className={cn("font-bold text-sm leading-tight", S.logoText)}>Trakulheng</p>
-            <p className={cn("text-xs", S.logoSub)}>{t("Enterprise System")}</p>
+            <p className={cn("font-bold text-sm leading-tight", S.logoText)}>{branding.appName}</p>
+            <p className={cn("text-xs", S.logoSub)}>{branding.appSubtitle}</p>
           </div>
           <button
             onClick={close}

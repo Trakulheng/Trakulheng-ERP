@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import {
   expenses as initialExpenses, employees, branches,
@@ -17,9 +17,9 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────
 
 type Expense = (typeof initialExpenses)[number];
-type DemoRole = "admin" | "manager" | "staff" | "viewer";
+type UserRole = "admin" | "manager" | "staff" | "viewer";
 
-const CAN_APPROVE: DemoRole[] = ["admin", "manager"];
+const CAN_APPROVE: UserRole[] = ["admin", "manager"];
 
 const statusConfig: Record<ExpenseStatus, { label: string; color: string; dot: string }> = {
   draft:       { label:"Draft",        color:"bg-slate-100 text-slate-500",    dot:"bg-slate-400" },
@@ -306,7 +306,7 @@ function AddExpenseModal({ nextId, onClose, onSave }: AddExpenseModalProps) {
 
 interface DetailModalProps {
   exp: Expense;
-  currentRole: DemoRole;
+  currentRole: UserRole;
   onClose: () => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -485,7 +485,13 @@ export default function ExpensesPage() {
   const [search,      setSearch]      = useState("");
   const [statusF,     setStatusF]     = useState<"all" | ExpenseStatus>("all");
   const [categoryF,   setCategoryF]   = useState("all");
-  const [currentRole, setCurrentRole] = useState<DemoRole>("manager");
+  const [currentRole, setCurrentRole] = useState<UserRole>("staff");
+
+  useEffect(() => {
+    fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((me) => {
+      if (me?.role) setCurrentRole(me.role as UserRole);
+    }).catch(() => {});
+  }, []);
   const [showNew,     setShowNew]     = useState(false);
   const [viewId,      setViewId]      = useState<string | null>(null);
   const [deleteId,    setDeleteId]    = useState<string | null>(null);
@@ -544,21 +550,6 @@ export default function ExpensesPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Demo role bar */}
-        <div className="flex items-center gap-3 bg-slate-800 rounded-xl px-4 py-2.5 text-sm">
-          <Shield size={14} className="text-slate-400 shrink-0" />
-          <span className="text-slate-300 text-xs font-medium">Demo role:</span>
-          <div className="flex gap-1">
-            {(["admin","manager","staff","viewer"] as DemoRole[]).map((r) => (
-              <button key={r} onClick={() => setCurrentRole(r)}
-                className={cn("px-2.5 py-0.5 text-xs font-medium rounded-full capitalize transition-colors",
-                  currentRole === r ? "bg-blue-500 text-white" : "text-slate-400 hover:text-white")}>
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Pending banner */}
         {pendingCount > 0 && CAN_APPROVE.includes(currentRole) && (
           <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">

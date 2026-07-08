@@ -72,6 +72,7 @@ const MODULES: { id: string; label: string; group: string; description: string }
   { id: "inv_overview",      label: "Overview",         group: "Inventory", description: "Inventory dashboard and summary" },
   { id: "inv_products",      label: "Products",         group: "Inventory", description: "Manage product catalogue and stock" },
   { id: "inv_po",            label: "Purchase Orders",  group: "Inventory", description: "Create and manage POs sent to suppliers" },
+  { id: "inv_po_prices",    label: "See PO Unit Prices", group: "Inventory", description: "View unit prices and totals in purchase orders" },
   { id: "inv_gr",            label: "Goods Receive",    group: "Inventory", description: "Receive stock against a PO" },
   { id: "inv_suppliers",     label: "Suppliers",        group: "Inventory", description: "Manage supplier list and details" },
   { id: "sales_overview",    label: "Overview",         group: "Sales",     description: "Sales dashboard and summary" },
@@ -91,14 +92,24 @@ const MODULES: { id: string; label: string; group: string; description: string }
   { id: "crm_analytics",     label: "CRM Analytics",    group: "CRM",       description: "CRM performance analytics and reports" },
   { id: "set_general",       label: "General Settings", group: "Settings",  description: "Company information and preferences" },
   { id: "set_branches",      label: "Branches",         group: "Settings",  description: "Branch management" },
-  { id: "set_brands",        label: "Brands",           group: "Settings",  description: "Brand configuration" },
+  { id: "set_brands",        label: "House Brands",     group: "Settings",  description: "Brand configuration" },
   { id: "set_departments",   label: "Departments",      group: "Settings",  description: "Department structure" },
   { id: "set_users",         label: "Users",            group: "Settings",  description: "System user management" },
   { id: "set_dashboard",     label: "Dashboard Layout", group: "Settings",  description: "Configure dashboard widgets per role" },
   { id: "set_roles",         label: "Role Permissions", group: "Settings",  description: "This permissions matrix" },
   { id: "set_points",        label: "Points Config",    group: "Settings",  description: "Loyalty points rules and configuration" },
+  { id: "set_security",      label: "Security",         group: "Settings",  description: "PIN and biometric access settings" },
+  { id: "set_audit",         label: "Audit Log",        group: "Settings",  description: "View system audit trail" },
   { id: "set_notifications", label: "Notifications",    group: "Settings",  description: "Notification preferences" },
   { id: "set_appearance",    label: "Appearance",       group: "Settings",  description: "Theme and display settings" },
+  // Column Visibility
+  { id: "col_emp_salary",    label: "Employee: Salary",       group: "Column Visibility", description: "Show salary & compensation in employee table" },
+  { id: "col_emp_verified",  label: "Employee: Verified",     group: "Column Visibility", description: "Show identity verification status in employee table" },
+  { id: "col_emp_hire_date", label: "Employee: Hire Date",    group: "Column Visibility", description: "Show hire date in employee table" },
+  { id: "col_emp_type",      label: "Employee: Type",         group: "Column Visibility", description: "Show employment type (full-time/part-time) in employee table" },
+  { id: "col_prod_price",    label: "Product: Unit Price",    group: "Column Visibility", description: "Show unit price in product list" },
+  { id: "col_prod_stk_val",  label: "Product: Stock Value",   group: "Column Visibility", description: "Show total stock value in product list" },
+  { id: "col_prod_lead",     label: "Product: Lead Time",     group: "Column Visibility", description: "Show lead time in product list" },
 ];
 
 const GROUPS = Array.from(new Set(MODULES.map((m) => m.group)));
@@ -134,12 +145,20 @@ function buildDefault(): Record<string, PermMatrix> {
     if (["hr_employees","hr_payroll"].includes(id))                    return [id, { ...NO_ACCESS }];
     if (["inv_suppliers","crm_campaigns","crm_rewards"].includes(id))  return [id, { ...VIEW_ONLY }];
     if (["finance_invoices","finance_expenses"].includes(id))          return [id, { ...VIEW_ONLY }];
+    if (id === "inv_po_prices")                                        return [id, { ...NO_ACCESS }];
+    // Column visibility defaults for staff
+    if (id === "col_emp_salary")       return [id, { ...NO_ACCESS }];
+    if (id.startsWith("col_"))         return [id, { ...VIEW_ONLY }];
     return [id, { ...FULL }];
   }));
 
   const viewer: PermMatrix  = Object.fromEntries(ids.map((id) => {
     if (id.startsWith("set_"))         return [id, { ...NO_ACCESS }];
     if (id === "hr_payroll")           return [id, { ...NO_ACCESS }];
+    if (id === "inv_po_prices")        return [id, { ...NO_ACCESS }];
+    // Column visibility defaults for viewer
+    if (["col_emp_salary","col_emp_verified","col_prod_price","col_prod_stk_val"].includes(id)) return [id, { ...NO_ACCESS }];
+    if (id.startsWith("col_"))         return [id, { ...VIEW_ONLY }];
     return [id, { ...VIEW_ONLY }];
   }));
 
@@ -339,13 +358,14 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
                     {MODULES.filter((m) => m.group === group).map((mod) => {
                       const p       = localPerms[mod.id] ?? { ...NO_ACCESS };
                       const sidebar = p.sidebar !== undefined ? p.sidebar : p.view;
+                      const isCol   = group === "Column Visibility";
                       return (
                         <tr key={mod.id} className={cn("border-b border-slate-50 hover:bg-slate-50/50", !p.view && "opacity-40")}>
                           <td className="px-4 py-2 text-xs font-medium text-slate-800">{mod.label}</td>
-                          <td className="px-3 py-2 text-center"><ToggleCell checked={p.create} locked={false} action="create" onChange={() => toggle(mod.id, "create")} /></td>
-                          <td className="px-3 py-2 text-center"><ToggleCell checked={p.edit}   locked={false} action="edit"   onChange={() => toggle(mod.id, "edit")}   /></td>
+                          <td className="px-3 py-2 text-center">{isCol ? <span className="text-slate-200">—</span> : <ToggleCell checked={p.create} locked={false} action="create" onChange={() => toggle(mod.id, "create")} />}</td>
+                          <td className="px-3 py-2 text-center">{isCol ? <span className="text-slate-200">—</span> : <ToggleCell checked={p.edit}   locked={false} action="edit"   onChange={() => toggle(mod.id, "edit")}   />}</td>
                           <td className="px-3 py-2 text-center"><ToggleCell checked={p.view}   locked={false} action="view"   onChange={() => toggle(mod.id, "view")}   /></td>
-                          <td className="px-3 py-2 text-center"><SidebarCell checked={sidebar} locked={false} onChange={() => toggle(mod.id, "sidebar")} /></td>
+                          <td className="px-3 py-2 text-center">{isCol ? <span className="text-slate-200">—</span> : <SidebarCell checked={sidebar} locked={false} onChange={() => toggle(mod.id, "sidebar")} />}</td>
                         </tr>
                       );
                     })}
@@ -669,13 +689,14 @@ export default function RolePermissionsPage() {
                       const p          = perms[active]?.[mod.id] ?? { ...NO_ACCESS };
                       const sidebar    = p.sidebar !== undefined ? p.sidebar : p.view;
                       const isNoAccess = !p.view;
+                      const isColVis   = group === "Column Visibility";
                       return (
                         <tr key={mod.id} className={cn("border-b border-slate-50 hover:bg-slate-50/50", isNoAccess && "opacity-50")}>
                           <td className="px-5 py-3 font-medium text-slate-800">{mod.label}</td>
-                          <td className="px-4 py-3 text-center"><ToggleCell checked={p.create} locked={isLocked} action="create" onChange={() => toggle(active, mod.id, "create")} /></td>
-                          <td className="px-4 py-3 text-center"><ToggleCell checked={p.edit}   locked={isLocked} action="edit"   onChange={() => toggle(active, mod.id, "edit")}   /></td>
+                          <td className="px-4 py-3 text-center">{isColVis ? <span className="text-slate-200">—</span> : <ToggleCell checked={p.create} locked={isLocked} action="create" onChange={() => toggle(active, mod.id, "create")} />}</td>
+                          <td className="px-4 py-3 text-center">{isColVis ? <span className="text-slate-200">—</span> : <ToggleCell checked={p.edit}   locked={isLocked} action="edit"   onChange={() => toggle(active, mod.id, "edit")}   />}</td>
                           <td className="px-4 py-3 text-center"><ToggleCell checked={p.view}   locked={isLocked} action="view"   onChange={() => toggle(active, mod.id, "view")}   /></td>
-                          <td className="px-4 py-3 text-center"><SidebarCell checked={sidebar} locked={isLocked} onChange={() => toggle(active, mod.id, "sidebar")} /></td>
+                          <td className="px-4 py-3 text-center">{isColVis ? <span className="text-slate-200">—</span> : <SidebarCell checked={sidebar} locked={isLocked} onChange={() => toggle(active, mod.id, "sidebar")} />}</td>
                           <td className="px-5 py-3 text-xs text-slate-400">{mod.description}</td>
                         </tr>
                       );

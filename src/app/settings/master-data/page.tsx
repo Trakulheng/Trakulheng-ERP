@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { cn } from "@/lib/utils";
 import {
   Plus, Pencil, Trash2, X, Layers, Truck, Users, CreditCard, CalendarDays,
-  Sparkles, BookOpen, Database,
+  Sparkles, BookOpen, Database, Briefcase, Tag, Check,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -612,13 +612,178 @@ function LeaveTypesTab() {
   );
 }
 
+// ─── House Brands Tab ─────────────────────────────────────────────────────────
+
+interface HouseBrand { id: string; name: string; code: string; description?: string; status: "active" | "inactive" }
+
+function BrandModal({ initial, onClose, onSave, saving, error }: {
+  initial?: HouseBrand; onClose: () => void;
+  onSave: (b: Partial<HouseBrand>) => void; saving: boolean; error: string;
+}) {
+  const [name,  setName]  = useState(initial?.name  ?? "");
+  const [code,  setCode]  = useState(initial?.code  ?? "");
+  const [desc,  setDesc]  = useState(initial?.description ?? "");
+  const [status,setStatus]= useState<"active"|"inactive">(initial?.status ?? "active");
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">{initial ? "Edit Brand" : "Add Brand"}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Brand Name *</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Daddy Don't Know"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Brand Code * <span className="text-slate-400">(used in branch avatar)</span></label>
+            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="e.g. DDK"
+              maxLength={6}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+            <textarea rows={2} value={desc} onChange={(e) => setDesc(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Status</label>
+            <div className="flex gap-2">
+              {(["active","inactive"] as const).map((s) => (
+                <button key={s} onClick={() => setStatus(s)}
+                  className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium capitalize transition-all",
+                    status === s
+                      ? s === "active" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-400 bg-slate-100 text-slate-600"
+                      : "border-slate-200 text-slate-400 hover:border-slate-300")}>
+                  {s === "active" ? <Check size={12} /> : <X size={12} />} {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
+        </div>
+        <div className="flex gap-3 px-6 pb-6">
+          <button onClick={onClose} className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+          <button onClick={() => onSave({ name, code, description: desc, status })} disabled={saving || !name.trim() || !code.trim()}
+            className="flex-1 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+            {saving ? "Saving…" : initial ? "Save Changes" : "Add Brand"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HouseBrandsTab() {
+  const [brands,  setBrands]  = useState<HouseBrand[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal,   setModal]   = useState<HouseBrand | "new" | null>(null);
+  const [delId,   setDelId]   = useState<string | null>(null);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch("/api/settings/brands")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setBrands).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSave = async (data: Partial<HouseBrand>) => {
+    setError(""); setSaving(true);
+    const isEdit = modal && modal !== "new";
+    const url  = isEdit ? `/api/settings/brands/${(modal as HouseBrand).id}` : "/api/settings/brands";
+    const meth = isEdit ? "PATCH" : "POST";
+    const r = await fetch(url, { method: meth, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    if (r.ok) { setModal(null); load(); }
+    else { const d = await r.json(); setError(d.error ?? "Save failed."); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/settings/brands/${id}`, { method: "DELETE" });
+    setDelId(null); load();
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div>
+          <p className="text-sm font-semibold text-slate-800">House Brands</p>
+          <p className="text-xs text-slate-400">{brands.length} brand{brands.length !== 1 ? "s" : ""} · used in branches and product grouping</p>
+        </div>
+        <button onClick={() => setModal("new")}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <Plus size={14} /> Add Brand
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-slate-400 text-sm">Loading…</div>
+      ) : brands.length === 0 ? (
+        <div className="flex flex-col items-center py-12 gap-3 text-slate-400">
+          <Tag size={28} className="opacity-30" />
+          <p className="text-sm">No brands yet</p>
+          <button onClick={() => setModal("new")}
+            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Brand</button>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-50">
+          {brands.map((b) => (
+            <div key={b.id} className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                <span className="text-xs font-bold text-slate-600 font-mono">{b.code}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-800">{b.name}</p>
+                {b.description && <p className="text-xs text-slate-400 truncate">{b.description}</p>}
+              </div>
+              <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium capitalize",
+                b.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500")}>
+                {b.status}
+              </span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setModal(b)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => setDelId(b.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <BrandModal
+          initial={modal === "new" ? undefined : modal}
+          onClose={() => { setModal(null); setError(""); }}
+          onSave={handleSave} saving={saving} error={error}
+        />
+      )}
+      {delId && (
+        <DeleteDialog label={brands.find((b) => b.id === delId)?.name ?? ""}
+          onCancel={() => setDelId(null)} onConfirm={() => handleDelete(delId)} />
+      )}
+    </div>
+  );
+}
+
 // ─── Tab Definitions ──────────────────────────────────────────────────────────
 
 const TABS = [
   { id: "product_cats",    label: "Product Categories",  icon: Layers },
   { id: "supplier_cats",   label: "Supplier Categories", icon: Truck },
-  { id: "business_types",  label: "Business Types",      icon: Users },
+  { id: "departments",     label: "Departments",         icon: Users },
+  { id: "house_brands",    label: "House Brands",        icon: Tag },
+  { id: "business_types",  label: "Business Types",      icon: BookOpen },
   { id: "payment_terms",   label: "Payment Terms",       icon: CreditCard },
+  { id: "job_titles",      label: "Job Titles",          icon: Briefcase },
   { id: "leave_types",     label: "Leave Types",         icon: CalendarDays },
 ] as const;
 
@@ -672,6 +837,15 @@ export default function MasterDataPage() {
               emptyHint="Add categories used to classify your suppliers."
             />
           )}
+          {activeTab === "departments" && (
+            <CategoryTab
+              apiBase="/api/settings/departments"
+              noun="Department"
+              icon={Users}
+              emptyHint="Add departments used to organize employees across the system."
+            />
+          )}
+          {activeTab === "house_brands" && <HouseBrandsTab />}
           {activeTab === "business_types" && (
             <LookupTab
               lookupType="business_type"
@@ -685,6 +859,14 @@ export default function MasterDataPage() {
               lookupType="payment_term"
               noun="Payment Term"
               icon={CreditCard}
+              defaultSeedLabel="Defaults"
+            />
+          )}
+          {activeTab === "job_titles" && (
+            <LookupTab
+              lookupType="job_title"
+              noun="Job Title"
+              icon={Briefcase}
               defaultSeedLabel="Defaults"
             />
           )}

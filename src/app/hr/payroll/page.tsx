@@ -1,25 +1,36 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
-import { employees, payrollRuns, expenses } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
-  Play, Download, X, User, CreditCard, Building2,
+  Play, Download, X, CreditCard,
   ShieldCheck, Banknote, BadgeCheck, ChevronRight,
-  AlertCircle, CheckCircle2, Clock,
+  AlertCircle, CheckCircle2, Clock, Loader2,
 } from "lucide-react";
+import type { Employee } from "@/lib/mock-data";
 
 const TAX_RATE = 0.10;
-const SSO_EMP  = 0.05;   // employee contribution
-const SSO_MAX  = 750;    // monthly cap
+const SSO_EMP  = 0.05;
+const SSO_MAX  = 750;
+
+type PayrollRun = {
+  id: string; period: string; employees: number;
+  grossPay: number; deductions: number; netPay: number;
+  status: string; date: string;
+};
+
+function effectiveSalary(emp: Employee) {
+  if (emp.salary > 0) return emp.salary;
+  if (emp.hourlyRate && emp.hourlyRate > 0) return emp.hourlyRate * 160;
+  return 0;
+}
 
 function calcPayslip(salary: number) {
-  const tax  = Math.round(salary * TAX_RATE);
-  const sso  = Math.min(Math.round(salary * SSO_EMP), SSO_MAX);
-  const net  = salary - tax - sso;
-  return { tax, sso, net };
+  const tax = Math.round(salary * TAX_RATE);
+  const sso = Math.min(Math.round(salary * SSO_EMP), SSO_MAX);
+  return { tax, sso, net: salary - tax - sso };
 }
 
 const statusColors: Record<string, string> = {
@@ -28,35 +39,121 @@ const statusColors: Record<string, string> = {
   draft:     "bg-slate-100 text-slate-600",
 };
 
+// ── Run Payroll Confirmation Modal ────────────────────────────────────
+
+interface RunPayrollModalProps {
+  employees: Employee[];
+  onConfirm: (period: string) => void;
+  onClose: () => void;
+  running: boolean;
+}
+
+function RunPayrollModal({ employees, onConfirm, onClose, running }: RunPayrollModalProps) {
+  const now    = new Date();
+  const defPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [period, setPeriod] = useState(defPeriod);
+
+  const preview = useMemo(() => {
+    let gross = 0, tax = 0, sso = 0;
+    for (const e of employees) {
+      const sal  = effectiveSalary(e);
+      const slip = calcPayslip(sal);
+      gross += sal; tax += slip.tax; sso += slip.sso;
+    }
+    return { gross, deductions: tax + sso, net: gross - tax - sso };
+  }, [employees]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">Run Payroll</h2>
+          <button onClick={onClose} disabled={running}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 disabled:opacity-50">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pay Period</label>
+            <input
+              type="month"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-sm">
+            <div className="flex justify-between text-slate-600">
+              <span>Active employees</span>
+              <span className="font-semibold text-slate-900">{employees.length}</span>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Gross pay</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(preview.gross)}</span>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Deductions (tax + SSO)</span>
+              <span className="font-semibold text-red-600">-{formatCurrency(preview.deductions)}</span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 pt-2 font-semibold">
+              <span className="text-slate-700">Net pay</span>
+              <span className="text-emerald-700">{formatCurrency(preview.net)}</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            This will create a payroll run record in <strong>draft</strong> status. You can change the status to Processed or Paid from the history table.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} disabled={running}
+            className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(period)}
+            disabled={running || !period}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+            {running ? "Running…" : "Confirm & Run"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Payslip Modal ──────────────────────────────────────────────────────
 
 interface PayslipModalProps {
-  employee: (typeof employees)[number];
+  employee: Employee;
   period: string;
   onClose: () => void;
 }
 
 function PayslipModal({ employee: emp, period, onClose }: PayslipModalProps) {
-  const { tax, sso, net } = calcPayslip(emp.salary);
-  const mainBank = emp.bankAccounts?.find((b) => b.isMain) ?? emp.bankAccounts?.[0];
-
-  // Any reimbursed expenses this employee has in the current payroll run (PAY-001)
-  const reimbursements = expenses.filter(
-    (e) => e.employeeId === emp.id && e.reimbursedInPayroll === "PAY-001"
-  );
-  const totalReimbursed = reimbursements.reduce((s, e) => s + e.amount, 0);
-
-  const grossTotal = emp.salary + totalReimbursed;
+  const sal             = effectiveSalary(emp);
+  const { tax, sso, net } = calcPayslip(sal);
+  const mainBank        = emp.bankAccounts?.find((b) => b.isMain) ?? emp.bankAccounts?.[0];
+  const isHourly        = emp.salary === 0 && (emp.hourlyRate ?? 0) > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-              {emp.firstName.charAt(0)}{emp.lastName.charAt(0)}
-            </div>
+            {emp.photo ? (
+              <img src={emp.photo} alt="" className="w-10 h-10 rounded-xl object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                {emp.firstName.charAt(0)}{emp.lastName.charAt(0)}
+              </div>
+            )}
             <div>
               <h2 className="text-base font-semibold text-slate-900">{emp.name}</h2>
               <p className="text-xs text-slate-400">{emp.position} · {emp.department}</p>
@@ -66,7 +163,6 @@ function PayslipModal({ employee: emp, period, onClose }: PayslipModalProps) {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Period badge */}
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Payslip — {period}</div>
             <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium">{emp.id}</span>
@@ -78,22 +174,23 @@ function PayslipModal({ employee: emp, period, onClose }: PayslipModalProps) {
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Earnings</p>
             </div>
             <div className="divide-y divide-slate-50">
-              <div className="flex justify-between px-4 py-3 text-sm">
-                <span className="text-slate-600">Base Salary</span>
-                <span className="font-semibold text-slate-900">{formatCurrency(emp.salary)}</span>
-              </div>
-              {reimbursements.map((r) => (
-                <div key={r.id} className="flex justify-between px-4 py-3 text-sm">
-                  <span className="text-slate-600 flex items-center gap-1.5">
-                    <BadgeCheck size={12} className="text-emerald-500" />
-                    Reimbursement — {r.description.length > 30 ? r.description.slice(0, 30) + "…" : r.description}
+              {isHourly ? (
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-slate-600 flex items-center gap-1">
+                    <BadgeCheck size={12} className="text-blue-400" />
+                    Hourly × 160 hrs ({formatCurrency(emp.hourlyRate ?? 0)}/hr)
                   </span>
-                  <span className="font-medium text-emerald-700">+{formatCurrency(r.amount)}</span>
+                  <span className="font-semibold text-slate-900">{formatCurrency(sal)}</span>
                 </div>
-              ))}
+              ) : (
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-slate-600">Base Salary</span>
+                  <span className="font-semibold text-slate-900">{formatCurrency(sal)}</span>
+                </div>
+              )}
               <div className="flex justify-between px-4 py-3 text-sm bg-slate-50 font-semibold">
                 <span className="text-slate-700">Gross Pay</span>
-                <span className="text-slate-900">{formatCurrency(grossTotal)}</span>
+                <span className="text-slate-900">{formatCurrency(sal)}</span>
               </div>
             </div>
           </div>
@@ -136,7 +233,7 @@ function PayslipModal({ employee: emp, period, onClose }: PayslipModalProps) {
               <Banknote size={20} className="text-blue-200" />
               <div>
                 <p className="text-blue-200 text-xs">Net Pay</p>
-                <p className="text-2xl font-bold">{formatCurrency(net + totalReimbursed)}</p>
+                <p className="text-2xl font-bold">{formatCurrency(net)}</p>
               </div>
             </div>
             {mainBank && (
@@ -215,27 +312,87 @@ function PayslipModal({ employee: emp, period, onClose }: PayslipModalProps) {
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function PayrollPage() {
-  const currentPayroll = payrollRuns[0] ?? { period: "—", status: "draft", employees: 0, grossPay: 0, deductions: 0, netPay: 0, id: "", date: "" };
-  const [viewEmpId, setViewEmpId] = useState<string | null>(null);
-  const [search, setSearch]       = useState("");
+  const [employees,    setEmployees]    = useState<Employee[]>([]);
+  const [payrollRuns,  setPayrollRuns]  = useState<PayrollRun[]>([]);
+  const [loadingEmps,  setLoadingEmps]  = useState(true);
+  const [loadingRuns,  setLoadingRuns]  = useState(true);
+  const [search,       setSearch]       = useState("");
+  const [viewEmpId,    setViewEmpId]    = useState<string | null>(null);
+  const [showRunModal, setShowRunModal] = useState(false);
+  const [running,      setRunning]      = useState(false);
 
-  const viewEmp = viewEmpId ? employees.find((e) => e.id === viewEmpId) : null;
+  const fetchEmployees = useCallback(() => {
+    setLoadingEmps(true);
+    fetch("/api/employees?status=active")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => { setEmployees(data); setLoadingEmps(false); })
+      .catch(() => setLoadingEmps(false));
+  }, []);
 
-  const filtered = useMemo(() =>
-    employees.filter((e) => {
-      const q = search.toLowerCase();
-      return !q || e.name.toLowerCase().includes(q) || e.department.toLowerCase().includes(q) || e.position.toLowerCase().includes(q);
-    }),
-    [search]
-  );
+  const fetchRuns = useCallback(() => {
+    setLoadingRuns(true);
+    fetch("/api/hr/payroll")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => { setPayrollRuns(data); setLoadingRuns(false); })
+      .catch(() => setLoadingRuns(false));
+  }, []);
+
+  useEffect(() => { fetchEmployees(); fetchRuns(); }, [fetchEmployees, fetchRuns]);
+
+  const handleRunPayroll = async (period: string) => {
+    setRunning(true);
+    try {
+      const res = await fetch("/api/hr/payroll", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ period }),
+      });
+      if (res.ok) {
+        setShowRunModal(false);
+        fetchRuns();
+      }
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleStatusChange = async (runId: string, status: string) => {
+    const res = await fetch(`/api/hr/payroll/${runId}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ status }),
+    });
+    if (res.ok) fetchRuns();
+  };
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return !q
+      ? employees
+      : employees.filter((e) =>
+          e.name.toLowerCase().includes(q) ||
+          e.department.toLowerCase().includes(q) ||
+          e.position.toLowerCase().includes(q) ||
+          e.id.toLowerCase().includes(q)
+        );
+  }, [search, employees]);
 
   const totals = useMemo(() => {
-    const gross = employees.reduce((s, e) => s + e.salary, 0);
-    const tax   = employees.reduce((s, e) => s + calcPayslip(e.salary).tax, 0);
-    const sso   = employees.reduce((s, e) => s + calcPayslip(e.salary).sso, 0);
-    const net   = employees.reduce((s, e) => s + calcPayslip(e.salary).net, 0);
-    return { gross, tax, sso, net };
-  }, []);
+    let gross = 0, tax = 0, sso = 0;
+    for (const e of filtered) {
+      const sal  = effectiveSalary(e);
+      const slip = calcPayslip(sal);
+      gross += sal; tax += slip.tax; sso += slip.sso;
+    }
+    return { gross, tax, sso, net: gross - tax - sso };
+  }, [filtered]);
+
+  const latestRun = payrollRuns[0];
+  const now       = new Date();
+  const currentPeriod = latestRun?.period
+    ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const viewEmp = viewEmpId ? employees.find((e) => e.id === viewEmpId) : null;
 
   return (
     <div>
@@ -243,24 +400,30 @@ export default function PayrollPage() {
         title="Payroll"
         subtitle="Run payroll and view payment history"
         actions={
-          <button className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+          <button
+            onClick={() => setShowRunModal(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
             <Play size={16} /> Run Payroll
           </button>
         }
       />
+
       <div className="p-6 space-y-6">
         {/* Current Period Summary */}
         <div className="bg-blue-600 rounded-xl p-6 text-white">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-blue-200 text-sm mb-1">Current Period</p>
-              <h2 className="text-2xl font-bold">{currentPayroll.period}</h2>
+              <h2 className="text-2xl font-bold">{currentPeriod}</h2>
             </div>
-            <span className={`text-xs px-3 py-1 rounded-full font-medium capitalize ${
-              currentPayroll.status === "paid" ? "bg-emerald-500 text-white" : "bg-blue-500 text-white"
-            }`}>
-              {currentPayroll.status}
-            </span>
+            {latestRun && (
+              <span className={`text-xs px-3 py-1 rounded-full font-medium capitalize ${
+                latestRun.status === "paid" ? "bg-emerald-500 text-white" : "bg-blue-500 text-white"
+              }`}>
+                {latestRun.status}
+              </span>
+            )}
           </div>
           <div className="grid grid-cols-4 gap-4">
             <div><p className="text-blue-200 text-xs mb-1">Gross Pay</p><p className="text-xl font-bold">{formatCurrency(totals.gross)}</p></div>
@@ -274,7 +437,7 @@ export default function PayrollPage() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
             <h3 className="text-base font-semibold text-slate-900 flex-1">
-              Employee Payroll — {currentPayroll.period}
+              Employee Payroll — {currentPeriod}
             </h3>
             <input
               value={search} onChange={(e) => setSearch(e.target.value)}
@@ -301,11 +464,23 @@ export default function PayrollPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((emp) => {
-                  const { tax, sso, net } = calcPayslip(emp.salary);
-                  const main = emp.bankAccounts?.find((b) => b.isMain) ?? emp.bankAccounts?.[0];
-                  const reimb = expenses.filter((e) => e.employeeId === emp.id && e.reimbursedInPayroll === "PAY-001")
-                    .reduce((s, e) => s + e.amount, 0);
+                {loadingEmps ? (
+                  <tr>
+                    <td colSpan={9} className="px-5 py-8 text-center text-sm text-slate-400">
+                      <Loader2 size={20} className="animate-spin inline mr-2" />Loading employees…
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-5 py-10 text-center text-sm text-slate-400">
+                      {search ? `No employees matching "${search}"` : "No active employees found. Add employees in HR → Employees."}
+                    </td>
+                  </tr>
+                ) : filtered.map((emp) => {
+                  const sal              = effectiveSalary(emp);
+                  const { tax, sso, net } = calcPayslip(sal);
+                  const main             = emp.bankAccounts?.find((b) => b.isMain) ?? emp.bankAccounts?.[0];
+                  const isHourly         = emp.salary === 0 && (emp.hourlyRate ?? 0) > 0;
                   return (
                     <tr
                       key={emp.id}
@@ -314,12 +489,19 @@ export default function PayrollPage() {
                     >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
-                            {emp.firstName.charAt(0)}
-                          </div>
+                          {emp.photo ? (
+                            <img src={emp.photo} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
+                              {emp.firstName.charAt(0)}
+                            </div>
+                          )}
                           <div>
                             <p className="font-medium text-slate-800 text-sm">{emp.name}</p>
-                            <p className="text-xs text-slate-400">{emp.position}</p>
+                            <p className="text-xs text-slate-400 flex items-center gap-1">
+                              {emp.position}
+                              {isHourly && <span className="text-[10px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded font-medium">Hourly</span>}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -332,15 +514,10 @@ export default function PayrollPage() {
                           </div>
                         ) : <span className="text-slate-400 text-xs">—</span>}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-700">
-                        {formatCurrency(emp.salary)}
-                        {reimb > 0 && (
-                          <div className="text-xs text-emerald-600">+{formatCurrency(reimb)}</div>
-                        )}
-                      </td>
+                      <td className="px-5 py-3 text-right text-slate-700">{formatCurrency(sal)}</td>
                       <td className="px-5 py-3 text-right text-red-600">-{formatCurrency(tax)}</td>
                       <td className="px-5 py-3 text-right text-orange-600">-{formatCurrency(sso)}</td>
-                      <td className="px-5 py-3 text-right font-bold text-slate-900">{formatCurrency(net + reimb)}</td>
+                      <td className="px-5 py-3 text-right font-bold text-slate-900">{formatCurrency(net)}</td>
                       <td className="px-5 py-3">
                         {emp.ssfStatus === "active" ? (
                           <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium">
@@ -363,16 +540,18 @@ export default function PayrollPage() {
                   );
                 })}
               </tbody>
-              <tfoot>
-                <tr className="bg-slate-50 border-t-2 border-slate-200">
-                  <td colSpan={3} className="px-5 py-3 text-sm font-bold text-slate-800">TOTAL ({filtered.length} employees)</td>
-                  <td className="px-5 py-3 text-right font-bold text-slate-900">{formatCurrency(totals.gross)}</td>
-                  <td className="px-5 py-3 text-right font-bold text-red-600">-{formatCurrency(totals.tax)}</td>
-                  <td className="px-5 py-3 text-right font-bold text-orange-600">-{formatCurrency(totals.sso)}</td>
-                  <td className="px-5 py-3 text-right font-bold text-emerald-700 text-base">{formatCurrency(totals.net)}</td>
-                  <td colSpan={2} />
-                </tr>
-              </tfoot>
+              {!loadingEmps && filtered.length > 0 && (
+                <tfoot>
+                  <tr className="bg-slate-50 border-t-2 border-slate-200">
+                    <td colSpan={3} className="px-5 py-3 text-sm font-bold text-slate-800">TOTAL ({filtered.length} employees)</td>
+                    <td className="px-5 py-3 text-right font-bold text-slate-900">{formatCurrency(totals.gross)}</td>
+                    <td className="px-5 py-3 text-right font-bold text-red-600">-{formatCurrency(totals.tax)}</td>
+                    <td className="px-5 py-3 text-right font-bold text-orange-600">-{formatCurrency(totals.sso)}</td>
+                    <td className="px-5 py-3 text-right font-bold text-emerald-700 text-base">{formatCurrency(totals.net)}</td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
@@ -386,7 +565,6 @@ export default function PayrollPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Run ID</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Period</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Employees</th>
@@ -394,12 +572,24 @@ export default function PayrollPage() {
                   <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Deductions</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Net Pay</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="px-3 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {payrollRuns.map((run, i) => (
-                  <tr key={run.id} className={i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/50 hover:bg-slate-50"}>
-                    <td className="px-5 py-3 font-mono text-xs text-slate-600">{run.id}</td>
+                {loadingRuns ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-8 text-center text-sm text-slate-400">
+                      <Loader2 size={20} className="animate-spin inline mr-2" />Loading history…
+                    </td>
+                  </tr>
+                ) : payrollRuns.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-10 text-center text-sm text-slate-400">
+                      No payroll runs yet. Click <strong>Run Payroll</strong> to create the first one.
+                    </td>
+                  </tr>
+                ) : payrollRuns.map((run, i) => (
+                  <tr key={run.id} className={cn(i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/50 hover:bg-slate-50")}>
                     <td className="px-5 py-3 font-medium text-slate-800">{run.period}</td>
                     <td className="px-5 py-3 text-slate-600">{run.date}</td>
                     <td className="px-5 py-3 text-right text-slate-700">{run.employees}</td>
@@ -407,9 +597,27 @@ export default function PayrollPage() {
                     <td className="px-5 py-3 text-right text-red-600">-{formatCurrency(run.deductions)}</td>
                     <td className="px-5 py-3 text-right font-bold text-slate-900">{formatCurrency(run.netPay)}</td>
                     <td className="px-5 py-3">
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusColors[run.status]}`}>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusColors[run.status] ?? "bg-slate-100 text-slate-600"}`}>
                         {run.status}
                       </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      {run.status === "draft" && (
+                        <button
+                          onClick={() => handleStatusChange(run.id, "processed")}
+                          className="text-xs text-blue-600 border border-blue-200 px-2 py-1 rounded-lg hover:bg-blue-50 whitespace-nowrap"
+                        >
+                          Mark Processed
+                        </button>
+                      )}
+                      {run.status === "processed" && (
+                        <button
+                          onClick={() => handleStatusChange(run.id, "paid")}
+                          className="text-xs text-emerald-600 border border-emerald-200 px-2 py-1 rounded-lg hover:bg-emerald-50 whitespace-nowrap"
+                        >
+                          Mark Paid
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -419,10 +627,19 @@ export default function PayrollPage() {
         </div>
       </div>
 
+      {showRunModal && (
+        <RunPayrollModal
+          employees={employees}
+          onConfirm={handleRunPayroll}
+          onClose={() => setShowRunModal(false)}
+          running={running}
+        />
+      )}
+
       {viewEmp && (
         <PayslipModal
           employee={viewEmp}
-          period={currentPayroll.period}
+          period={currentPeriod}
           onClose={() => setViewEmpId(null)}
         />
       )}

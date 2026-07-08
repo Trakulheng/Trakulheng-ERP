@@ -3,6 +3,11 @@ import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 
 const DEFAULTS = {
+  branding: {
+    appName: "Trakulheng",
+    appSubtitle: "Enterprise System",
+    logoBase64: null as string | null,
+  },
   company: {
     name: "บริษัท ตระกูลเฮง จำกัด",
     nameEn: "Trakulheng Co., Ltd.",

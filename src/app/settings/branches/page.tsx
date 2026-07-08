@@ -8,7 +8,7 @@ import {
   MapPin, Phone, Mail, Users, Building2, Plus, Pencil, Trash2, X,
   Check, Search, Lock, Globe, Calendar, Layers, SquareStack,
   MessageCircle, ExternalLink, ChevronDown, Shield, User,
-  Upload, FileText, Banknote, Crosshair,
+  Upload, FileText, Banknote, Crosshair, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -187,6 +187,7 @@ type BranchFormState = {
   lessorContactLineId: string;
   rentMonthly: number | "";
   rentalDocs: string[];
+  businessHours: Record<string, { open: boolean; openTime: string; closeTime: string }>;
 };
 
 const emptyForm: BranchFormState = {
@@ -203,6 +204,15 @@ const emptyForm: BranchFormState = {
   lessorContactTel: "", lessorContactEmail: "", lessorContactLineId: "",
   rentMonthly: "",
   rentalDocs: [],
+  businessHours: {
+    mon: { open: true,  openTime: "09:00", closeTime: "18:00" },
+    tue: { open: true,  openTime: "09:00", closeTime: "18:00" },
+    wed: { open: true,  openTime: "09:00", closeTime: "18:00" },
+    thu: { open: true,  openTime: "09:00", closeTime: "18:00" },
+    fri: { open: true,  openTime: "09:00", closeTime: "18:00" },
+    sat: { open: true,  openTime: "09:00", closeTime: "17:00" },
+    sun: { open: false, openTime: "09:00", closeTime: "17:00" },
+  },
 };
 
 interface BranchModalProps {
@@ -264,6 +274,7 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
     lessorContactLineId: (initial as any).lessorContactLineId ?? "",
     rentMonthly:         (initial as any).rentMonthly         ?? "",
     rentalDocs:          (initial as any).rentalDocs          ?? [],
+    businessHours:       (initial as any).businessHours       ?? emptyForm.businessHours,
   } : { ...emptyForm });
 
   const [empSearch, setEmpSearch] = useState("");
@@ -678,6 +689,49 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
             </div>
           </section>
 
+          {/* Business Hours */}
+          <section className="space-y-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
+              <Clock size={13} className="text-slate-400" /> Business Hours
+            </p>
+            <div className="space-y-2">
+              {(["mon","tue","wed","thu","fri","sat","sun"] as const).map((day) => {
+                const DAY_LABELS: Record<string, string> = { mon:"Monday", tue:"Tuesday", wed:"Wednesday", thu:"Thursday", fri:"Friday", sat:"Saturday", sun:"Sunday" };
+                const h = form.businessHours[day] ?? { open: false, openTime: "09:00", closeTime: "18:00" };
+                const setBH = (field: "open"|"openTime"|"closeTime", value: boolean | string) =>
+                  set("businessHours", { ...form.businessHours, [day]: { ...h, [field]: value } });
+                return (
+                  <div key={day} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all",
+                    h.open ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50")}>
+                    <button
+                      onClick={() => setBH("open", !h.open)}
+                      className={cn("w-9 h-5 rounded-full relative transition-colors shrink-0",
+                        h.open ? "bg-blue-500" : "bg-slate-200")}>
+                      <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all",
+                        h.open ? "left-4" : "left-0.5")} />
+                    </button>
+                    <span className={cn("text-xs font-medium w-20 shrink-0", h.open ? "text-slate-700" : "text-slate-400")}>
+                      {DAY_LABELS[day]}
+                    </span>
+                    {h.open ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input type="time" value={h.openTime}
+                          onChange={(e) => setBH("openTime", e.target.value)}
+                          className="px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <span className="text-xs text-slate-400">to</span>
+                        <input type="time" value={h.closeTime}
+                          onChange={(e) => setBH("closeTime", e.target.value)}
+                          className="px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 flex-1">Closed</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           {/* Assigned employees */}
           <section className="space-y-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2">
@@ -788,7 +842,7 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
 export default function BranchesPage() {
   const { refetch } = useBranch();
   const [list,        setList]        = useState<Branch[]>([]);
-  const [currentRole, setCurrentRole] = useState<UserRole>("admin");
+  const [currentRole, setCurrentRole] = useState<UserRole>("staff");
   const [showModal,   setShowModal]   = useState(false);
   const [editBranch,  setEditBranch]  = useState<Branch | undefined>(undefined);
   const [deleteId,    setDeleteId]    = useState<string | null>(null);
@@ -796,6 +850,9 @@ export default function BranchesPage() {
   const [saving,      setSaving]      = useState(false);
 
   useEffect(() => {
+    fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((me) => {
+      if (me?.role) setCurrentRole(me.role as UserRole);
+    }).catch(() => {});
     fetch("/api/branches")
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setList(data))

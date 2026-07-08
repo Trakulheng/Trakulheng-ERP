@@ -7,14 +7,14 @@ import {
   stockMovements as initialMovements,
   suppliers, branches,
   poLineItems, purchaseOrders,
-  PRODUCT_CATEGORIES, PRODUCT_BRANDS,
+  PRODUCT_CATEGORIES,
   StockStatus, StockMovementType,
 } from "@/lib/mock-data";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import {
   Plus, Search, Pencil, Trash2, X, Package,
   AlertTriangle, TrendingDown, ArrowUpCircle, ArrowDownCircle,
-  RefreshCw, RotateCcw, Eye, Layers, BarChart2, Clock, Building2,
+  RefreshCw, RotateCcw, Eye, Layers, BarChart2, Clock,
   ChevronDown, ChevronUp,
 } from "lucide-react";
 
@@ -58,8 +58,7 @@ const emptyForm = {
   name: "", category: PRODUCT_CATEGORIES[0] as string,
   unitPrice: 0, stock: 0, minStock: 0,
   description: "", barcode: "", supplierId: "",
-  size: "", leadTime: 0, brand: PRODUCT_BRANDS[0] as string,
-  branchIds: [] as string[],
+  size: "", leadTime: 0, brand: "",
 };
 
 // ── Add / Edit Modal ──────────────────────────────────────────────────
@@ -70,9 +69,10 @@ interface AddEditModalProps {
   onClose: () => void;
   onSave: (data: typeof emptyForm, id: string | null) => void;
   nextSku: string;
+  brandSuggestions: string[];
 }
 
-function AddEditModal({ initial, editId, onClose, onSave, nextSku }: AddEditModalProps) {
+function AddEditModal({ initial, editId, onClose, onSave, nextSku, brandSuggestions }: AddEditModalProps) {
   const [form, setForm] = useState({ ...emptyForm, ...initial });
   const [apiCategories, setApiCategories] = useState<string[]>([]);
   const set = <K extends keyof typeof emptyForm>(k: K, v: (typeof emptyForm)[K]) =>
@@ -90,14 +90,6 @@ function AddEditModal({ initial, editId, onClose, onSave, nextSku }: AddEditModa
       })
       .catch(() => {});
   }, []);
-
-  const toggleBranch = (id: string) =>
-    setForm((f) => ({
-      ...f,
-      branchIds: f.branchIds.includes(id)
-        ? f.branchIds.filter((x) => x !== id)
-        : [...f.branchIds, id],
-    }));
 
   const valid = form.name.trim() && form.unitPrice > 0;
 
@@ -132,10 +124,12 @@ function AddEditModal({ initial, editId, onClose, onSave, nextSku }: AddEditModa
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Brand</label>
-              <select value={form.brand} onChange={(e) => set("brand", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {PRODUCT_BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
+              <input value={form.brand} onChange={(e) => set("brand", e.target.value)}
+                list="brand-suggestions" placeholder="e.g. Siemens, ABB, 3M"
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <datalist id="brand-suggestions">
+                {brandSuggestions.map((b) => <option key={b} value={b} />)}
+              </datalist>
             </div>
           </div>
 
@@ -202,30 +196,6 @@ function AddEditModal({ initial, editId, onClose, onSave, nextSku }: AddEditModa
               <option value="">— None —</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-          </div>
-
-          {/* Branch assignment */}
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-2">Available at Branches</label>
-            <div className="grid grid-cols-2 gap-2">
-              {branches.map((b) => {
-                const checked = form.branchIds.includes(b.id);
-                return (
-                  <button key={b.id} onClick={() => toggleBranch(b.id)}
-                    className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg border-2 text-left transition-all text-sm",
-                      checked ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300")}>
-                    <div className={cn("w-4 h-4 rounded flex items-center justify-center shrink-0 border-2 transition-colors",
-                      checked ? "border-blue-500 bg-blue-500" : "border-slate-300")}>
-                      {checked && <span className="text-white text-[10px] font-bold">✓</span>}
-                    </div>
-                    <div className="min-w-0">
-                      <p className={cn("font-medium text-xs", checked ? "text-blue-700" : "text-slate-700")}>{b.name}</p>
-                      <p className="text-xs text-slate-400">{b.brand} · {b.code}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* Description */}
@@ -371,7 +341,6 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
   const supplier    = suppliers.find((s) => s.id === product.supplierId);
   const stockPct    = product.minStock > 0 ? Math.min(100, (product.stock / (product.minStock * 3)) * 100) : product.stock > 0 ? 100 : 0;
   const anyProduct = product as Record<string, unknown>;
-  const prodBranches = branches.filter((b) => Array.isArray(anyProduct.branchIds) && (anyProduct.branchIds as string[]).includes(b.id));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -423,20 +392,6 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
                 <span className="text-xs text-slate-400">{formatCurrency(product.stock * product.unitPrice)}</span>
               </div>
             </div>
-
-            {prodBranches.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-xl p-4">
-                <div className="flex items-center gap-1.5 mb-2"><Building2 size={12} className="text-slate-400" /><p className="text-xs text-slate-400">Available at Branches</p></div>
-                <div className="space-y-1">
-                  {prodBranches.map((b) => (
-                    <div key={b.id} className="flex items-center gap-2">
-                      <span className="text-xs font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{b.code}</span>
-                      <span className="text-xs text-slate-700">{b.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {product.description && (
               <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -560,7 +515,6 @@ export default function ProductsPage() {
   const [search, setSearch]   = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [brandFilter, setBrandFilter]       = useState("all");
-  const [branchFilter, setBranchFilter]     = useState("all");
   const [statusFilter, setStatusFilter]     = useState<"all" | StockStatus>("all");
   const [sort, setSort]       = useState<{ key: SortKey; dir: SortDir }>({ key: "name", dir: "asc" });
   const [showAddEdit, setShowAddEdit] = useState(false);
@@ -568,6 +522,26 @@ export default function ProductsPage() {
   const [viewId, setViewId]   = useState<string | null>(null);
   const [adjustId, setAdjustId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Column visibility based on role permissions
+  const [colVis, setColVis] = useState({ price: true, stockValue: true, leadTime: true });
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
+      fetch("/api/settings/role-permissions").then((r) => r.ok ? r.json() : null),
+    ]).then((results) => {
+      const me = results[0];
+      const rp = results[1];
+      if (!me?.role || !rp?.permissions) return;
+      const p = rp.permissions[me.role] ?? {};
+      setColVis({
+        price:      p.col_prod_price?.view   ?? true,
+        stockValue: p.col_prod_stk_val?.view ?? true,
+        leadTime:   p.col_prod_lead?.view    ?? true,
+      });
+    }).catch(() => {});
+  }, []);
 
   const toggleSort = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
 
@@ -577,9 +551,8 @@ export default function ProductsPage() {
       const matchQ      = !q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || (p.barcode?.includes(q));
       const matchCat    = categoryFilter === "all" || p.category === categoryFilter;
       const matchBrand  = brandFilter === "all" || (p as any).brand === brandFilter;
-      const matchBranch = branchFilter === "all" || ((p as any).branchIds ?? []).includes(branchFilter);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
-      return matchQ && matchCat && matchBrand && matchBranch && matchStatus;
+      return matchQ && matchCat && matchBrand && matchStatus;
     });
     res = [...res].sort((a, b) => {
       let av: string | number, bv: string | number;
@@ -594,7 +567,7 @@ export default function ProductsPage() {
       return sort.dir === "asc" ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
     });
     return res;
-  }, [list, search, categoryFilter, brandFilter, branchFilter, statusFilter, sort]);
+  }, [list, search, categoryFilter, brandFilter, statusFilter, sort]);
 
   const totalValue = useMemo(() => list.reduce((s, p) => s + p.stock * p.unitPrice, 0), [list]);
   const nextSku    = `SKU-${String(list.length + 1).padStart(3, "0")}`;
@@ -709,11 +682,6 @@ export default function ProductsPage() {
             <option value="all">All Brands</option>
             {allBrands.filter((b) => b !== "all").map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
-          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="all">All Branches</option>
-            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
           <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
             {(["all","ok","low","out"] as const).map((s) => (
               <button key={s} onClick={() => setStatusFilter(s)}
@@ -735,18 +703,16 @@ export default function ProductsPage() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</th>
                   <SortTh label="Product" col="name" sort={sort} onSort={toggleSort} />
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Brand / Size</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branches</th>
                   <SortTh label="Stock"      col="stock"      sort={sort} onSort={toggleSort} />
-                  <SortTh label="Unit Price" col="unitPrice"  sort={sort} onSort={toggleSort} />
-                  <SortTh label="Stock Value" col="stockValue" sort={sort} onSort={toggleSort} />
-                  <SortTh label="Lead Time"  col="leadTime"   sort={sort} onSort={toggleSort} />
+                  {colVis.price      && <SortTh label="Unit Price" col="unitPrice"  sort={sort} onSort={toggleSort} />}
+                  {colVis.stockValue && <SortTh label="Stock Value" col="stockValue" sort={sort} onSort={toggleSort} />}
+                  {colVis.leadTime   && <SortTh label="Lead Time"  col="leadTime"   sort={sort} onSort={toggleSort} />}
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
                   <th className="px-5 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filtered.map((p) => {
-                  const prodBranches = branches.filter((b) => ((p as any).branchIds ?? []).includes(b.id));
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-5 py-3 font-mono text-xs text-slate-500 font-medium">{p.id}</td>
@@ -760,25 +726,15 @@ export default function ProductsPage() {
                         <p className="text-xs font-medium text-slate-600">{(p as any).brand || "—"}</p>
                         {(p as any).size && <p className="text-xs text-slate-400 font-mono">{(p as any).size}</p>}
                       </td>
-                      <td className="px-5 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {prodBranches.map((b) => (
-                            <span key={b.id} className="text-xs font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{b.code}</span>
-                          ))}
-                          {prodBranches.length === 0 && <span className="text-xs text-slate-300">—</span>}
-                        </div>
-                      </td>
                       <td className="px-5 py-3 text-right">
                         <span className={cn("font-semibold", p.status === "out" ? "text-red-600" : p.status === "low" ? "text-amber-600" : "text-slate-900")}>
                           {formatNumber(p.stock)}
                         </span>
                         <span className="text-slate-400 text-xs ml-1">/ {p.minStock}</span>
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-700">{formatCurrency(p.unitPrice)}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(p.stock * p.unitPrice)}</td>
-                      <td className="px-5 py-3 text-right text-slate-500 text-xs">
-                        {(p as any).leadTime ? `${(p as any).leadTime}d` : "—"}
-                      </td>
+                      {colVis.price      && <td className="px-5 py-3 text-right text-slate-700">{formatCurrency(p.unitPrice)}</td>}
+                      {colVis.stockValue && <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(p.stock * p.unitPrice)}</td>}
+                      {colVis.leadTime   && <td className="px-5 py-3 text-right text-slate-500 text-xs">{(p as any).leadTime ? `${(p as any).leadTime}d` : "—"}</td>}
                       <td className="px-5 py-3">
                         <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", statusColors[p.status])}>{statusLabels[p.status]}</span>
                       </td>
@@ -796,9 +752,13 @@ export default function ProductsPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200">
-                  <td colSpan={6} className="px-5 py-3 text-sm font-semibold text-slate-700">Total ({filtered.length} shown)</td>
-                  <td className="px-5 py-3 text-right font-bold text-slate-900">{formatCurrency(filtered.reduce((s, p) => s + p.stock * p.unitPrice, 0))}</td>
-                  <td colSpan={3} />
+                  <td colSpan={4} className="px-5 py-3 text-sm font-semibold text-slate-700">Total ({filtered.length} shown)</td>
+                  {colVis.price && <td />}
+                  {colVis.stockValue
+                    ? <td className="px-5 py-3 text-right font-bold text-slate-900">{formatCurrency(filtered.reduce((s, p) => s + p.stock * p.unitPrice, 0))}</td>
+                    : null}
+                  {colVis.leadTime && <td />}
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             </table>
@@ -811,6 +771,7 @@ export default function ProductsPage() {
 
       {showAddEdit && (
         <AddEditModal editId={editId} nextSku={nextSku}
+          brandSuggestions={allBrands.filter((b) => b !== "all")}
           initial={editProduct ? {
             name: editProduct.name, category: editProduct.category,
             unitPrice: editProduct.unitPrice, stock: editProduct.stock,
@@ -818,8 +779,7 @@ export default function ProductsPage() {
             barcode: editProduct.barcode, supplierId: editProduct.supplierId,
             size: (editProduct as any).size ?? "",
             leadTime: (editProduct as any).leadTime ?? 0,
-            brand: (editProduct as any).brand ?? PRODUCT_BRANDS[0],
-            branchIds: (editProduct as any).branchIds ?? [],
+            brand: (editProduct as any).brand ?? "",
           } : undefined}
           onClose={() => { setShowAddEdit(false); setEditId(null); }}
           onSave={handleSave}

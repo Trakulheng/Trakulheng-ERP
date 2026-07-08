@@ -178,6 +178,7 @@ export interface Employee {
   probationEndDate?: string;
   managerId?:        string;
   salary:            number;
+  hourlyRate?:       number;
   bankAccounts?:     BankAccount[];
   ssn?:              string;
   ssfFundType?:      "33" | "39" | "40";

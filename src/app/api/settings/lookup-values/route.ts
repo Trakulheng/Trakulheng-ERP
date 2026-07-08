@@ -8,6 +8,18 @@ const SEED_DEFAULTS: Record<string, string[]> = {
     "Logistics", "Services", "Healthcare", "Education", "Food & Beverage", "Other",
   ],
   payment_term: ["COD", "Net 15", "Net 30", "Net 45", "Net 60"],
+  job_title: [
+    "General Manager", "Branch Manager", "Assistant Manager",
+    "Sales Executive", "Sales Supervisor",
+    "Warehouse Staff", "Warehouse Supervisor",
+    "Accountant", "Finance Officer",
+    "HR Officer", "HR Manager",
+    "IT Support", "Software Developer",
+    "Marketing Officer", "Marketing Manager",
+    "Procurement Officer", "Logistics Coordinator",
+    "Operations Manager", "Customer Service Officer",
+    "Intern",
+  ],
 };
 
 export async function GET(req: NextRequest) {

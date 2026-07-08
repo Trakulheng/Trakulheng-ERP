@@ -45,6 +45,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
   }
 
+  if (!data.employeeId) {
+    return NextResponse.json({ error: "An employee record must be linked." }, { status: 400 });
+  }
+
   const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase() } });
   if (existing) {
     return NextResponse.json({ error: "A user with this email already exists." }, { status: 409 });

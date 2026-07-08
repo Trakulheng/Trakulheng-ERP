@@ -13,6 +13,9 @@ import {
   FileText,
   Share2,
   Sliders,
+  Image,
+  Upload,
+  X,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -159,6 +162,7 @@ export default function GeneralSettingsPage() {
   const [invoice, setInvoice] = useState(initialInvoice);
   const [social, setSocial] = useState(initialSocial);
   const [attendance, setAttendance] = useState({ lateWarningMinutes: 15, clockGpsRadiusMeters: 200 });
+  const [branding, setBranding] = useState({ appName: "Trakulheng", appSubtitle: "Enterprise System", logoBase64: null as string | null });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -175,6 +179,7 @@ export default function GeneralSettingsPage() {
         if (d.system)     setSettings((s) => ({ ...s, ...d.system }));
         if (d.social)     setSocial(d.social);
         if (d.attendance) setAttendance((a) => ({ ...a, ...d.attendance }));
+        if (d.branding)   setBranding((b) => ({ ...b, ...d.branding }));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -206,6 +211,7 @@ export default function GeneralSettingsPage() {
     setSaveError("");
     try {
       const payload = {
+        branding,
         company: {
           name: settings.name, nameEn: settings.nameEn, taxId: settings.taxId,
           address: settings.address, phone: settings.phone, email: settings.email,
@@ -274,6 +280,81 @@ export default function GeneralSettingsPage() {
       )}
 
       <div className="p-6 space-y-6 max-w-4xl">
+        {/* ── Branding ── */}
+        <SectionCard
+          icon={Image}
+          title={t("Branding")}
+          subtitle={t("Logo and app name displayed in the sidebar")}
+        >
+          <div className="flex flex-col gap-5">
+            {/* Logo upload */}
+            <div className="flex items-start gap-5">
+              <div className="shrink-0">
+                <p className="text-sm font-medium text-slate-700 mb-2">{t("App Logo")}</p>
+                <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative group">
+                  {branding.logoBase64 ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={branding.logoBase64} alt="logo" className="w-full h-full object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setBranding((b) => ({ ...b, logoBase64: null }))}
+                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={18} className="text-white" />
+                      </button>
+                    </>
+                  ) : (
+                    <Upload size={20} className="text-slate-400" />
+                  )}
+                </div>
+              </div>
+              <div className="flex-1 pt-6">
+                <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                  <Upload size={14} />
+                  {t("Upload Image")}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const result = ev.target?.result as string;
+                        setBranding((b) => ({ ...b, logoBase64: result }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+                <p className="text-xs text-slate-400 mt-2">{t("PNG, JPG, SVG · max 200 KB · displayed at 40×40 px")}</p>
+              </div>
+            </div>
+
+            {/* App name + subtitle */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <Field label={t("App Name")} hint={t("Shown as the main sidebar title")}>
+                <input
+                  type="text"
+                  value={branding.appName}
+                  onChange={(e) => setBranding((b) => ({ ...b, appName: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label={t("App Subtitle")} hint={t("Small text under the app name")}>
+                <input
+                  type="text"
+                  value={branding.appSubtitle}
+                  onChange={(e) => setBranding((b) => ({ ...b, appSubtitle: e.target.value }))}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+          </div>
+        </SectionCard>
+
         {/* ── Company Information ── */}
         <SectionCard
           icon={Building2}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import {
   purchaseOrders as initialPOs,
@@ -40,10 +40,9 @@ interface DraftLineItem {
   unitPrice: number;
 }
 
-type DemoRole = "admin" | "manager" | "staff" | "viewer";
+type UserRole = "admin" | "manager" | "staff" | "viewer";
 
-const CAN_SEE_PRICE: DemoRole[] = ["admin", "manager"];
-const CAN_APPROVE:   DemoRole[] = ["admin", "manager"];
+const CAN_APPROVE: UserRole[] = ["admin", "manager"];
 
 // ── Status configs ────────────────────────────────────────────────────
 
@@ -132,12 +131,13 @@ function SendDialog({ poId, supplierEmail, onSend, onClose }: SendDialogProps) {
 
 interface NewPOModalProps {
   nextId: string;
-  currentRole: DemoRole;
+  currentRole: UserRole;
+  canSeePrice: boolean;
   onClose: () => void;
   onSave: (po: PO, lines: LineItem[]) => void;
 }
 
-function NewPOModal({ nextId, currentRole, onClose, onSave }: NewPOModalProps) {
+function NewPOModal({ nextId, currentRole, canSeePrice, onClose, onSave }: NewPOModalProps) {
   const [step, setStep]         = useState<1 | 2>(1);
   const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? "");
   const [orderDate, setOrderDate]   = useState(new Date().toISOString().split("T")[0]);
@@ -149,7 +149,6 @@ function NewPOModal({ nextId, currentRole, onClose, onSave }: NewPOModalProps) {
   const [lineQty, setLineQty]       = useState(1);
   const [linePrice, setLinePrice]   = useState(products[0]?.unitPrice ?? 0);
 
-  const canSeePrice = CAN_SEE_PRICE.includes(currentRole);
   const supplier    = suppliers.find((s) => s.id === supplierId);
   const total       = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
 
@@ -391,7 +390,8 @@ function NewPOModal({ nextId, currentRole, onClose, onSave }: NewPOModalProps) {
 interface DetailModalProps {
   po: PO;
   lines: LineItem[];
-  currentRole: DemoRole;
+  currentRole: UserRole;
+  canSeePrice: boolean;
   onClose: () => void;
   onStatusChange: (id: string, status: POStatus) => void;
   onApprove: (id: string) => void;
@@ -399,11 +399,10 @@ interface DetailModalProps {
   onCancel:  (id: string) => void;
 }
 
-function DetailModal({ po, lines, currentRole, onClose, onStatusChange, onApprove, onReject, onCancel }: DetailModalProps) {
+function DetailModal({ po, lines, currentRole, canSeePrice, onClose, onStatusChange, onApprove, onReject, onCancel }: DetailModalProps) {
   const myLines     = lines.filter((l) => l.poId === po.id);
   const supplier    = suppliers.find((s) => s.id === po.supplierId);
   const currentStep = statusFlow.indexOf(po.status as POStatus);
-  const canSeePrice = CAN_SEE_PRICE.includes(currentRole);
   const canApprove  = CAN_APPROVE.includes(currentRole);
   const overdue     = po.approvalStatus === "pending_approval" && isOverdue(po.approvalRequestedAt);
 
@@ -620,8 +619,30 @@ export default function PurchaseOrdersPage() {
   const [showNew,   setShowNew]   = useState(false);
   const [viewId,    setViewId]    = useState<string | null>(null);
   const [deleteId,  setDeleteId]  = useState<string | null>(null);
-  const [currentRole, setCurrentRole] = useState<DemoRole>("manager");
-  const [sendDialog, setSendDialog]   = useState<string | null>(null); // poId
+  const [currentRole, setCurrentRole] = useState<UserRole>("staff");
+  const [sendDialog, setSendDialog]   = useState<string | null>(null);
+  const [pricePerms, setPricePerms]   = useState<Record<UserRole, boolean>>({
+    admin: true, manager: true, staff: false, viewer: false,
+  });
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
+      fetch("/api/settings/role-permissions").then((r) => r.ok ? r.json() : null),
+    ]).then((results) => {
+      const me = results[0];
+      const rp = results[1];
+      if (me?.role) setCurrentRole(me.role as UserRole);
+      if (!rp?.permissions) return;
+      const p = rp.permissions;
+      setPricePerms({
+        admin:   p.admin?.inv_po_prices?.view   ?? true,
+        manager: p.manager?.inv_po_prices?.view ?? true,
+        staff:   p.staff?.inv_po_prices?.view   ?? false,
+        viewer:  p.viewer?.inv_po_prices?.view  ?? false,
+      });
+    }).catch(() => {});
+  }, []);
 
   const pendingApprovalCount = poList.filter((p) => p.approvalStatus === "pending_approval").length;
   const overdueCount         = poList.filter((p) => p.approvalStatus === "pending_approval" && isOverdue(p.approvalRequestedAt)).length;
@@ -685,7 +706,7 @@ export default function PurchaseOrdersPage() {
     if (viewId === id) setViewId(null);
   };
 
-  const canSeePrice = CAN_SEE_PRICE.includes(currentRole);
+  const canSeePrice = pricePerms[currentRole] ?? false;
 
   return (
     <div>
@@ -701,24 +722,6 @@ export default function PurchaseOrdersPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Demo role bar */}
-        <div className="flex items-center gap-3 bg-slate-800 rounded-xl px-4 py-2.5 text-sm">
-          <Shield size={14} className="text-slate-400 shrink-0" />
-          <span className="text-slate-300 text-xs font-medium">Demo role:</span>
-          <div className="flex gap-1">
-            {(["admin","manager","staff","viewer"] as DemoRole[]).map((r) => (
-              <button key={r} onClick={() => setCurrentRole(r)}
-                className={cn("px-2.5 py-0.5 text-xs font-medium rounded-full capitalize transition-colors",
-                  currentRole === r ? "bg-blue-500 text-white" : "text-slate-400 hover:text-white")}>
-                {r}
-              </button>
-            ))}
-          </div>
-          <span className="ml-auto text-xs text-slate-400">
-            {canSeePrice ? "Unit prices visible" : "Unit prices hidden"}
-          </span>
-        </div>
-
         {/* Pending approval banner */}
         {pendingApprovalCount > 0 && (
           <div className={cn("flex items-center gap-3 rounded-xl px-4 py-3 border",
@@ -854,7 +857,7 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {showNew && (
-        <NewPOModal nextId={nextId} currentRole={currentRole} onClose={() => setShowNew(false)} onSave={handleSave} />
+        <NewPOModal nextId={nextId} currentRole={currentRole} canSeePrice={canSeePrice} onClose={() => setShowNew(false)} onSave={handleSave} />
       )}
 
       {viewPO && (
@@ -862,6 +865,7 @@ export default function PurchaseOrdersPage() {
           po={viewPO}
           lines={lineItems}
           currentRole={currentRole}
+          canSeePrice={canSeePrice}
           onClose={() => setViewId(null)}
           onStatusChange={handleStatusChange}
           onApprove={handleApprove}

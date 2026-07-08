@@ -206,8 +206,15 @@ export function ClockInOutWidget() {
             </div>
           )}
 
-          {/* GPS section — shown when not completed */}
-          {!completed && (
+          {/* GPS section — shown when not completed and shift is assigned */}
+          {!completed && !me?.shift && !clocked_in && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-700">
+              <AlertTriangle size={13} className="shrink-0" />
+              No shift assigned for today — clock-in is not available.
+            </div>
+          )}
+
+          {!completed && (me?.shift || clocked_in) && (
             <>
               {gpsStatus === "idle" && (
                 <button

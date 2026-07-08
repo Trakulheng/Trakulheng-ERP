@@ -7,7 +7,7 @@ export async function GET() {
   if (!current) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
   const users = await prisma.user.findMany({
-    where: { emailVerified: true },
+    where: { emailVerified: true, employeeRecordId: { not: null } },
     select: { id: true, name: true, email: true, role: true, pinSetAt: true },
     orderBy: { name: "asc" },
   });

@@ -1775,6 +1775,7 @@ export default function ShiftsPage() {
   const [showCopyMenu, setShowCopyMenu] = useState(false);
   const [copying, setCopying] = useState(false);
   const [sending, setSending] = useState(false);
+  const [resending, setResending] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
 
@@ -1852,6 +1853,37 @@ export default function ShiftsPage() {
   const prevMonth = () => setCalMonth((m) => { const d = new Date(m.year, m.month - 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; });
   const nextMonth = () => setCalMonth((m) => { const d = new Date(m.year, m.month + 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; });
   const goToday = () => { const d = parseDate(TODAY); setMonday(getMondayOf(d)); setCalMonth({ year: d.getFullYear(), month: d.getMonth() }); };
+
+  const handleResendToEmployees = async () => {
+    if (!activeBranch?.id || resending) return;
+    setResending(true);
+    try {
+      const from = viewMode === "week"
+        ? toStr(monday)
+        : `${calMonth.year}-${String(calMonth.month + 1).padStart(2, "0")}-01`;
+      const to = viewMode === "week"
+        ? toStr(new Date(monday.getTime() + 6 * 86400000))
+        : (() => { const d = new Date(calMonth.year, calMonth.month + 1, 0); return toStr(d); })();
+      const res = await fetch("/api/hr/shifts/assignments/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branchId: activeBranch.id, from, to }),
+      });
+      if (res.ok) {
+        const { assignments } = await res.json();
+        const mapped: CalendarEntry[] = assignments.map((a: any) => ({
+          id: a.id, employeeId: a.employeeId, shiftId: a.shiftId ?? null,
+          date: a.date, branchId: a.branchId, confirmStatus: a.confirmStatus, note: a.note ?? undefined,
+        }));
+        setOverrides((prev) => {
+          const kept = prev.filter((o) => !mapped.some((m) => m.id === o.id));
+          return [...kept, ...mapped];
+        });
+      }
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSendToEmployees = async () => {
     if (!activeBranch?.id || sending) return;
@@ -2408,12 +2440,24 @@ export default function ShiftsPage() {
 
             {/* Pending banner */}
             {pendingConfirmations > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-                <AlertCircle size={14} className="shrink-0" />
-                <span>
-                  <span className="font-semibold">{pendingConfirmations}</span> assignment{pendingConfirmations !== 1 ? "s" : ""} pending employee confirmation
-                  {empViewId && <span className="ml-2 text-xs bg-amber-200 px-2 py-0.5 rounded-full">Use ✓ / ↕ buttons on amber-ringed shifts to confirm or request a change</span>}
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+                <span className="flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>
+                    <span className="font-semibold">{pendingConfirmations}</span> assignment{pendingConfirmations !== 1 ? "s" : ""} pending employee confirmation
+                    {empViewId && <span className="ml-2 text-xs bg-amber-200 px-2 py-0.5 rounded-full">Use ✓ / ↕ buttons on amber-ringed shifts to confirm or request a change</span>}
+                  </span>
                 </span>
+                {!empViewId && (
+                  <button
+                    onClick={handleResendToEmployees}
+                    disabled={resending}
+                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors shrink-0"
+                  >
+                    {resending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                    {resending ? "Resending…" : "Resend"}
+                  </button>
+                )}
               </div>
             )}
 

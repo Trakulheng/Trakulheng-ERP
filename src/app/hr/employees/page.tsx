@@ -16,6 +16,7 @@ import {
   Pencil, Trash2, Upload, FileText, Eye,
   Users, TrendingUp, Clock, UserX, Star,
   ScanLine, Sparkles, AlertCircle, CheckCircle2,
+  Camera, FlipHorizontal, Shield,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ interface EmpForm {
   branchIds: string[]; hireDate: string; probationEndDate: string;
   managerId: string; workEmail: string;
   salary: number | "";
+  hourlyRate: number | "";
   bankAccounts: BankAccountEntry[];
   ssn: string;
   ssfFundType: "33" | "39" | "40";
@@ -72,6 +74,7 @@ const EMPTY_FORM: EmpForm = {
   branchIds: [], hireDate: "", probationEndDate: "",
   managerId: "", workEmail: "",
   salary: "",
+  hourlyRate: "",
   bankAccounts: [{ ...emptyBankAccount("ba-0"), isMain: true }],
   ssn: "", ssfFundType: "33", ssfEnrollmentDate: "", ssfHospital: "", ssfStatus: "active",
   emergencyName: "", emergencyRelation: "", emergencyPhone: "",
@@ -161,17 +164,71 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
   const isEdit = !!initial;
   const { branches } = useBranch();
   const [step, setStep] = useState<Step>(1);
-  const [deptList, setDeptList] = useState<{ id: string; name: string }[]>([]);
+  const [deptList,   setDeptList]   = useState<{ id: string; name: string }[]>([]);
+  const [jobTitles,  setJobTitles]  = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/settings/departments")
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setDeptList(d.filter((x: any) => x.status === "active")))
       .catch(() => {});
+    fetch("/api/settings/lookup-values?type=job_title")
+      .then((r) => r.ok ? r.json() : [])
+      .then((d: { label: string; isActive: boolean }[]) =>
+        setJobTitles(d.filter(x => x.isActive).map(x => x.label))
+      )
+      .catch(() => {});
   }, []);
-  const photoRef  = useRef<HTMLInputElement>(null);
-  const docRef    = useRef<HTMLInputElement>(null);
-  const scanIdRef = useRef<HTMLInputElement>(null);
+
+  const photoRef   = useRef<HTMLInputElement>(null);
+  const docRef     = useRef<HTMLInputElement>(null);
+  const scanIdRef  = useRef<HTMLInputElement>(null);
+  const videoRef   = useRef<HTMLVideoElement>(null);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+
+  // ── Camera state ──
+  const [cameraOpen,   setCameraOpen]   = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [facingMode,   setFacingMode]   = useState<"user" | "environment">("user");
+
+  const openCamera = async (mode: "user" | "environment" = facingMode) => {
+    try {
+      if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
+      setCameraStream(stream);
+      setCameraOpen(true);
+      setFacingMode(mode);
+      // Attach to video element after render
+      requestAnimationFrame(() => {
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+      });
+    } catch {
+      // Camera not available — silently ignore
+    }
+  };
+
+  const closeCamera = () => {
+    if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+    setCameraStream(null);
+    setCameraOpen(false);
+  };
+
+  const capturePhoto = () => {
+    const video  = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    set("photo", dataUrl);
+    closeCamera();
+  };
+
+  const flipCamera = () => {
+    const next = facingMode === "user" ? "environment" : "user";
+    openCamera(next);
+  };
 
   const handlePhotoChange = (file: File) => {
     const reader = new FileReader();
@@ -253,6 +310,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
     managerId:        initial.managerId         ?? "",
     workEmail:        initial.workEmail         ?? "",
     salary:           initial.salary,
+    hourlyRate:       (initial as any).hourlyRate ?? "",
     bankAccounts:     initial.bankAccounts?.length
                         ? initial.bankAccounts
                         : [{ ...emptyBankAccount("ba-0"), isMain: true }],
@@ -286,6 +344,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
       id:           initial?.id ?? nextId,
       name,
       salary:       typeof form.salary === "number" ? form.salary : 0,
+      hourlyRate:   typeof form.hourlyRate === "number" ? form.hourlyRate : undefined,
       bankAccounts: form.bankAccounts,
       branchId:     form.branchIds[0] ?? undefined,
     } as Employee;
@@ -368,10 +427,51 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
                   </p>
                   <p className="text-xs text-slate-400">JPG, PNG — max 5 MB</p>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => photoRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600">
+                    <Upload size={12} /> Upload
+                  </button>
+                  <button type="button" onClick={() => openCamera()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 text-blue-700">
+                    <Camera size={12} /> Take Photo
+                  </button>
+                </div>
                 {!form.photo && !isEdit && (
                   <p className="text-xs text-red-500">Photo is required</p>
                 )}
               </div>
+
+              {/* ── Camera modal ── */}
+              {cameraOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+                  <div className="bg-black rounded-2xl overflow-hidden w-full max-w-sm shadow-2xl">
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-900">
+                      <span className="text-white text-sm font-semibold flex items-center gap-2">
+                        <Camera size={14} /> Take Profile Photo
+                      </span>
+                      <button onClick={closeCamera} className="text-white/60 hover:text-white">
+                        <X size={16} />
+                      </button>
+                    </div>
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video ref={videoRef} autoPlay playsInline
+                      className="w-full aspect-square object-cover" />
+                    <canvas ref={canvasRef} className="hidden" />
+                    <div className="flex items-center justify-center gap-4 p-4 bg-slate-900">
+                      <button onClick={flipCamera}
+                        className="p-3 rounded-full bg-slate-700 hover:bg-slate-600 text-white transition-colors">
+                        <FlipHorizontal size={18} />
+                      </button>
+                      <button onClick={capturePhoto}
+                        className="w-14 h-14 rounded-full bg-white hover:bg-slate-100 transition-colors flex items-center justify-center shadow-lg">
+                        <div className="w-11 h-11 rounded-full bg-slate-200 hover:bg-white transition-colors" />
+                      </button>
+                      <div className="w-10" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* ── AI OCR Scanner ── */}
               <input ref={scanIdRef} type="file" accept="image/*" className="hidden"
@@ -575,7 +675,12 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
               </div>
               <Field label="Job Title / Position" required>
                 <input value={form.position} onChange={e => set("position", e.target.value)}
-                  placeholder="e.g. Senior Engineer" className={INPUT} />
+                  list="job-title-list" placeholder="e.g. Senior Engineer" className={INPUT} />
+                {jobTitles.length > 0 && (
+                  <datalist id="job-title-list">
+                    {jobTitles.map(t => <option key={t} value={t} />)}
+                  </datalist>
+                )}
               </Field>
               <Field label="Branch Assignment">
                 {branches.length === 0 ? (
@@ -653,14 +758,41 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
           {/* ── Step 3: Compensation ─────────────────────── */}
           {step === 3 && (
             <>
-              <Field label="Base Salary (THB/month)">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">฿</span>
-                  <input type="number" min={0} value={form.salary}
-                    onChange={e => set("salary", e.target.value === "" ? "" : Number(e.target.value))}
-                    placeholder="0" className={cn(INPUT, "pl-7")} />
+              {form.employmentType === "part-time" ? (
+                <div className="space-y-3">
+                  <Field label="Hourly Rate (THB/hour)">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">฿</span>
+                      <input type="number" min={0} value={form.hourlyRate}
+                        onChange={e => set("hourlyRate", e.target.value === "" ? "" : Number(e.target.value))}
+                        placeholder="0" className={cn(INPUT, "pl-7")} />
+                    </div>
+                  </Field>
+                  {form.hourlyRate !== "" && Number(form.hourlyRate) > 0 && (
+                    <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                      <Clock size={12} className="shrink-0" />
+                      Est. monthly (160 hrs): <strong>{formatCurrency(Number(form.hourlyRate) * 160)}</strong>
+                    </div>
+                  )}
+                  <Field label="Fixed Monthly Salary (optional)">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">฿</span>
+                      <input type="number" min={0} value={form.salary}
+                        onChange={e => set("salary", e.target.value === "" ? "" : Number(e.target.value))}
+                        placeholder="Leave 0 to use hourly rate" className={cn(INPUT, "pl-7")} />
+                    </div>
+                  </Field>
                 </div>
-              </Field>
+              ) : (
+                <Field label="Base Salary (THB/month)">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">฿</span>
+                    <input type="number" min={0} value={form.salary}
+                      onChange={e => set("salary", e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder="0" className={cn(INPUT, "pl-7")} />
+                  </div>
+                </Field>
+              )}
 
               {/* ── Social Security Fund ── */}
               <div className="pt-2 border-t border-slate-100">
@@ -906,6 +1038,15 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
               {/* ── Verification ── */}
               <div className="pt-2 border-t border-slate-100">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Identity Verification</p>
+                {form.documents.length === 0 ? (
+                  <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
+                    <AlertCircle size={16} className="text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-500">Verification requires proof</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Upload at least one supporting document above before marking as verified.</p>
+                    </div>
+                  </div>
+                ) : (
                 <div className={cn(
                   "rounded-xl border-2 p-4 space-y-3 transition-colors",
                   form.verified ? "border-emerald-400 bg-emerald-50/40" : "border-slate-200 bg-white"
@@ -947,6 +1088,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
                     </div>
                   )}
                 </div>
+                )}
               </div>
 
               {/* Review summary */}
@@ -1008,6 +1150,17 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
   const { branches } = useBranch();
   const manager  = allEmployees.find(e => e.id === emp.managerId);
   const branch   = branches.find(b => b.id === emp.branchId);
+  const [linkedUser, setLinkedUser] = useState<{ name: string; email: string; role: string; status: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings/users")
+      .then((r) => r.ok ? r.json() : [])
+      .then((users: any[]) => {
+        const u = users.find((u) => u.employeeId === emp.id);
+        if (u) setLinkedUser({ name: u.name, email: u.email, role: u.role, status: u.status });
+      })
+      .catch(() => {});
+  }, [emp.id]);
   const initials = emp.firstName[0] + (emp.lastName[0] ?? "");
 
   const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string }) =>
@@ -1096,6 +1249,40 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
             <InfoRow icon={Calendar}  label="Hire Date"      value={emp.hireDate} />
             <InfoRow icon={Calendar}  label="Probation End"  value={emp.probationEndDate} />
             <InfoRow icon={Mail}      label="Work Email"     value={emp.workEmail} />
+          </section>
+
+          {/* System Access */}
+          <section className="space-y-3 border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">System Access</p>
+            {linkedUser ? (
+              <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                  {linkedUser.name?.[0] ?? linkedUser.email[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{linkedUser.name || linkedUser.email}</p>
+                  <p className="text-xs text-slate-500 truncate">{linkedUser.email}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase",
+                    linkedUser.role === "admin"   ? "bg-red-100 text-red-700" :
+                    linkedUser.role === "manager" ? "bg-amber-100 text-amber-700" :
+                    linkedUser.role === "staff"   ? "bg-blue-100 text-blue-700" :
+                                                    "bg-slate-100 text-slate-500")}>
+                    {linkedUser.role}
+                  </span>
+                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full capitalize",
+                    linkedUser.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+                    {linkedUser.status}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-400">
+                <Shield size={14} />
+                No system account linked
+              </div>
+            )}
           </section>
 
           {/* Compensation */}
@@ -1225,11 +1412,34 @@ export default function EmployeesPage() {
   const [toast,      setToast]      = useState("");
   const [empSaving,  setEmpSaving]  = useState(false);
 
+  // Column visibility based on role permissions
+  const [colVis, setColVis] = useState({
+    type: true, hireDate: true, salary: true, verified: true,
+  });
+
   useEffect(() => {
     fetch("/api/employees")
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setList(data))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
+      fetch("/api/settings/role-permissions").then((r) => r.ok ? r.json() : null),
+    ]).then((results) => {
+      const me = results[0];
+      const rp = results[1];
+      if (!me?.role || !rp?.permissions) return;
+      const p = rp.permissions[me.role] ?? {};
+      setColVis({
+        type:     p.col_emp_type?.view      ?? true,
+        hireDate: p.col_emp_hire_date?.view  ?? true,
+        salary:   p.col_emp_salary?.view    ?? true,
+        verified: p.col_emp_verified?.view  ?? true,
+      });
+    }).catch(() => {});
   }, []);
 
   const nextId = `EMP-${String(list.length + 1).padStart(3, "0")}`;
@@ -1367,17 +1577,17 @@ export default function EmployeesPage() {
                 <tr className="bg-slate-50 border-b border-slate-100">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Employee</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dept · Position</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Hire Date</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Salary</th>
+                  {colVis.type     && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</th>}
+                  {colVis.hireDate && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Hire Date</th>}
+                  {colVis.salary   && <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Salary</th>}
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Verified</th>
+                  {colVis.verified && <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Verified</th>}
                   <th className="px-4 py-3 w-20"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-400">No employees match the current filters.</td></tr>
+                  <tr><td colSpan={8} className="px-5 py-10 text-center text-sm text-slate-400">No employees match the current filters.</td></tr>
                 )}
                 {filtered.map(emp => (
                   <tr key={emp.id}
@@ -1403,56 +1613,60 @@ export default function EmployeesPage() {
                       <p className="text-slate-800 text-sm">{emp.department}</p>
                       <p className="text-xs text-slate-400">{emp.position}</p>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium capitalize">
-                        {EMP_TYPE_LABEL[emp.employmentType]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{emp.hireDate}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatCurrency(emp.salary)}</td>
+                    {colVis.type && (
+                      <td className="px-4 py-3">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium capitalize">
+                          {EMP_TYPE_LABEL[emp.employmentType]}
+                        </span>
+                      </td>
+                    )}
+                    {colVis.hireDate && <td className="px-4 py-3 text-sm text-slate-600">{emp.hireDate}</td>}
+                    {colVis.salary   && <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatCurrency(emp.salary)}</td>}
                     <td className="px-4 py-3">
                       <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", STATUS_CFG[emp.status].cls)}>
                         {STATUS_CFG[emp.status].label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
-                      <button
-                        title={emp.verified ? `Verified ${emp.verifiedDate ?? ""}` : "Click to verify"}
-                        onClick={() => {
-                          const today = new Date().toISOString().slice(0, 10);
-                          const nextVerified = !emp.verified;
-                          const nextDate = nextVerified ? today : undefined;
-                          setList(prev => prev.map(e => e.id === emp.id
-                            ? { ...e, verified: nextVerified, verifiedDate: nextDate }
-                            : e
-                          ));
-                          void fetch(`/api/employees/${emp.id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ verified: nextVerified, verifiedDate: nextDate ?? null }),
-                          });
-                        }}
-                        className="flex flex-col items-center gap-0.5 mx-auto group">
-                        <div className={cn(
-                          "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
-                          emp.verified
-                            ? "bg-emerald-500 border-emerald-500"
-                            : "bg-white border-slate-300 group-hover:border-emerald-400"
-                        )}>
-                          {emp.verified && <Check size={11} className="text-white" strokeWidth={3} />}
-                        </div>
-                        {emp.verified && emp.verifiedDate && (
-                          <span className="text-[10px] text-emerald-600 font-medium leading-none">
-                            {emp.verifiedDate}
-                          </span>
-                        )}
-                        {!emp.verified && (
-                          <span className="text-[10px] text-slate-400 leading-none opacity-0 group-hover:opacity-100 transition-opacity">
-                            verify
-                          </span>
-                        )}
-                      </button>
-                    </td>
+                    {colVis.verified && (
+                      <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                        <button
+                          title={emp.verified ? `Verified ${emp.verifiedDate ?? ""}` : "Click to verify"}
+                          onClick={() => {
+                            const today = new Date().toISOString().slice(0, 10);
+                            const nextVerified = !emp.verified;
+                            const nextDate = nextVerified ? today : undefined;
+                            setList(prev => prev.map(e => e.id === emp.id
+                              ? { ...e, verified: nextVerified, verifiedDate: nextDate }
+                              : e
+                            ));
+                            void fetch(`/api/employees/${emp.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ verified: nextVerified, verifiedDate: nextDate ?? null }),
+                            });
+                          }}
+                          className="flex flex-col items-center gap-0.5 mx-auto group">
+                          <div className={cn(
+                            "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                            emp.verified
+                              ? "bg-emerald-500 border-emerald-500"
+                              : "bg-white border-slate-300 group-hover:border-emerald-400"
+                          )}>
+                            {emp.verified && <Check size={11} className="text-white" strokeWidth={3} />}
+                          </div>
+                          {emp.verified && emp.verifiedDate && (
+                            <span className="text-[10px] text-emerald-600 font-medium leading-none">
+                              {emp.verifiedDate}
+                            </span>
+                          )}
+                          {!emp.verified && (
+                            <span className="text-[10px] text-slate-400 leading-none opacity-0 group-hover:opacity-100 transition-opacity">
+                              verify
+                            </span>
+                          )}
+                        </button>
+                      </td>
+                    )}
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-1 justify-end">
                         <button onClick={() => setViewEmp(emp)}
@@ -1474,9 +1688,11 @@ export default function EmployeesPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200">
-                  <td colSpan={4} className="px-5 py-3 text-sm font-semibold text-slate-700">Total Monthly Payroll</td>
-                  <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(totalSalary)}</td>
-                  <td colSpan={2}></td>
+                  <td colSpan={2 + (colVis.type ? 1 : 0) + (colVis.hireDate ? 1 : 0)} className="px-5 py-3 text-sm font-semibold text-slate-700">Total Monthly Payroll</td>
+                  {colVis.salary
+                    ? <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(totalSalary)}</td>
+                    : <td />}
+                  <td colSpan={1 + (colVis.verified ? 1 : 0) + 1}></td>
                 </tr>
               </tfoot>
             </table>
