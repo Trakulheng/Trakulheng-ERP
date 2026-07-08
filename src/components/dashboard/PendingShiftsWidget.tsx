@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { CalendarDays, CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react";
 
 interface PendingShift {
   id: string;
@@ -14,9 +14,42 @@ interface PendingShift {
   note: string | null;
 }
 
+const POLL_INTERVAL_MS = 30_000; // refresh every 30 seconds
+
 export function PendingShiftsWidget({ initialShifts }: { initialShifts: PendingShift[] }) {
   const [shifts, setShifts] = useState(initialShifts);
   const [acting, setActing] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function fetchPending(showSpinner = false) {
+    if (showSpinner) setRefreshing(true);
+    try {
+      const res = await fetch("/api/hr/shifts/my-pending");
+      if (res.ok) {
+        const data = await res.json();
+        setShifts(data);
+      }
+    } finally {
+      if (showSpinner) setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    // Immediately fetch in case shifts were sent after the server-render snapshot
+    fetchPending();
+
+    // Poll every 30 s so newly-sent shifts appear without a full page reload
+    pollRef.current = setInterval(() => fetchPending(), POLL_INTERVAL_MS);
+
+    const onFocus = () => fetchPending();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function respond(id: string, status: "confirmed" | "rejected") {
     setActing(id);
@@ -45,10 +78,18 @@ export function PendingShiftsWidget({ initialShifts }: { initialShifts: PendingS
         <CalendarDays size={16} className="text-amber-500" />
         <h3 className="text-base font-semibold text-slate-900">Pending Shift Confirmations</h3>
         {shifts.length > 0 && (
-          <span className="ml-auto text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
+          <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
             {shifts.length}
           </span>
         )}
+        <button
+          onClick={() => fetchPending(true)}
+          disabled={refreshing}
+          title="Refresh"
+          className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40"
+        >
+          <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+        </button>
       </div>
 
       {shifts.length === 0 ? (

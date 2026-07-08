@@ -1825,15 +1825,19 @@ export default function ShiftsPage() {
       .catch(() => {});
   }, [activeBranch?.id]);
 
-  // Load shift assignments from DB when branch or week changes
+  // Load shift assignments from DB when branch or week changes; also re-fetch on window focus
   useEffect(() => {
     if (!activeBranch?.id) { setOverrides([]); return; }
     const from = toStr(monday);
     const to   = toStr(addDays(monday, 6));
-    fetch(`/api/hr/shifts/assignments?branchId=${activeBranch.id}&from=${from}&to=${to}`)
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: CalendarEntry[]) => setOverrides(data))
-      .catch(() => {});
+    const load = () =>
+      fetch(`/api/hr/shifts/assignments?branchId=${activeBranch.id}&from=${from}&to=${to}`)
+        .then((r) => r.ok ? r.json() : [])
+        .then((data: CalendarEntry[]) => setOverrides(data))
+        .catch(() => {});
+    load();
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
   }, [activeBranch?.id, monday]);
 
   // Fetch todos for all loaded shifts
