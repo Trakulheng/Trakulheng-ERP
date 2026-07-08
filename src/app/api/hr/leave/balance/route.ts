@@ -12,34 +12,45 @@ export async function GET(req: NextRequest) {
 
   if (!empPrismaId) return NextResponse.json({ error: "employeeId required." }, { status: 400 });
 
-  const [leaveTypes, approvedRequests] = await Promise.all([
+  const [leaveTypes, allRequests] = await Promise.all([
     prisma.leaveType.findMany({ where: { isActive: true }, orderBy: [{ order: "asc" }, { name: "asc" }] }),
     prisma.leaveRequest.findMany({
       where: {
         employeeId: empPrismaId,
-        status: "approved",
+        status: { in: ["approved", "pending"] },
         fromDate: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31`) },
       },
-      select: { type: true, days: true },
+      select: { type: true, days: true, status: true },
     }),
   ]);
 
-  const usedByType: Record<string, number> = {};
-  for (const r of approvedRequests) {
-    usedByType[r.type] = (usedByType[r.type] ?? 0) + r.days;
+  const approvedByType: Record<string, number> = {};
+  const pendingByType: Record<string, number> = {};
+  for (const r of allRequests) {
+    if (r.status === "approved") {
+      approvedByType[r.type] = (approvedByType[r.type] ?? 0) + r.days;
+    } else {
+      pendingByType[r.type] = (pendingByType[r.type] ?? 0) + r.days;
+    }
   }
 
-  const balance = leaveTypes.map((lt) => ({
-    id:          lt.id,
-    name:        lt.name,
-    color:       lt.color,
-    daysPerYear: lt.daysPerYear,
-    isPaid:      lt.isPaid,
-    carryOver:   lt.carryOver,
-    requireDoc:  lt.requireDoc,
-    used:        usedByType[lt.name] ?? 0,
-    remaining:   lt.daysPerYear === 0 ? null : Math.max(0, lt.daysPerYear - (usedByType[lt.name] ?? 0)),
-  }));
+  const balance = leaveTypes.map((lt) => {
+    const approved = approvedByType[lt.name] ?? 0;
+    const pending  = pendingByType[lt.name] ?? 0;
+    const totalUsed = approved + pending;
+    return {
+      id:          lt.id,
+      name:        lt.name,
+      color:       lt.color,
+      daysPerYear: lt.daysPerYear,
+      isPaid:      lt.isPaid,
+      carryOver:   lt.carryOver,
+      requireDoc:  lt.requireDoc,
+      used:        approved,
+      pending:     pending,
+      remaining:   lt.daysPerYear === 0 ? null : Math.max(0, lt.daysPerYear - totalUsed),
+    };
+  });
 
   return NextResponse.json(balance);
 }

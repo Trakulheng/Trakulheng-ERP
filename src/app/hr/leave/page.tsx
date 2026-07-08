@@ -37,7 +37,7 @@ interface LeaveRow {
 }
 interface Employee { prismaId: string; id: string; name: string; }
 interface LeaveTypeOption { id: string; name: string; color: string; daysPerYear: number; isPaid: boolean; requireDoc: boolean; }
-interface BalanceItem { id: string; name: string; color: string; daysPerYear: number; used: number; remaining: number | null; }
+interface BalanceItem { id: string; name: string; color: string; daysPerYear: number; used: number; pending: number; remaining: number | null; }
 interface Me { id: string; role: string; employeePrismaId?: string | null; employeeName?: string | null; }
 
 function calcDays(from: string, to: string) {
@@ -114,16 +114,15 @@ function MonthCalendar({
 // ── Leave Request Modal ───────────────────────────────────────────────────────
 
 interface ModalProps {
-  employees: Employee[];
   leaveTypes: LeaveTypeOption[];
   defaultEmployeeId: string;
-  isManager: boolean;
+  employeeName: string;
   myLeaveRows: LeaveRow[];
   onClose: () => void;
   onSubmitted: (row: LeaveRow) => void;
 }
 
-function LeaveModal({ employees, leaveTypes, defaultEmployeeId, isManager, myLeaveRows, onClose, onSubmitted }: ModalProps) {
+function LeaveModal({ leaveTypes, defaultEmployeeId, employeeName, myLeaveRows, onClose, onSubmitted }: ModalProps) {
   const today = new Date().toISOString().slice(0, 10);
   const [employeeId, setEmployeeId]     = useState(defaultEmployeeId);
   const [type,       setType]           = useState(leaveTypes[0]?.name ?? "Annual Leave");
@@ -205,18 +204,13 @@ function LeaveModal({ employees, leaveTypes, defaultEmployeeId, isManager, myLea
 
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-5">
-            {/* Employee selector */}
+            {/* Employee (read-only — always the requester) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Employee</label>
-                <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}
-                  disabled={!isManager && !!defaultEmployeeId}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-slate-50 disabled:text-slate-500">
-                  <option value="">Select employee…</option>
-                  {employees.map((emp) => (
-                    <option key={emp.prismaId} value={emp.prismaId}>{emp.name}</option>
-                  ))}
-                </select>
+                <div className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium">
+                  {employeeName || "—"}
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Leave Type</label>
@@ -241,8 +235,14 @@ function LeaveModal({ employees, leaveTypes, defaultEmployeeId, isManager, myLea
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold">{selectedBalance.used}</p>
-                  <p className="text-xs opacity-75">used</p>
+                  <p className="text-xs opacity-75">approved</p>
                 </div>
+                {(selectedBalance.pending ?? 0) > 0 && (
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-amber-600">{selectedBalance.pending}</p>
+                    <p className="text-xs opacity-75">pending</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -413,14 +413,18 @@ export default function LeavePage() {
 
   useEffect(() => { loadLeave(); }, [loadLeave]);
 
-  // Load my balance when me is known
-  useEffect(() => {
-    if (!me?.employeePrismaId) return;
-    fetch(`/api/hr/leave/balance?employeeId=${me.employeePrismaId}&year=${new Date().getFullYear()}`)
+  // Load my balance — extracted so it can be called after submit/review
+  const loadMyBalance = useCallback((empId: string) => {
+    fetch(`/api/hr/leave/balance?employeeId=${empId}&year=${new Date().getFullYear()}`)
       .then((r) => r.ok ? r.json() : [])
       .then(setMyBalance)
       .catch(() => {});
-  }, [me?.employeePrismaId]);
+  }, []);
+
+  useEffect(() => {
+    if (!me?.employeePrismaId) return;
+    loadMyBalance(me.employeePrismaId);
+  }, [me?.employeePrismaId, loadMyBalance]);
 
   const myRows    = rows.filter((r) => r.employeeId === me?.employeePrismaId);
   const allRows   = filter === "all" ? rows : rows.filter((r) => r.status === filter);
@@ -431,16 +435,15 @@ export default function LeavePage() {
 
   const handleSubmitted = (row: LeaveRow) => {
     setRows((prev) => [row, ...prev]);
-    if (row.employeeId === me?.employeePrismaId) {
-      setMyBalance((prev) => prev.map((b) =>
-        b.name === row.type ? { ...b, used: b.used + row.days, remaining: b.remaining !== null ? Math.max(0, b.remaining - row.days) : null } : b
-      ));
-    }
+    // Re-fetch balance so the cards reflect the new pending request
+    if (me?.employeePrismaId) loadMyBalance(me.employeePrismaId);
   };
 
   const handleReviewDone = (updated: LeaveRow) => {
     setRows((prev) => prev.map((r) => r.id === updated.id ? updated : r));
     setReviewRow(null);
+    // Re-fetch balance in case the approved/rejected leave is for the current user
+    if (me?.employeePrismaId) loadMyBalance(me.employeePrismaId);
   };
 
   // Approved leave dates for calendar highlight (my leave)
@@ -557,7 +560,9 @@ export default function LeavePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {myBalance.map((b) => {
                   const lt = leaveTypes.find((t) => t.name === b.name);
-                  const pct = b.daysPerYear > 0 ? Math.min(100, (b.used / b.daysPerYear) * 100) : 0;
+                  const totalUsed = b.used + (b.pending ?? 0);
+                  const pct = b.daysPerYear > 0 ? Math.min(100, (totalUsed / b.daysPerYear) * 100) : 0;
+                  const pendingPct = b.daysPerYear > 0 ? Math.min(100 - Math.min(100, (b.used / b.daysPerYear) * 100), ((b.pending ?? 0) / b.daysPerYear) * 100) : 0;
                   return (
                     <div key={b.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
@@ -572,10 +577,15 @@ export default function LeavePage() {
                       </p>
                       {b.daysPerYear > 0 && (
                         <>
-                          <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={cn("h-full rounded-full transition-all", `bg-${lt?.color ?? "blue"}-400`)} style={{ width: `${pct}%` }} />
+                          <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                            <div className={cn("h-full rounded-l-full transition-all", `bg-${lt?.color ?? "blue"}-400`)} style={{ width: `${Math.min(100, (b.used / b.daysPerYear) * 100)}%` }} />
+                            {(b.pending ?? 0) > 0 && (
+                              <div className="h-full bg-amber-300 transition-all" style={{ width: `${pendingPct}%` }} />
+                            )}
                           </div>
-                          <p className="text-xs text-slate-400 mt-1">{b.used} / {b.daysPerYear} used</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {b.used} used{(b.pending ?? 0) > 0 ? ` · ${b.pending} pending` : ""} / {b.daysPerYear} days
+                          </p>
                         </>
                       )}
                     </div>
@@ -696,10 +706,9 @@ export default function LeavePage() {
       {/* New Request Modal */}
       {showModal && (
         <LeaveModal
-          employees={employees}
           leaveTypes={leaveTypes.length > 0 ? leaveTypes : [{ id: "al", name: "Annual Leave", color: "blue", daysPerYear: 6, isPaid: true, requireDoc: false }]}
           defaultEmployeeId={me?.employeePrismaId ?? ""}
-          isManager={isManager}
+          employeeName={me?.employeeName ?? ""}
           myLeaveRows={rows}
           onClose={() => setShowModal(false)}
           onSubmitted={handleSubmitted}
