@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { usePermissions } from "@/lib/use-permissions";
 import { Header } from "@/components/layout/Header";
 import {
   salesOrders as initialOrders,
@@ -462,6 +463,7 @@ function DetailModal({ order, lines, onClose, onStageChange }: DetailModalProps)
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
+  const { can } = usePermissions();
   const [orders, setOrders]       = useState<Order[]>(initialOrders as Order[]);
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems as LineItem[]);
   const [search, setSearch]       = useState("");
@@ -519,12 +521,12 @@ export default function OrdersPage() {
       <Header
         title="Sales Orders"
         subtitle={`${orders.length} orders · ${formatCurrency(stats.total)} total pipeline`}
-        actions={
+        actions={can("sales_orders", "create") ? (
           <button onClick={() => setShowNew(true)}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
             <Plus size={16} /> New Order
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-6">

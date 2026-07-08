@@ -7,6 +7,7 @@ import {
   BANKS, EMPLOYMENT_TYPES, SSF_FUND_TYPES, SSF_HOSPITALS,
 } from "@/lib/mock-data";
 import { useBranch } from "@/context/BranchContext";
+import { usePermissions } from "@/lib/use-permissions";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -1143,9 +1144,9 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
 
 // ── Detail Modal ───────────────────────────────────────────────────────
 
-function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
+function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete, canEdit }: {
   emp: Employee; allEmployees: Employee[];
-  onClose: () => void; onEdit: () => void; onDelete: () => void;
+  onClose: () => void; onEdit: () => void; onDelete: () => void; canEdit?: boolean;
 }) {
   const { branches } = useBranch();
   const manager  = allEmployees.find(e => e.id === emp.managerId);
@@ -1219,14 +1220,18 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
           </div>
           {/* Action buttons — inside hero so they're always visible */}
           <div className="flex gap-2 mt-5">
-            <button onClick={onEdit}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-white text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm transition-colors">
-              <Pencil size={13} /> Edit
-            </button>
-            <button onClick={onDelete}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-red-500/20 border border-red-300/40 text-red-100 rounded-lg hover:bg-red-500/30 transition-colors">
-              <Trash2 size={13} /> Delete
-            </button>
+            {canEdit !== false && (
+              <button onClick={onEdit}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-white text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm transition-colors">
+                <Pencil size={13} /> Edit
+              </button>
+            )}
+            {canEdit !== false && (
+              <button onClick={onDelete}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-red-500/20 border border-red-300/40 text-red-100 rounded-lg hover:bg-red-500/30 transition-colors">
+                <Trash2 size={13} /> Delete
+              </button>
+            )}
           </div>
         </div>
 
@@ -1401,6 +1406,7 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete }: {
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function EmployeesPage() {
+  const { can } = usePermissions();
   const [list,       setList]       = useState<Employee[]>([]);
   const [showAdd,    setShowAdd]    = useState(false);
   const [editEmp,    setEditEmp]    = useState<Employee | undefined>(undefined);
@@ -1505,12 +1511,12 @@ export default function EmployeesPage() {
       <Header
         title="Employees"
         subtitle={`${list.length} employees · ${formatCurrency(totalSalary)}/month total payroll`}
-        actions={
+        actions={can("hr_employees", "create") ? (
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
             <Plus size={16} /> Add Employee
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-5">
@@ -1673,14 +1679,18 @@ export default function EmployeesPage() {
                           className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="View">
                           <Eye size={14} />
                         </button>
-                        <button onClick={() => { setEditEmp(emp); setShowAdd(true); }}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Edit">
-                          <Pencil size={14} />
-                        </button>
-                        <button onClick={() => setDeleteId(emp.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600" title="Delete">
-                          <Trash2 size={14} />
-                        </button>
+                        {can("hr_employees", "edit") && (
+                          <button onClick={() => { setEditEmp(emp); setShowAdd(true); }}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Edit">
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {can("hr_employees", "edit") && (
+                          <button onClick={() => setDeleteId(emp.id)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600" title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1719,6 +1729,7 @@ export default function EmployeesPage() {
           onClose={() => setViewEmp(undefined)}
           onEdit={() => { setEditEmp(viewEmp); setViewEmp(undefined); setShowAdd(true); }}
           onDelete={() => setDeleteId(viewEmp.id)}
+          canEdit={can("hr_employees", "edit")}
         />
       )}
 

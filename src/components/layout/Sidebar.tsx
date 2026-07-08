@@ -9,7 +9,7 @@ import {
   Settings, GitBranch, ScanLine, CalendarClock, HeartHandshake, Gift,
   TicketCheck, Zap, PieChart, Shield, Bell, Sliders, PackageCheck,
   ClipboardCheck, CheckSquare, X, ArrowLeftRight, Layers, Fingerprint, LogOut,
-  Lock, AlertTriangle, KeyRound, Database, History, ShieldCheck,
+  Lock, AlertTriangle, KeyRound, Database, History, ShieldCheck, UserCircle,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -128,7 +128,7 @@ function initials(name: string | null, email: string) {
   return email.slice(0, 2).toUpperCase();
 }
 
-interface Me { name: string | null; email: string; role: string; menuOrder?: string[] | null }
+interface Me { name: string | null; email: string; role: string; menuOrder?: string[] | null; avatarBase64?: string | null }
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -144,15 +144,22 @@ export function Sidebar() {
   const [perms, setPerms] = useState<PermMatrix>({});
   const [branding, setBranding] = useState({ appName: "Trakulheng", appSubtitle: "Enterprise System", logoBase64: null as string | null });
 
-  useEffect(() => {
-    fetch("/api/auth/me")
+  function loadMe() {
+    fetch("/api/user/profile")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data?.email) setMe(data); })
       .catch(() => {});
+  }
+
+  useEffect(() => {
+    loadMe();
     fetch("/api/settings/general")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d?.branding) setBranding((b) => ({ ...b, ...d.branding })); })
       .catch(() => {});
+    window.addEventListener("profile-updated", loadMe);
+    return () => window.removeEventListener("profile-updated", loadMe);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -350,8 +357,12 @@ export function Sidebar() {
             onClick={() => setShowUserMenu((v) => !v)}
             className={cn("w-full flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors", S.sectionHover)}
           >
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", AVATAR_COLOR[me?.role ?? ""] ?? "bg-slate-500")}>
-              {me ? initials(me.name, me.email) : "?"}
+            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden", me?.avatarBase64 ? "" : (AVATAR_COLOR[me?.role ?? ""] ?? "bg-slate-500"))}>
+              {me?.avatarBase64
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={me.avatarBase64} alt="avatar" className="w-full h-full object-cover" />
+                : (me ? initials(me.name, me.email) : "?")
+              }
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className={cn("text-sm font-medium truncate", S.userName)}>
@@ -364,6 +375,14 @@ export function Sidebar() {
 
           {showUserMenu && (
             <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50">
+              <Link
+                href="/account"
+                onClick={() => setShowUserMenu(false)}
+                className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <UserCircle size={15} className="text-slate-400" />
+                My Account
+              </Link>
               <button
                 onClick={() => { setShowSwitcher(true); setShowUserMenu(false); }}
                 className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"

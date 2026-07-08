@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { usePermissions } from "@/lib/use-permissions";
 import {
   expenses as initialExpenses, employees, branches,
   ExpenseStatus, EXPENSE_CATEGORIES,
@@ -481,6 +482,7 @@ function DetailModal({ exp, currentRole, onClose, onApprove, onReject }: DetailM
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
+  const { can } = usePermissions();
   const [list,        setList]        = useState<Expense[]>(initialExpenses as Expense[]);
   const [search,      setSearch]      = useState("");
   const [statusF,     setStatusF]     = useState<"all" | ExpenseStatus>("all");
@@ -541,12 +543,12 @@ export default function ExpensesPage() {
       <Header
         title="Expenses"
         subtitle={`${list.length} records · Total ${formatCurrency(totals.total)}`}
-        actions={
+        actions={can("finance_expenses", "create") ? (
           <button onClick={() => setShowNew(true)}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">
             <Plus size={16} /> Add Expense
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-6">

@@ -6,6 +6,7 @@ import { useBranch } from "@/context/BranchContext";
 import { Employee as MockEmployee } from "@/lib/mock-data";
 type Employee = MockEmployee;
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/lib/use-permissions";
 import {
   Plus,
   Pencil,
@@ -1752,6 +1753,7 @@ function DayAssignModal({
 
 export default function ShiftsPage() {
   const { activeBranch } = useBranch();
+  const { can } = usePermissions();
 
   const [tab, setTab] = useState<MainTab>("calendar");
   const [shiftList, setShiftList] = useState<Shift[]>([]);
@@ -2190,10 +2192,12 @@ export default function ShiftsPage() {
                 <Bell size={14} />{pendingRequests} Request{pendingRequests !== 1 ? "s" : ""}
               </button>
             )}
-            <button onClick={() => setShiftModal({ mode: "add" })}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-              <Plus size={15} /> New Shift
-            </button>
+            {can("hr_shifts", "create") && (
+              <button onClick={() => setShiftModal({ mode: "add" })}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                <Plus size={15} /> New Shift
+              </button>
+            )}
           </div>
         }
       />
@@ -2244,16 +2248,18 @@ export default function ShiftsPage() {
                     assignedEmps={shiftEmpMap[s.id] ?? []}
                     patterns={branchPatterns}
                     todos={todosByShift[s.id] ?? []}
-                    onEdit={(sh) => setShiftModal({ mode: "edit", data: sh })}
-                    onDelete={handleDeleteShift}
+                    onEdit={can("hr_shifts", "edit") ? (sh) => setShiftModal({ mode: "edit", data: sh }) : () => {}}
+                    onDelete={can("hr_shifts", "edit") ? handleDeleteShift : () => {}}
                     onTodoChange={handleTodoChange}
                   />
                 ))}
-                <button onClick={() => setShiftModal({ mode: "add" })}
-                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl p-5 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors min-h-[200px]">
-                  <Plus size={22} />
-                  <span className="text-sm font-medium">New Shift Template</span>
-                </button>
+                {can("hr_shifts", "create") && (
+                  <button onClick={() => setShiftModal({ mode: "add" })}
+                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl p-5 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors min-h-[200px]">
+                    <Plus size={22} />
+                    <span className="text-sm font-medium">New Shift Template</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -2431,14 +2437,16 @@ export default function ShiftsPage() {
                   <AlertCircle size={14} className="shrink-0 text-slate-400" />
                   <span className="font-semibold">{draftCount}</span> draft assignment{draftCount !== 1 ? "s" : ""} — not yet visible to employees
                 </span>
-                <button
-                  onClick={handleSendToEmployees}
-                  disabled={sending}
-                  className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-60 transition-colors"
-                >
-                  {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-                  {sending ? "Sending…" : "Send to Employees"}
-                </button>
+                {can("hr_shifts", "edit") && (
+                  <button
+                    onClick={handleSendToEmployees}
+                    disabled={sending}
+                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-60 transition-colors"
+                  >
+                    {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                    {sending ? "Sending…" : "Send to Employees"}
+                  </button>
+                )}
               </div>
             )}
 
@@ -2452,7 +2460,7 @@ export default function ShiftsPage() {
                     {empViewId && <span className="ml-2 text-xs bg-amber-200 px-2 py-0.5 rounded-full">Use ✓ / ↕ buttons on amber-ringed shifts to confirm or request a change</span>}
                   </span>
                 </span>
-                {!empViewId && (
+                {!empViewId && can("hr_shifts", "edit") && (
                   <button
                     onClick={handleResendToEmployees}
                     disabled={resending}
@@ -2505,12 +2513,12 @@ export default function ShiftsPage() {
                 empViewId={empViewId}
                 deptFilter={deptFilter}
                 onCellClick={(empId, date, currentShiftId, isOv, entry) => {
-                  if (empViewId) return;
+                  if (empViewId || !can("hr_shifts", "edit")) return;
                   setCellModal({ empId, date, currentShiftId, isOverride: isOv, entry });
                 }}
                 onConfirm={handleConfirm}
                 onRequestChange={(empId, date, shiftId) => setReqChangeModal({ empId, date, currentShiftId: shiftId })}
-                onAddToDay={(date) => setDayAssignModal({ date })}
+                onAddToDay={can("hr_shifts", "create") ? (date) => setDayAssignModal({ date }) : undefined}
               />
             )}
 

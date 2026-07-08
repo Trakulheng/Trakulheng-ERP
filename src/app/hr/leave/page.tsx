@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/layout/Header";
+import { usePermissions } from "@/lib/use-permissions";
 import { Plus, X, Loader2, CheckCircle2, Clock, XCircle, CalendarDays, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useBranch } from "@/context/BranchContext";
@@ -364,6 +365,7 @@ function ReviewModal({ row, onClose, onDone }: { row: LeaveRow; onClose: () => v
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function LeavePage() {
+  const { can } = usePermissions();
   const { activeBranch } = useBranch();
   const [me, setMe]                 = useState<Me | null>(null);
   const [rows, setRows]             = useState<LeaveRow[]>([]);
@@ -523,12 +525,12 @@ export default function LeavePage() {
       <Header
         title="Leave Management"
         subtitle={`${rows.length} requests · ${pending} pending`}
-        actions={
+        actions={can("hr_leave", "create") ? (
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
             <Plus size={16} /> New Request
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-5">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { usePermissions } from "@/lib/use-permissions";
 import { suppliers as initialSuppliers, purchaseOrders, products, POStatus } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
@@ -456,6 +457,7 @@ function DetailModal({ supplier, onClose, onEdit }: DetailModalProps) {
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function SuppliersPage() {
+  const { can } = usePermissions();
   const [supplierList, setSupplierList] = useState<Supplier[]>(initialSuppliers as Supplier[]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -525,12 +527,12 @@ export default function SuppliersPage() {
       <Header
         title="Suppliers"
         subtitle={`${stats.total} suppliers · ${stats.active} active`}
-        actions={
+        actions={can("inv_suppliers", "create") ? (
           <button onClick={openAdd}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
             <Plus size={16} /> Add Supplier
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-6">

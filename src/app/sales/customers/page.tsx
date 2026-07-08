@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { usePermissions } from "@/lib/use-permissions";
 import { customerProfiles, salesOrders, invoices, crmCustomers, getTier, tierColors } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
@@ -611,6 +612,7 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function CustomersPage() {
+  const { can } = usePermissions();
   const [profiles, setProfiles]   = useState<Profile[]>(customerProfiles as unknown as Profile[]);
   const [tab, setTab]             = useState<"all" | "individual" | "corporate">("all");
   const [search, setSearch]       = useState("");
@@ -679,12 +681,12 @@ export default function CustomersPage() {
       <Header
         title="Customers"
         subtitle={`${stats.total} customers · ${formatCurrency(stats.totalSpend)} total spend`}
-        actions={
+        actions={can("sales_customers", "create") ? (
           <button onClick={openAdd}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
             <Plus size={16} /> Add Customer
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-6">

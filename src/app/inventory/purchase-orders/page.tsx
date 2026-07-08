@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { usePermissions } from "@/lib/use-permissions";
 import {
   purchaseOrders as initialPOs,
   poLineItems as initialLineItems,
@@ -612,6 +613,7 @@ function DetailModal({ po, lines, currentRole, canSeePrice, onClose, onStatusCha
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function PurchaseOrdersPage() {
+  const { can } = usePermissions();
   const [poList,    setPoList]    = useState<PO[]>(initialPOs as PO[]);
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems as LineItem[]);
   const [search,    setSearch]    = useState("");
@@ -713,12 +715,12 @@ export default function PurchaseOrdersPage() {
       <Header
         title="Purchase Orders"
         subtitle={`${poList.length} orders · ${canSeePrice ? `Total ${formatCurrency(stats.total)}` : "Prices hidden for your role"}`}
-        actions={
+        actions={can("inv_po", "create") ? (
           <button onClick={() => setShowNew(true)}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
             <Plus size={16} /> New PO
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-6">

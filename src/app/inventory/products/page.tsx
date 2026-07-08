@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
+import { usePermissions } from "@/lib/use-permissions";
 import {
   products as initialProducts,
   stockMovements as initialMovements,
@@ -510,6 +511,7 @@ function SortTh({ label, col, sort, onSort }: { label: string; col: SortKey; sor
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function ProductsPage() {
+  const { can } = usePermissions();
   const [list, setList]       = useState<Product[]>(initialProducts as Product[]);
   const [movements, setMovements] = useState<StockMovement[]>(initialMovements as StockMovement[]);
   const [search, setSearch]   = useState("");
@@ -630,12 +632,12 @@ export default function ProductsPage() {
       <Header
         title="Products"
         subtitle={`${list.length} products · Total inventory value ${formatCurrency(totalValue)}`}
-        actions={
+        actions={can("inv_products", "create") ? (
           <button onClick={() => { setEditId(null); setShowAddEdit(true); }}
             className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">
             <Plus size={16} /> Add Product
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-6">
@@ -741,9 +743,9 @@ export default function ProductsPage() {
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setViewId(p.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600"><Eye size={14} /></button>
-                          <button onClick={() => setAdjustId(p.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-emerald-600"><RefreshCw size={14} /></button>
-                          <button onClick={() => openEdit(p.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"><Pencil size={14} /></button>
-                          <button onClick={() => setDeleteId(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+                          {can("inv_products", "edit") && <button onClick={() => setAdjustId(p.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-emerald-600"><RefreshCw size={14} /></button>}
+                          {can("inv_products", "edit") && <button onClick={() => openEdit(p.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"><Pencil size={14} /></button>}
+                          {can("inv_products", "edit") && <button onClick={() => setDeleteId(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>}
                         </div>
                       </td>
                     </tr>

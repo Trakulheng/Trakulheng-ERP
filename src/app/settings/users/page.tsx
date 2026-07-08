@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
+import { usePermissions } from "@/lib/use-permissions";
 import { useBranch } from "@/context/BranchContext";
 import { cn } from "@/lib/utils";
 import {
@@ -389,6 +390,7 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function UserManagementPage() {
+  const { can } = usePermissions();
   const { branches } = useBranch();
   const [users,        setUsers]       = useState<SystemUser[]>([]);
   const [loadingUsers, setLoadingUsers]= useState(true);
@@ -490,12 +492,12 @@ export default function UserManagementPage() {
     <div className="flex flex-col min-h-screen bg-slate-50">
       <Header
         title="User Management"
-        actions={
+        actions={can("set_users", "create") ? (
           <button onClick={openNew}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
             <UserPlus size={16} /> Add User
           </button>
-        }
+        ) : undefined}
       />
 
       <div className="p-6 space-y-6">
@@ -616,12 +618,16 @@ export default function UserManagementPage() {
                             <RefreshCw size={14} className={resending === u.id ? "animate-spin" : ""} />
                           </button>
                         )}
-                        <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
-                          <Pencil size={15} />
-                        </button>
-                        <button onClick={() => setDeleteId(u.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600">
-                          <Trash2 size={15} />
-                        </button>
+                        {can("set_users", "edit") && (
+                          <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
+                            <Pencil size={15} />
+                          </button>
+                        )}
+                        {can("set_users", "edit") && (
+                          <button onClick={() => setDeleteId(u.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { usePermissions } from "@/lib/use-permissions";
 import { Header } from "@/components/layout/Header";
 import {
   invoices as initialInvoices,
@@ -422,6 +423,7 @@ function DetailModal({ inv, items, onClose, onMarkPaid, onCancel }: DetailModalP
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function InvoicesPage() {
+  const { can } = usePermissions();
   const [list,     setList]     = useState<Invoice[]>(initialInvoices as Invoice[]);
   const [items,    setItems]    = useState<InvItem[]>(initialItems as InvItem[]);
   const [search,   setSearch]   = useState("");
@@ -482,10 +484,12 @@ export default function InvoicesPage() {
             <button className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50">
               <Download size={14} /> Export
             </button>
-            <button onClick={() => setShowNew(true)}
-              className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">
-              <Plus size={16} /> New Invoice
-            </button>
+            {can("finance_invoices", "create") && (
+              <button onClick={() => setShowNew(true)}
+                className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">
+                <Plus size={16} /> New Invoice
+              </button>
+            )}
           </div>
         }
       />
@@ -570,7 +574,9 @@ export default function InvoicesPage() {
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setViewId(inv.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600"><Eye size={14} /></button>
-                          <button onClick={() => setDeleteId(inv.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+                          {can("finance_invoices", "edit") && (
+                            <button onClick={() => setDeleteId(inv.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+                          )}
                         </div>
                       </td>
                     </tr>
