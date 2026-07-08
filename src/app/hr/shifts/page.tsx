@@ -2417,17 +2417,6 @@ export default function ShiftsPage() {
                 </select>
               )}
 
-              {/* Role toggle */}
-              <div className="ml-auto flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
-                <Shield size={14} className={empViewId ? "text-slate-300" : "text-blue-600"} />
-                <span className="text-xs text-slate-500">View as:</span>
-                <select value={empViewId ?? ""} onChange={(e) => setEmpViewId(e.target.value || null)}
-                  className="text-xs font-medium text-slate-700 bg-transparent focus:outline-none cursor-pointer">
-                  <option value="">Manager</option>
-                  {branchEmps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
-                {empViewId && <UserCheck size={14} className="text-emerald-600" />}
-              </div>
             </div>
 
             {/* Draft assignments banner */}
