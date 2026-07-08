@@ -190,6 +190,7 @@ export interface Employee {
   emergencyPhone?:   string;
   photo?:            string;
   documents?:        string[];
+  weeklyDaysOff?:    number[];
   status:            EmployeeStatus;
   verified?:         boolean;
   verifiedDate?:     string;

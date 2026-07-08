@@ -304,6 +304,7 @@ model Employee {
   emergencyPhone    String?
   photo             String?
   documents         Json?
+  weeklyDaysOff     Json?
   status            String        @default("active")
   verified          Boolean       @default(false)
   verifiedDate      String?

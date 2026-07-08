@@ -1005,6 +1005,7 @@ function WeekCalendar({
                   const c = shift ? shiftColorMap[shift.color] : null;
                   const isOv = !!override;
                   const canAct = !isOtherEmp && !isPast && !isFutureLocked;
+                  const isWeeklyDayOff = !isOv && !shift && ((emp as any).weeklyDaysOff as number[] | undefined)?.includes(d.getDay());
 
                   return (
                     <td key={dateStr} className={cn("px-1 py-1.5 text-center align-top", isPast && "bg-slate-50/60")}>
@@ -1061,6 +1062,15 @@ function WeekCalendar({
                               <span className="w-1.5 h-1.5 bg-white rounded-full" />
                             </span>
                           )}
+                        </button>
+                      ) : isWeeklyDayOff ? (
+                        /* Weekly recurring day off — grey, admin can still override */
+                        <button
+                          title="Weekly day off (click to override)"
+                          onClick={() => canAct && !empViewId && onCellClick(emp.id, dateStr, null, false)}
+                          className={cn("w-full h-10 rounded-lg border-2 flex items-center justify-center text-xs font-semibold transition-colors",
+                            canAct && !empViewId ? "cursor-pointer hover:opacity-80 border-slate-300 bg-slate-100 text-slate-400 hover:bg-slate-200" : "cursor-default border-slate-200 bg-slate-50 text-slate-300")}>
+                          OFF
                         </button>
                       ) : (
                         <button

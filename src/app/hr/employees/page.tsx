@@ -61,6 +61,7 @@ interface EmpForm {
   ssfStatus: SsfStatus;
   emergencyName: string; emergencyRelation: string; emergencyPhone: string;
   photo: string; documents: string[];
+  weeklyDaysOff: number[];
   status: EmployeeStatus;
   verified: boolean;
   verifiedDate: string;
@@ -79,7 +80,7 @@ const EMPTY_FORM: EmpForm = {
   bankAccounts: [{ ...emptyBankAccount("ba-0"), isMain: true }],
   ssn: "", ssfFundType: "33", ssfEnrollmentDate: "", ssfHospital: "", ssfStatus: "active",
   emergencyName: "", emergencyRelation: "", emergencyPhone: "",
-  photo: "", documents: [], status: "active",
+  photo: "", documents: [], weeklyDaysOff: [], status: "active",
   verified: false, verifiedDate: "",
 };
 
@@ -325,6 +326,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
     emergencyPhone:   initial.emergencyPhone    ?? "",
     photo:            initial.photo             ?? "",
     documents:        initial.documents         ?? [],
+    weeklyDaysOff:    initial.weeklyDaysOff     ?? [],
     status:           initial.status,
     verified:         initial.verified          ?? false,
     verifiedDate:     initial.verifiedDate      ?? "",
@@ -752,6 +754,27 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
                     </button>
                   ))}
                 </div>
+              </Field>
+              <Field label="Weekly Days Off">
+                <p className="text-xs text-slate-400 mb-2">Select which days this employee does not work. These will show as OFF in the shift calendar.</p>
+                <div className="flex gap-1.5">
+                  {(["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] as const).map((label, dow) => {
+                    const checked = form.weeklyDaysOff.includes(dow);
+                    return (
+                      <button key={dow} type="button"
+                        onClick={() => set("weeklyDaysOff", checked ? form.weeklyDaysOff.filter(d => d !== dow) : [...form.weeklyDaysOff, dow])}
+                        className={cn("flex-1 py-2 text-xs font-semibold rounded-lg border-2 transition-all",
+                          checked ? "border-slate-500 bg-slate-700 text-white" : "border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50")}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {form.weeklyDaysOff.length > 0 && (
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    {form.weeklyDaysOff.sort().map(d => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d]).join(", ")} will be marked as day off
+                  </p>
+                )}
               </Field>
             </>
           )}
@@ -1254,6 +1277,23 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete, canEdit }: 
             <InfoRow icon={Calendar}  label="Hire Date"      value={emp.hireDate} />
             <InfoRow icon={Calendar}  label="Probation End"  value={emp.probationEndDate} />
             <InfoRow icon={Mail}      label="Work Email"     value={emp.workEmail} />
+            {emp.weeklyDaysOff && emp.weeklyDaysOff.length > 0 && (
+              <div className="flex items-start gap-3 py-1">
+                <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <Calendar size={13} className="text-slate-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-slate-400 mb-1">Days Off</p>
+                  <div className="flex flex-wrap gap-1">
+                    {emp.weeklyDaysOff.sort().map(d => (
+                      <span key={d} className="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">
+                        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d]}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* System Access */}
