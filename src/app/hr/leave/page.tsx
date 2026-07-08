@@ -377,6 +377,7 @@ export default function LeavePage() {
   const [filter, setFilter]         = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [showModal, setShowModal]   = useState(false);
   const [reviewRow, setReviewRow]   = useState<LeaveRow | null>(null);
+  const [calOffset, setCalOffset]   = useState(0); // months offset for calendar view
 
   // Load current user
   useEffect(() => {
@@ -450,10 +451,10 @@ export default function LeavePage() {
       return { from: r.fromDate, to: r.toDate, color: lt?.color ?? "slate" };
     });
 
-  // Current + next month mini calendars on "My Leave" tab
+  // 2-month calendar view with navigation
   const now = new Date();
-  const months = [0, 1, 2].map((offset) => {
-    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const months = [0, 1].map((offset) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + calOffset + offset, 1);
     return { year: d.getFullYear(), month: d.getMonth() };
   });
 
@@ -583,9 +584,32 @@ export default function LeavePage() {
               </div>
             )}
 
-            {/* Small calendar overview — current + 2 months */}
+            {/* 2-month calendar overview with navigation */}
             <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-4">Leave Calendar</p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Leave Calendar</p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCalOffset((o) => o - 1)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                    title="Previous months">
+                    <ChevronLeft size={15} />
+                  </button>
+                  {calOffset !== 0 && (
+                    <button
+                      onClick={() => setCalOffset(0)}
+                      className="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      Today
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setCalOffset((o) => o + 1)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                    title="Next months">
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              </div>
               <div className="flex gap-8 overflow-x-auto pb-1">
                 {months.map((m) => (
                   <MonthCalendar
