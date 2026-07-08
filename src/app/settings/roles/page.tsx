@@ -66,43 +66,51 @@ const COLOR_OPTIONS: { label: string; color: string; badge: string }[] = [
 ];
 
 const MODULES: { id: string; label: string; group: string; description: string }[] = [
-  { id: "finance_overview",  label: "Overview",         group: "Finance",   description: "Finance dashboard and summary" },
-  { id: "finance_invoices",  label: "Invoices",         group: "Finance",   description: "Create, edit and view invoices" },
-  { id: "finance_expenses",  label: "Expenses",         group: "Finance",   description: "Create, edit and view expense records" },
-  { id: "inv_overview",      label: "Overview",         group: "Inventory", description: "Inventory dashboard and summary" },
-  { id: "inv_products",      label: "Products",         group: "Inventory", description: "Manage product catalogue and stock" },
-  { id: "inv_po",            label: "Purchase Orders",  group: "Inventory", description: "Create and manage POs sent to suppliers" },
-  { id: "inv_po_prices",    label: "See PO Unit Prices", group: "Inventory", description: "View unit prices and totals in purchase orders" },
-  { id: "inv_gr",            label: "Goods Receive",    group: "Inventory", description: "Receive stock against a PO" },
-  { id: "inv_suppliers",     label: "Suppliers",        group: "Inventory", description: "Manage supplier list and details" },
-  { id: "sales_overview",    label: "Overview",         group: "Sales",     description: "Sales dashboard and summary" },
-  { id: "sales_customers",   label: "Customers",        group: "Sales",     description: "Customer profiles and records" },
-  { id: "sales_orders",      label: "Sales Orders",     group: "Sales",     description: "Create and manage sales orders" },
-  { id: "hr_overview",       label: "Overview",         group: "HR",        description: "HR dashboard and summary" },
-  { id: "hr_employees",      label: "Employees",        group: "HR",        description: "Employee records and profiles" },
-  { id: "hr_payroll",        label: "Payroll",          group: "HR",        description: "Payroll runs and salary data" },
-  { id: "hr_leave",          label: "Leave",            group: "HR",        description: "Leave requests and approvals" },
-  { id: "hr_attendance",     label: "Attendance",       group: "HR",        description: "Clock-in/out and attendance records" },
-  { id: "hr_shifts",         label: "Shift Management", group: "HR",        description: "Schedule shifts and manage assignments" },
-  { id: "crm_overview",      label: "Overview",         group: "CRM",       description: "CRM dashboard and summary" },
-  { id: "crm_customers",     label: "CRM Customers",    group: "CRM",       description: "Loyalty members and points" },
-  { id: "crm_campaigns",     label: "Campaigns",        group: "CRM",       description: "Marketing campaigns" },
-  { id: "crm_rewards",       label: "Rewards",          group: "CRM",       description: "Reward catalogue management" },
-  { id: "crm_redemptions",   label: "Redemptions",      group: "CRM",       description: "Redeem and manage customer rewards" },
-  { id: "crm_analytics",     label: "CRM Analytics",    group: "CRM",       description: "CRM performance analytics and reports" },
-  { id: "set_general",       label: "General Settings", group: "Settings",  description: "Company information and preferences" },
-  { id: "set_branches",      label: "Branches",         group: "Settings",  description: "Branch management" },
-  { id: "set_brands",        label: "House Brands",     group: "Settings",  description: "Brand configuration" },
-  { id: "set_departments",   label: "Departments",      group: "Settings",  description: "Department structure" },
-  { id: "set_users",         label: "Users",            group: "Settings",  description: "System user management" },
-  { id: "set_dashboard",     label: "Dashboard Layout", group: "Settings",  description: "Configure dashboard widgets per role" },
-  { id: "set_roles",         label: "Role Permissions", group: "Settings",  description: "This permissions matrix" },
-  { id: "set_points",        label: "Points Config",    group: "Settings",  description: "Loyalty points rules and configuration" },
-  { id: "set_security",      label: "Security",         group: "Settings",  description: "PIN and biometric access settings" },
-  { id: "set_audit",         label: "Audit Log",        group: "Settings",  description: "View system audit trail" },
-  { id: "set_notifications", label: "Notifications",    group: "Settings",  description: "Notification preferences" },
-  { id: "set_appearance",    label: "Appearance",       group: "Settings",  description: "Theme and display settings" },
-  // Column Visibility
+  // ── Top-level ────────────────────────────────────────────────────────
+  { id: "dashboard",         label: "Dashboard",        group: "Dashboard",  description: "Main dashboard and widgets" },
+  { id: "tasks",             label: "Tasks",            group: "Tasks",      description: "Task list and assignments" },
+  // ── Finance ──────────────────────────────────────────────────────────
+  { id: "finance_overview",  label: "Overview",         group: "Finance",    description: "Finance dashboard and summary" },
+  { id: "finance_invoices",  label: "Invoices",         group: "Finance",    description: "Create, edit and view invoices" },
+  { id: "finance_expenses",  label: "Expenses",         group: "Finance",    description: "Create, edit and view expense records" },
+  // ── Inventory ─────────────────────────────────────────────────────────
+  { id: "inv_overview",      label: "Overview",         group: "Inventory",  description: "Inventory dashboard and summary" },
+  { id: "inv_products",      label: "Products",         group: "Inventory",  description: "Manage product catalogue and stock" },
+  { id: "inv_po",            label: "Purchase Orders",  group: "Inventory",  description: "Create and manage POs sent to suppliers" },
+  { id: "inv_po_prices",     label: "See PO Unit Prices", group: "Inventory", description: "View unit prices and totals in purchase orders" },
+  { id: "inv_gr",            label: "Goods Receive",    group: "Inventory",  description: "Receive stock against a PO" },
+  { id: "inv_suppliers",     label: "Suppliers",        group: "Inventory",  description: "Manage supplier list and details" },
+  // ── Sales & CRM ───────────────────────────────────────────────────────
+  { id: "sales_overview",    label: "Overview",         group: "Sales & CRM", description: "Sales dashboard and summary" },
+  { id: "sales_customers",   label: "Customers",        group: "Sales & CRM", description: "Customer profiles and records" },
+  { id: "sales_orders",      label: "Sales Orders",     group: "Sales & CRM", description: "Create and manage sales orders" },
+  // ── HR & Payroll ──────────────────────────────────────────────────────
+  { id: "hr_overview",       label: "Overview",         group: "HR & Payroll", description: "HR dashboard and summary" },
+  { id: "hr_employees",      label: "Employees",        group: "HR & Payroll", description: "Employee records and profiles" },
+  { id: "hr_payroll",        label: "Payroll",          group: "HR & Payroll", description: "Payroll runs and salary data" },
+  { id: "hr_leave",          label: "Leave",            group: "HR & Payroll", description: "Leave requests and approvals" },
+  { id: "hr_attendance",     label: "Attendance / Clock In", group: "HR & Payroll", description: "Clock-in/out and attendance records" },
+  { id: "hr_shifts",         label: "Shift Management", group: "HR & Payroll", description: "Schedule shifts and manage assignments" },
+  // ── CRM ───────────────────────────────────────────────────────────────
+  { id: "crm_overview",      label: "Overview",         group: "CRM",        description: "CRM dashboard and summary" },
+  { id: "crm_customers",     label: "Customers",        group: "CRM",        description: "Loyalty members and points" },
+  { id: "crm_campaigns",     label: "Campaigns",        group: "CRM",        description: "Marketing campaigns" },
+  { id: "crm_rewards",       label: "Rewards",          group: "CRM",        description: "Reward catalogue management" },
+  { id: "crm_redemptions",   label: "Redemptions",      group: "CRM",        description: "Redeem and manage customer rewards" },
+  { id: "crm_analytics",     label: "Analytics",        group: "CRM",        description: "CRM performance analytics and reports" },
+  { id: "set_points",        label: "Points Config",    group: "CRM",        description: "Loyalty points rules and configuration" },
+  // ── Settings ──────────────────────────────────────────────────────────
+  { id: "set_general",       label: "General Settings", group: "Settings",   description: "Company info, branding and preferences" },
+  { id: "set_branches",      label: "Branches",         group: "Settings",   description: "Branch management" },
+  { id: "set_product_cats",  label: "Master Data",      group: "Settings",   description: "Departments, brands, product categories, job titles" },
+  { id: "set_users",         label: "Users",            group: "Settings",   description: "System user management" },
+  { id: "set_dashboard",     label: "Dashboard Layout", group: "Settings",   description: "Configure dashboard widgets per role" },
+  { id: "set_roles",         label: "Role Permissions", group: "Settings",   description: "This permissions matrix" },
+  { id: "set_security",      label: "Security",         group: "Settings",   description: "PIN and biometric access settings" },
+  { id: "set_audit",         label: "Audit Log",        group: "Settings",   description: "View system audit trail" },
+  { id: "set_notifications", label: "Notifications",    group: "Settings",   description: "Notification preferences" },
+  { id: "set_appearance",    label: "Appearance",       group: "Settings",   description: "Theme and display settings" },
+  // ── Column Visibility ─────────────────────────────────────────────────
   { id: "col_emp_salary",    label: "Employee: Salary",       group: "Column Visibility", description: "Show salary & compensation in employee table" },
   { id: "col_emp_verified",  label: "Employee: Verified",     group: "Column Visibility", description: "Show identity verification status in employee table" },
   { id: "col_emp_hire_date", label: "Employee: Hire Date",    group: "Column Visibility", description: "Show hire date in employee table" },
@@ -112,7 +120,8 @@ const MODULES: { id: string; label: string; group: string; description: string }
   { id: "col_prod_lead",     label: "Product: Lead Time",     group: "Column Visibility", description: "Show lead time in product list" },
 ];
 
-const GROUPS = Array.from(new Set(MODULES.map((m) => m.group)));
+const GROUP_ORDER = ["Dashboard","Tasks","Finance","Inventory","Sales & CRM","HR & Payroll","CRM","Settings","Column Visibility"];
+const GROUPS = GROUP_ORDER.filter((g) => MODULES.some((m) => m.group === g));
 
 // ── Defaults ──────────────────────────────────────────────────────────
 
@@ -127,38 +136,41 @@ function emptyPermMatrix(): PermMatrix {
 function buildDefault(): Record<string, PermMatrix> {
   const ids = MODULES.map((m) => m.id);
 
-  const admin: PermMatrix   = Object.fromEntries(ids.map((id) => [id, { ...FULL }]));
+  const admin: PermMatrix = Object.fromEntries(ids.map((id) => [id, { ...FULL }]));
 
   const OVERVIEW_IDS = ["finance_overview","inv_overview","sales_overview","hr_overview","crm_overview"];
+  const SETTINGS_RESTRICTED = ["set_users","set_roles","set_security","set_audit"];
 
   const manager: PermMatrix = Object.fromEntries(ids.map((id) => {
+    if (["dashboard","tasks"].includes(id))                             return [id, { ...FULL }];
     if (OVERVIEW_IDS.includes(id))                                     return [id, { ...VIEW_ONLY }];
-    if (["set_users","set_roles"].includes(id))                        return [id, { ...NO_ACCESS }];
-    if (["set_general","set_branches"].includes(id))                   return [id, { ...VIEW_ONLY }];
+    if (SETTINGS_RESTRICTED.includes(id))                              return [id, { ...NO_ACCESS }];
+    if (["set_general","set_branches","set_product_cats"].includes(id)) return [id, { ...VIEW_ONLY }];
     if (["hr_payroll","crm_campaigns"].includes(id))                   return [id, { ...VIEW_ONLY }];
+    if (id.startsWith("col_"))                                         return [id, { ...FULL }];
     return [id, { ...FULL }];
   }));
 
-  const staff: PermMatrix   = Object.fromEntries(ids.map((id) => {
+  const staff: PermMatrix = Object.fromEntries(ids.map((id) => {
+    if (["dashboard","tasks"].includes(id))                            return [id, { ...FULL }];
     if (OVERVIEW_IDS.includes(id))                                     return [id, { ...VIEW_ONLY }];
     if (id.startsWith("set_"))                                         return [id, { ...NO_ACCESS }];
     if (["hr_employees","hr_payroll"].includes(id))                    return [id, { ...NO_ACCESS }];
     if (["inv_suppliers","crm_campaigns","crm_rewards"].includes(id))  return [id, { ...VIEW_ONLY }];
     if (["finance_invoices","finance_expenses"].includes(id))          return [id, { ...VIEW_ONLY }];
     if (id === "inv_po_prices")                                        return [id, { ...NO_ACCESS }];
-    // Column visibility defaults for staff
-    if (id === "col_emp_salary")       return [id, { ...NO_ACCESS }];
-    if (id.startsWith("col_"))         return [id, { ...VIEW_ONLY }];
+    if (id === "col_emp_salary")                                       return [id, { ...NO_ACCESS }];
+    if (id.startsWith("col_"))                                         return [id, { ...VIEW_ONLY }];
     return [id, { ...FULL }];
   }));
 
-  const viewer: PermMatrix  = Object.fromEntries(ids.map((id) => {
-    if (id.startsWith("set_"))         return [id, { ...NO_ACCESS }];
-    if (id === "hr_payroll")           return [id, { ...NO_ACCESS }];
-    if (id === "inv_po_prices")        return [id, { ...NO_ACCESS }];
-    // Column visibility defaults for viewer
+  const viewer: PermMatrix = Object.fromEntries(ids.map((id) => {
+    if (["dashboard","tasks"].includes(id))                            return [id, { ...VIEW_ONLY }];
+    if (id.startsWith("set_"))                                         return [id, { ...NO_ACCESS }];
+    if (["hr_payroll","hr_employees","hr_shifts"].includes(id))        return [id, { ...NO_ACCESS }];
+    if (id === "inv_po_prices")                                        return [id, { ...NO_ACCESS }];
     if (["col_emp_salary","col_emp_verified","col_prod_price","col_prod_stk_val"].includes(id)) return [id, { ...NO_ACCESS }];
-    if (id.startsWith("col_"))         return [id, { ...VIEW_ONLY }];
+    if (id.startsWith("col_"))                                         return [id, { ...VIEW_ONLY }];
     return [id, { ...VIEW_ONLY }];
   }));
 
