@@ -90,7 +90,10 @@ const MODULES: { id: string; label: string; group: string; description: string }
   { id: "hr_payroll",        label: "Payroll",          group: "HR & Payroll", description: "Payroll runs and salary data" },
   { id: "hr_leave",          label: "Leave",            group: "HR & Payroll", description: "Leave requests and approvals" },
   { id: "hr_attendance",     label: "Attendance / Clock In", group: "HR & Payroll", description: "Clock-in/out and attendance records" },
-  { id: "hr_shifts",         label: "Shift Management", group: "HR & Payroll", description: "Schedule shifts and manage assignments" },
+  { id: "hr_shifts",          label: "Shift Management",   group: "HR & Payroll", description: "Access the Shift Management page (sidebar)" },
+  { id: "hr_shifts_templates",label: "→ Shift Templates",  group: "HR & Payroll", description: "View, create and edit shift templates" },
+  { id: "hr_shifts_calendar", label: "→ Schedule Calendar",group: "HR & Payroll", description: "View calendar (edit = assign shifts, create = send to employees)" },
+  { id: "hr_shifts_requests", label: "→ Change Requests",  group: "HR & Payroll", description: "View and approve/reject shift change requests" },
   // ── CRM ───────────────────────────────────────────────────────────────
   { id: "crm_overview",      label: "Overview",         group: "CRM",        description: "CRM dashboard and summary" },
   { id: "crm_customers",     label: "Customers",        group: "CRM",        description: "Loyalty members and points" },
@@ -141,12 +144,15 @@ function buildDefault(): Record<string, PermMatrix> {
   const OVERVIEW_IDS = ["finance_overview","inv_overview","sales_overview","hr_overview","crm_overview"];
   const SETTINGS_RESTRICTED = ["set_users","set_roles","set_security","set_audit"];
 
+  const SHIFT_SUB = ["hr_shifts_templates","hr_shifts_calendar","hr_shifts_requests"];
+
   const manager: PermMatrix = Object.fromEntries(ids.map((id) => {
     if (["dashboard","tasks"].includes(id))                             return [id, { ...FULL }];
     if (OVERVIEW_IDS.includes(id))                                     return [id, { ...VIEW_ONLY }];
     if (SETTINGS_RESTRICTED.includes(id))                              return [id, { ...NO_ACCESS }];
     if (["set_general","set_branches","set_product_cats"].includes(id)) return [id, { ...VIEW_ONLY }];
     if (["hr_payroll","crm_campaigns"].includes(id))                   return [id, { ...VIEW_ONLY }];
+    if (SHIFT_SUB.includes(id))                                        return [id, { ...FULL }];
     if (id.startsWith("col_"))                                         return [id, { ...FULL }];
     return [id, { ...FULL }];
   }));
@@ -156,6 +162,10 @@ function buildDefault(): Record<string, PermMatrix> {
     if (OVERVIEW_IDS.includes(id))                                     return [id, { ...VIEW_ONLY }];
     if (id.startsWith("set_"))                                         return [id, { ...NO_ACCESS }];
     if (["hr_employees","hr_payroll"].includes(id))                    return [id, { ...NO_ACCESS }];
+    // Staff: can view calendar & requests, cannot manage templates or send shifts
+    if (id === "hr_shifts_templates")                                  return [id, { ...NO_ACCESS }];
+    if (id === "hr_shifts_calendar")                                   return [id, { create: false, edit: false, view: true, sidebar: true }];
+    if (id === "hr_shifts_requests")                                   return [id, { create: false, edit: false, view: true, sidebar: true }];
     if (["inv_suppliers","crm_campaigns","crm_rewards"].includes(id))  return [id, { ...VIEW_ONLY }];
     if (["finance_invoices","finance_expenses"].includes(id))          return [id, { ...VIEW_ONLY }];
     if (id === "inv_po_prices")                                        return [id, { ...NO_ACCESS }];
@@ -168,6 +178,7 @@ function buildDefault(): Record<string, PermMatrix> {
     if (["dashboard","tasks"].includes(id))                            return [id, { ...VIEW_ONLY }];
     if (id.startsWith("set_"))                                         return [id, { ...NO_ACCESS }];
     if (["hr_payroll","hr_employees","hr_shifts"].includes(id))        return [id, { ...NO_ACCESS }];
+    if (SHIFT_SUB.includes(id))                                        return [id, { ...NO_ACCESS }];
     if (id === "inv_po_prices")                                        return [id, { ...NO_ACCESS }];
     if (["col_emp_salary","col_emp_verified","col_prod_price","col_prod_stk_val"].includes(id)) return [id, { ...NO_ACCESS }];
     if (id.startsWith("col_"))                                         return [id, { ...VIEW_ONLY }];
