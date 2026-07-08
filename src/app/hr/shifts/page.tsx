@@ -1222,12 +1222,13 @@ function MonthCalendar({
 // ─── RequestsTab ──────────────────────────────────────────────────────────────
 
 function RequestsTab({
-  requests, branchEmployees, shiftList, empViewId, onApprove, onReject,
+  requests, branchEmployees, shiftList, empViewId, onApprove, onReject, canEdit,
 }: {
   requests: ChangeRequest[];
   branchEmployees: typeof allEmployees;
   shiftList: Shift[];
   empViewId: string | null;
+  canEdit?: boolean;
   onApprove: (id: string) => void;
   onReject: (id: string, note: string) => void;
 }) {
@@ -1396,7 +1397,7 @@ function RequestsTab({
                       req.status === "pending" ? "bg-amber-100 text-amber-700" : req.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700")}>
                       {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
                     </span>
-                    {req.status === "pending" && !empViewId && (
+                    {req.status === "pending" && !empViewId && canEdit !== false && (
                       <div className="flex gap-2">
                         <button onClick={() => { setRejectId(req.id); setRejectNote(""); }}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
@@ -2192,7 +2193,7 @@ export default function ShiftsPage() {
                 <Bell size={14} />{pendingRequests} Request{pendingRequests !== 1 ? "s" : ""}
               </button>
             )}
-            {can("hr_shifts", "create") && (
+            {can("hr_shifts_templates", "create") && (
               <button onClick={() => setShiftModal({ mode: "add" })}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                 <Plus size={15} /> New Shift
@@ -2206,10 +2207,12 @@ export default function ShiftsPage() {
         {/* Main tabs */}
         <div className="flex items-center gap-1 mb-6 bg-white border border-slate-200 rounded-xl p-1 w-fit">
           {([
-            { id: "templates" as MainTab, label: "Shift Templates", icon: <Clock size={14} /> },
-            { id: "calendar" as MainTab, label: "Schedule Calendar", icon: <CalendarDays size={14} />, badge: pendingConfirmations },
-            { id: "requests" as MainTab, label: "Change Requests", icon: <ArrowLeftRight size={14} />, badge: pendingRequests },
-          ] as { id: MainTab; label: string; icon: React.ReactNode; badge?: number }[]).map((t) => (
+            { id: "templates" as MainTab, label: "Shift Templates",   icon: <Clock size={14} />,          permKey: "hr_shifts_templates" },
+            { id: "calendar"  as MainTab, label: "Schedule Calendar", icon: <CalendarDays size={14} />,   permKey: "hr_shifts_calendar",  badge: pendingConfirmations },
+            { id: "requests"  as MainTab, label: "Change Requests",   icon: <ArrowLeftRight size={14} />, permKey: "hr_shifts_requests",  badge: pendingRequests },
+          ] as { id: MainTab; label: string; icon: React.ReactNode; permKey: string; badge?: number }[])
+          .filter((t) => can(t.permKey, "view"))
+          .map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={cn("flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors relative",
                 tab === t.id ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100")}>
@@ -2248,12 +2251,12 @@ export default function ShiftsPage() {
                     assignedEmps={shiftEmpMap[s.id] ?? []}
                     patterns={branchPatterns}
                     todos={todosByShift[s.id] ?? []}
-                    onEdit={can("hr_shifts", "edit") ? (sh) => setShiftModal({ mode: "edit", data: sh }) : () => {}}
-                    onDelete={can("hr_shifts", "edit") ? handleDeleteShift : () => {}}
+                    onEdit={can("hr_shifts_templates", "edit") ? (sh) => setShiftModal({ mode: "edit", data: sh }) : () => {}}
+                    onDelete={can("hr_shifts_templates", "edit") ? handleDeleteShift : () => {}}
                     onTodoChange={handleTodoChange}
                   />
                 ))}
-                {can("hr_shifts", "create") && (
+                {can("hr_shifts_templates", "create") && (
                   <button onClick={() => setShiftModal({ mode: "add" })}
                     className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl p-5 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors min-h-[200px]">
                     <Plus size={22} />
@@ -2375,7 +2378,7 @@ export default function ShiftsPage() {
               </button>
 
               {/* Copy schedule dropdown */}
-              <div className="relative">
+              {can("hr_shifts_calendar", "edit") && <div className="relative">
                 <button
                   onClick={() => setShowCopyMenu((v) => !v)}
                   disabled={copying}
@@ -2406,7 +2409,7 @@ export default function ShiftsPage() {
                   </div>
                   </>
                 )}
-              </div>
+              </div>}
 
               {/* Dept filter (week view) */}
               {viewMode === "week" && (
@@ -2426,7 +2429,7 @@ export default function ShiftsPage() {
                   <AlertCircle size={14} className="shrink-0 text-slate-400" />
                   <span className="font-semibold">{draftCount}</span> draft assignment{draftCount !== 1 ? "s" : ""} — not yet visible to employees
                 </span>
-                {can("hr_shifts", "edit") && (
+                {can("hr_shifts_calendar", "create") && (
                   <button
                     onClick={handleSendToEmployees}
                     disabled={sending}
@@ -2449,7 +2452,7 @@ export default function ShiftsPage() {
                     {empViewId && <span className="ml-2 text-xs bg-amber-200 px-2 py-0.5 rounded-full">Use ✓ / ↕ buttons on amber-ringed shifts to confirm or request a change</span>}
                   </span>
                 </span>
-                {!empViewId && can("hr_shifts", "edit") && (
+                {!empViewId && can("hr_shifts_calendar", "create") && (
                   <button
                     onClick={handleResendToEmployees}
                     disabled={resending}
@@ -2502,12 +2505,12 @@ export default function ShiftsPage() {
                 empViewId={empViewId}
                 deptFilter={deptFilter}
                 onCellClick={(empId, date, currentShiftId, isOv, entry) => {
-                  if (empViewId || !can("hr_shifts", "edit")) return;
+                  if (empViewId || !can("hr_shifts_calendar", "edit")) return;
                   setCellModal({ empId, date, currentShiftId, isOverride: isOv, entry });
                 }}
                 onConfirm={handleConfirm}
                 onRequestChange={(empId, date, shiftId) => setReqChangeModal({ empId, date, currentShiftId: shiftId })}
-                onAddToDay={can("hr_shifts", "create") ? (date) => setDayAssignModal({ date }) : undefined}
+                onAddToDay={can("hr_shifts_calendar", "edit") ? (date) => setDayAssignModal({ date }) : undefined}
               />
             )}
 
@@ -2650,6 +2653,7 @@ export default function ShiftsPage() {
             branchEmployees={branchEmps}
             shiftList={shiftList}
             empViewId={empViewId}
+            canEdit={can("hr_shifts_requests", "edit")}
             onApprove={handleApproveRequest}
             onReject={handleRejectRequest}
           />
