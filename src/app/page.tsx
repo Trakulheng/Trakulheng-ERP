@@ -249,8 +249,8 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Pending shift confirmations — employee widget */}
-        {isEnabled(widgets, "pending_shifts") && (
+        {/* Pending shift confirmations — shown for any role that has pending shifts */}
+        {(isEnabled(widgets, "pending_shifts") || pendingShifts.length > 0) && (
           <PendingShiftsWidget initialShifts={pendingShifts} />
         )}
 
