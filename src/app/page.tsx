@@ -4,6 +4,7 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
+import { ShiftScheduleWidget } from "@/components/dashboard/ShiftScheduleWidget";
 import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CalendarOff, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
@@ -125,6 +126,38 @@ export default async function DashboardPage() {
     ? await prisma.shiftTemplate.findMany({ where: { id: { in: changeShiftIds } }, select: { id: true, name: true, code: true } })
     : [];
 
+  // Fetch shift schedule for next 3 days
+  const today = new Date().toISOString().split("T")[0];
+  const next3Dates = [0, 1, 2].map((i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    return d.toISOString().split("T")[0];
+  });
+  const scheduleRows = user?.employeeRecordId
+    ? await prisma.shiftAssignment.findMany({
+        where: { employeeId: user.employeeRecordId, date: { in: next3Dates } },
+        orderBy: { date: "asc" },
+      })
+    : [];
+  const scheduleTplIds = Array.from(new Set(scheduleRows.map((r) => r.shiftId).filter(Boolean))) as string[];
+  const scheduleTpls = scheduleTplIds.length > 0
+    ? await prisma.shiftTemplate.findMany({ where: { id: { in: scheduleTplIds } } })
+    : [];
+  const shiftSchedule = next3Dates.map((date) => {
+    const row = scheduleRows.find((r) => r.date === date);
+    const tpl = row?.shiftId ? scheduleTpls.find((t) => t.id === row.shiftId) : null;
+    return {
+      date,
+      shiftName:    tpl?.name      ?? null,
+      shiftCode:    tpl?.code      ?? null,
+      startTime:    tpl?.startTime ?? null,
+      endTime:      tpl?.endTime   ?? null,
+      color:        tpl?.color     ?? null,
+      dayOff:       row != null && row.shiftId == null,
+      noAssignment: row == null,
+    };
+  });
+
   const kpiIds    = ["revenue", "expenses", "inventory_value", "headcount"];
   const kpiWidgets = enabled.filter((w) => kpiIds.includes(w.id));
 
@@ -135,6 +168,64 @@ export default async function DashboardPage() {
     { id: "headcount",       title: "Headcount",         value: kpiData.headcount.toString(),          change: kpiData.headcountChange, subtitle: "employees",    icon: Users,    iconColor: "purple" as const },
   ].filter((c) => kpiWidgets.some((w) => w.id === c.id));
 
+  // Helper to render the recent_invoices + stock_alerts pair
+  function renderInvAlertsPair(key: string) {
+    const showInv = isEnabled(widgets, "recent_invoices");
+    const showStk = isEnabled(widgets, "stock_alerts");
+    if (!showInv && !showStk) return null;
+    return (
+      <div key={key} className={`grid grid-cols-1 gap-6 ${showInv && showStk ? "lg:grid-cols-2" : ""}`}>
+        {showInv && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 className="text-base font-semibold text-slate-900">Recent Invoices</h3>
+              <a href="/finance/invoices" className="text-sm text-blue-600 hover:underline">View all</a>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {recentInvoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{inv.id}</p>
+                    <p className="text-xs text-slate-500">{inv.customer}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-slate-800">{formatCurrency(inv.amount)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColors[inv.status]}`}>{inv.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {showStk && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-amber-500" />
+                <h3 className="text-base font-semibold text-slate-900">Stock Alerts</h3>
+              </div>
+              <a href="/inventory/products" className="text-sm text-blue-600 hover:underline">View all</a>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {lowStockProducts.map((prod) => (
+                <div key={prod.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{prod.name}</p>
+                    <p className="text-xs text-slate-500">{prod.id} • {prod.category}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-600">{prod.stock} units</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${stockColors[prod.status]}`}>{prod.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <Header
@@ -143,7 +234,7 @@ export default async function DashboardPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* KPI Cards — only render if there are any */}
+        {/* KPI Cards — always rendered as a group at top */}
         {kpiCards.length > 0 && (
           <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${
             kpiCards.length === 4 ? "lg:grid-cols-4" :
@@ -164,250 +255,200 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Revenue Chart */}
-        {isEnabled(widgets, "revenue_chart") && <RevenueChart />}
+        {/* Non-KPI widgets in the saved order from config */}
+        {(() => {
+          const rendered = new Set<string>();
+          const elements = enabled
+            .filter((w) => !kpiIds.includes(w.id))
+            .flatMap((w) => {
+              if (rendered.has(w.id)) return [];
+              rendered.add(w.id);
 
-        {/* Middle row: invoices + stock alerts */}
-        {(isEnabled(widgets, "recent_invoices") || isEnabled(widgets, "stock_alerts")) && (
-          <div className={`grid grid-cols-1 gap-6 ${
-            isEnabled(widgets, "recent_invoices") && isEnabled(widgets, "stock_alerts") ? "lg:grid-cols-2" : ""
-          }`}>
-            {isEnabled(widgets, "recent_invoices") && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                  <h3 className="text-base font-semibold text-slate-900">Recent Invoices</h3>
-                  <a href="/finance/invoices" className="text-sm text-blue-600 hover:underline">View all</a>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {recentInvoices.map((inv) => (
-                    <div key={inv.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{inv.id}</p>
-                        <p className="text-xs text-slate-500">{inv.customer}</p>
+              switch (w.id) {
+                case "revenue_chart":
+                  return [<RevenueChart key="revenue_chart" />];
+
+                case "recent_invoices":
+                case "stock_alerts": {
+                  rendered.add("recent_invoices");
+                  rendered.add("stock_alerts");
+                  const el = renderInvAlertsPair("inv_stk");
+                  return el ? [el] : [];
+                }
+
+                case "payroll":
+                  return [(
+                    <div key="payroll" className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                        <Clock size={16} className="text-blue-500" />
+                        <h3 className="text-base font-semibold text-slate-900">Upcoming Payroll</h3>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold text-slate-800">{formatCurrency(inv.amount)}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColors[inv.status]}`}>
-                          {inv.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {isEnabled(widgets, "stock_alerts") && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle size={16} className="text-amber-500" />
-                    <h3 className="text-base font-semibold text-slate-900">Stock Alerts</h3>
-                  </div>
-                  <a href="/inventory/products" className="text-sm text-blue-600 hover:underline">View all</a>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {lowStockProducts.map((prod) => (
-                    <div key={prod.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{prod.name}</p>
-                        <p className="text-xs text-slate-500">{prod.id} • {prod.category}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-slate-600">{prod.stock} units</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${stockColors[prod.status]}`}>
-                          {prod.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Payroll */}
-        {isEnabled(widgets, "payroll") && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
-              <Clock size={16} className="text-blue-500" />
-              <h3 className="text-base font-semibold text-slate-900">Upcoming Payroll</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Period</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Employees</th>
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Gross Pay</th>
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Net Pay</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {payrollRuns.slice(0, 3).map((run, i) => (
-                    <tr key={run.id} className={i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/50 hover:bg-slate-50"}>
-                      <td className="px-5 py-3 font-medium text-slate-800">{run.period}</td>
-                      <td className="px-5 py-3 text-slate-600">{run.employees}</td>
-                      <td className="px-5 py-3 text-right text-slate-800">{formatCurrency(run.grossPay)}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(run.netPay)}</td>
-                      <td className="px-5 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-                          run.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
-                        }`}>
-                          {run.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* My Tasks — shift todos for today's assigned shift */}
-        {isEnabled(widgets, "tasks") && (
-          <TodayTodosWidget employeeId={user?.employeeRecordId} />
-        )}
-
-        {/* Leave requests widget */}
-        {isEnabled(widgets, "leave_requests") && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <CalendarOff size={16} className="text-violet-500" />
-                <h3 className="text-base font-semibold text-slate-900">
-                  {(role === "admin" || role === "manager") && teamPendingLeave.length > 0
-                    ? `Leave Requests · ${teamPendingLeave.length} pending approval`
-                    : "My Leave Requests"}
-                </h3>
-              </div>
-              <a href="/hr/leave" className="text-sm text-blue-600 hover:underline">View all</a>
-            </div>
-
-            {/* Manager: pending team requests */}
-            {(role === "admin" || role === "manager") && teamPendingLeave.length > 0 && (
-              <div>
-                <p className="px-5 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Pending Approval</p>
-                <div className="divide-y divide-slate-50">
-                  {teamPendingLeave.map((lr) => (
-                    <div key={lr.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{lr.employee.name}</p>
-                        <p className="text-xs text-slate-500">{lr.type} · {lr.fromDate.toISOString().slice(0,10)} → {lr.toDate.toISOString().slice(0,10)} ({lr.days}d)</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">
-                          <Clock size={10} /> Pending
-                        </span>
-                        <a href="/hr/leave" className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium">Review</a>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-slate-50">
+                              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Period</th>
+                              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Employees</th>
+                              <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Gross Pay</th>
+                              <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Net Pay</th>
+                              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {payrollRuns.slice(0, 3).map((run, i) => (
+                              <tr key={run.id} className={i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/50 hover:bg-slate-50"}>
+                                <td className="px-5 py-3 font-medium text-slate-800">{run.period}</td>
+                                <td className="px-5 py-3 text-slate-600">{run.employees}</td>
+                                <td className="px-5 py-3 text-right text-slate-800">{formatCurrency(run.grossPay)}</td>
+                                <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(run.netPay)}</td>
+                                <td className="px-5 py-3">
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${run.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>{run.status}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
-                  ))}
-                </div>
-                {myLeaveRequests.length > 0 && <div className="border-t border-slate-100 mt-1" />}
-              </div>
-            )}
+                  )];
 
-            {/* Own leave requests */}
-            {myLeaveRequests.length > 0 ? (
-              <div>
-                {(role === "admin" || role === "manager") && teamPendingLeave.length > 0 && (
-                  <p className="px-5 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">My Requests</p>
-                )}
-                <div className="divide-y divide-slate-50">
-                  {myLeaveRequests.map((lr) => {
-                    const statusStyle =
-                      lr.status === "approved" ? "bg-emerald-100 text-emerald-700" :
-                      lr.status === "rejected"  ? "bg-red-100 text-red-700" :
-                      "bg-amber-100 text-amber-700";
-                    const StatusIcon = lr.status === "approved" ? CheckCircle2 : lr.status === "rejected" ? XCircle : Clock;
-                    return (
-                      <div key={lr.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">{lr.type}</p>
-                          <p className="text-xs text-slate-500">{lr.fromDate.toISOString().slice(0,10)} → {lr.toDate.toISOString().slice(0,10)} ({lr.days} day{lr.days !== 1 ? "s" : ""})</p>
+                case "tasks":
+                  return [<TodayTodosWidget key="tasks" employeeId={user?.employeeRecordId} />];
+
+                case "leave_requests":
+                  return [(
+                    <div key="leave_requests" className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <CalendarOff size={16} className="text-violet-500" />
+                          <h3 className="text-base font-semibold text-slate-900">
+                            {(role === "admin" || role === "manager") && teamPendingLeave.length > 0
+                              ? `Leave Requests · ${teamPendingLeave.length} pending approval`
+                              : "My Leave Requests"}
+                          </h3>
                         </div>
-                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusStyle}`}>
-                          <StatusIcon size={10} /> {lr.status}
-                        </span>
+                        <a href="/hr/leave" className="text-sm text-blue-600 hover:underline">View all</a>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (myLeaveRequests.length === 0 && (role !== "admin" && role !== "manager" || teamPendingLeave.length === 0)) ? (
-              <div className="px-5 py-8 text-center">
-                <CalendarOff size={24} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-sm text-slate-400">No leave requests yet.</p>
-                <a href="/hr/leave" className="mt-2 inline-block text-sm text-blue-600 hover:underline">Submit a request</a>
-              </div>
-            ) : null}
-          </div>
-        )}
-
-        {/* Shift Change Requests — manager/admin widget */}
-        {(role === "admin" || role === "manager") && isEnabled(widgets, "shift_change_requests") && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <ArrowLeftRight size={16} className="text-violet-500" />
-                <h3 className="text-base font-semibold text-slate-900">
-                  Shift Change Requests
-                  {pendingShiftChanges.length > 0 && (
-                    <span className="ml-2 text-sm font-normal text-amber-600">· {pendingShiftChanges.length} pending</span>
-                  )}
-                </h3>
-              </div>
-              <a href="/hr/shifts" className="text-sm text-blue-600 hover:underline">Review</a>
-            </div>
-            {pendingShiftChanges.length === 0 ? (
-              <div className="px-5 py-8 text-center">
-                <ArrowLeftRight size={24} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-sm text-slate-400">No pending shift change requests.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-50">
-                {pendingShiftChanges.map((req) => {
-                  const emp = changeEmps.find((e) => e.id === req.employeeId);
-                  const curShift = changeShifts.find((s) => s.id === req.currentShiftId);
-                  const reqShift = req.requestedShiftId ? changeShifts.find((s) => s.id === req.requestedShiftId) : null;
-                  return (
-                    <div key={req.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{emp?.name ?? "—"}</p>
-                        <p className="text-xs text-slate-500">
-                          {req.date} · {curShift?.name ?? "—"} → {req.requestedShiftId === null ? "Day Off" : reqShift?.name ?? "No preference"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">
-                          <Clock size={10} /> Pending
-                        </span>
-                        <a href="/hr/shifts" className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium">Review</a>
-                      </div>
+                      {(role === "admin" || role === "manager") && teamPendingLeave.length > 0 && (
+                        <div>
+                          <p className="px-5 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Pending Approval</p>
+                          <div className="divide-y divide-slate-50">
+                            {teamPendingLeave.map((lr) => (
+                              <div key={lr.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-800">{lr.employee.name}</p>
+                                  <p className="text-xs text-slate-500">{lr.type} · {lr.fromDate.toISOString().slice(0,10)} → {lr.toDate.toISOString().slice(0,10)} ({lr.days}d)</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700"><Clock size={10} /> Pending</span>
+                                  <a href="/hr/leave" className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium">Review</a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {myLeaveRequests.length > 0 && <div className="border-t border-slate-100 mt-1" />}
+                        </div>
+                      )}
+                      {myLeaveRequests.length > 0 ? (
+                        <div>
+                          {(role === "admin" || role === "manager") && teamPendingLeave.length > 0 && (
+                            <p className="px-5 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">My Requests</p>
+                          )}
+                          <div className="divide-y divide-slate-50">
+                            {myLeaveRequests.map((lr) => {
+                              const statusStyle = lr.status === "approved" ? "bg-emerald-100 text-emerald-700" : lr.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700";
+                              const StatusIcon = lr.status === "approved" ? CheckCircle2 : lr.status === "rejected" ? XCircle : Clock;
+                              return (
+                                <div key={lr.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-800">{lr.type}</p>
+                                    <p className="text-xs text-slate-500">{lr.fromDate.toISOString().slice(0,10)} → {lr.toDate.toISOString().slice(0,10)} ({lr.days} day{lr.days !== 1 ? "s" : ""})</p>
+                                  </div>
+                                  <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusStyle}`}><StatusIcon size={10} /> {lr.status}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (myLeaveRequests.length === 0 && (role !== "admin" && role !== "manager" || teamPendingLeave.length === 0)) ? (
+                        <div className="px-5 py-8 text-center">
+                          <CalendarOff size={24} className="mx-auto text-slate-300 mb-2" />
+                          <p className="text-sm text-slate-400">No leave requests yet.</p>
+                          <a href="/hr/leave" className="mt-2 inline-block text-sm text-blue-600 hover:underline">Submit a request</a>
+                        </div>
+                      ) : null}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+                  )];
 
-        {/* Pending shift confirmations — shown for any role that has pending shifts */}
-        {(isEnabled(widgets, "pending_shifts") || pendingShifts.length > 0) && (
-          <PendingShiftsWidget initialShifts={pendingShifts} />
-        )}
+                case "shift_change_requests":
+                  if (role !== "admin" && role !== "manager") return [];
+                  return [(
+                    <div key="shift_change_requests" className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <ArrowLeftRight size={16} className="text-violet-500" />
+                          <h3 className="text-base font-semibold text-slate-900">
+                            Shift Change Requests
+                            {pendingShiftChanges.length > 0 && (
+                              <span className="ml-2 text-sm font-normal text-amber-600">· {pendingShiftChanges.length} pending</span>
+                            )}
+                          </h3>
+                        </div>
+                        <a href="/hr/shifts" className="text-sm text-blue-600 hover:underline">Review</a>
+                      </div>
+                      {pendingShiftChanges.length === 0 ? (
+                        <div className="px-5 py-8 text-center">
+                          <ArrowLeftRight size={24} className="mx-auto text-slate-300 mb-2" />
+                          <p className="text-sm text-slate-400">No pending shift change requests.</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-50">
+                          {pendingShiftChanges.map((req) => {
+                            const emp = changeEmps.find((e) => e.id === req.employeeId);
+                            const curShift = changeShifts.find((s) => s.id === req.currentShiftId);
+                            const reqShift = req.requestedShiftId ? changeShifts.find((s) => s.id === req.requestedShiftId) : null;
+                            return (
+                              <div key={req.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-800">{emp?.name ?? "—"}</p>
+                                  <p className="text-xs text-slate-500">{req.date} · {curShift?.name ?? "—"} → {req.requestedShiftId === null ? "Day Off" : reqShift?.name ?? "No preference"}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700"><Clock size={10} /> Pending</span>
+                                  <a href="/hr/shifts" className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium">Review</a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )];
 
-        {/* Clock In / Out widget */}
-        {isEnabled(widgets, "clock_inout") && <ClockInOutWidget />}
+                case "pending_shifts":
+                  return [<PendingShiftsWidget key="pending_shifts" initialShifts={pendingShifts} />];
 
-        {/* Today's To-do List — staff widget */}
-        {isEnabled(widgets, "shift_todos") && (
-          <TodayTodosWidget employeeId={user?.employeeRecordId} />
-        )}
+                case "clock_inout":
+                  return [<ClockInOutWidget key="clock_inout" />];
+
+                case "shift_todos":
+                  return [<TodayTodosWidget key="shift_todos" employeeId={user?.employeeRecordId} />];
+
+                case "shift_schedule":
+                  return [<ShiftScheduleWidget key="shift_schedule" days={shiftSchedule} />];
+
+                default:
+                  return [];
+              }
+            });
+
+          // Show pending_shifts even if widget is disabled, when there are actual pending items
+          if (!rendered.has("pending_shifts") && pendingShifts.length > 0) {
+            elements.push(<PendingShiftsWidget key="pending_shifts_fallback" initialShifts={pendingShifts} />);
+          }
+
+          return elements;
+        })()}
 
         {/* Empty state */}
         {enabled.length === 0 && (
@@ -419,3 +460,4 @@ export default async function DashboardPage() {
     </div>
   );
 }
+

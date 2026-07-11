@@ -168,7 +168,10 @@ export function Sidebar() {
     const load = () =>
       fetch("/api/settings/role-permissions")
         .then((r) => r.ok ? r.json() : null)
-        .then((d) => { if (d?.permissions?.[me.role]) setPerms(d.permissions[me.role]); })
+        .then((d) => {
+          if (d?.permissions?.[me.role]) setPerms(d.permissions[me.role]);
+          if (d?.menuOrders?.[me.role]) setMe((prev) => prev ? { ...prev, menuOrder: d.menuOrders[me.role] } : prev);
+        })
         .catch(() => {});
     load();
     window.addEventListener("permissions-updated", load);
