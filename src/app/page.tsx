@@ -4,7 +4,7 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
-import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
+import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CalendarOff, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { getSessionUser } from "@/lib/auth";
@@ -267,17 +267,9 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Tasks — placeholder */}
+        {/* My Tasks — shift todos for today's assigned shift */}
         {isEnabled(widgets, "tasks") && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
-              <CheckSquare size={16} className="text-emerald-500" />
-              <h3 className="text-base font-semibold text-slate-900">My Tasks</h3>
-            </div>
-            <div className="px-5 py-8 text-center text-sm text-slate-400">
-              Task management coming soon.
-            </div>
-          </div>
+          <TodayTodosWidget employeeId={user?.employeeRecordId} />
         )}
 
         {/* Leave requests widget */}
