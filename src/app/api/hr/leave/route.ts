@@ -46,10 +46,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "type, fromDate, and toDate are required." }, { status: 400 });
   }
 
-  // If no employeeId sent, fall back to the session user's linked employee record
-  const rawId = employeeId || user.employeeRecordId;
+  // Resolve employee: body → session link → email match → name match (unique only)
+  let rawId: string | null = employeeId || user.employeeRecordId || null;
+  if (!rawId && user.email) {
+    const emp = await prisma.employee.findFirst({
+      where: { OR: [{ workEmail: user.email }, { personalEmail: user.email }] },
+      select: { id: true },
+    });
+    if (emp) rawId = emp.id;
+  }
+  if (!rawId && user.name) {
+    const matches = await prisma.employee.findMany({
+      where: { name: user.name },
+      select: { id: true },
+      take: 2,
+    });
+    if (matches.length === 1) rawId = matches[0].id;
+  }
   if (!rawId) {
-    return NextResponse.json({ error: "No employee record linked to your account. Contact HR." }, { status: 400 });
+    return NextResponse.json({ error: "No employee record found for your account. Contact HR to link your profile." }, { status: 400 });
   }
 
   // Resolve to prisma CUID: accept cuid directly, EMP-xxx code, or any string that needs lookup
