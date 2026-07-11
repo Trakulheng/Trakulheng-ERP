@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+const shiftSelect = { id: true, name: true, code: true, startTime: true, endTime: true, color: true };
+
 export async function GET() {
   try {
     const lists = await prisma.taskList.findMany({
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      include: { shift: { select: shiftSelect } },
     });
     return NextResponse.json(lists);
   } catch (err) {
@@ -15,7 +18,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, color } = await req.json();
+    const { name, color, shiftId } = await req.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
@@ -26,7 +29,9 @@ export async function POST(req: NextRequest) {
         name: name.trim(),
         color: color || "blue",
         order: (maxOrder._max.order ?? -1) + 1,
+        shiftId: shiftId || null,
       },
+      include: { shift: { select: shiftSelect } },
     });
 
     return NextResponse.json(list, { status: 201 });

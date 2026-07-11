@@ -414,12 +414,14 @@ model PayrollRun {
 }
 
 model TaskList {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   name      String
-  color     String   @default("blue")
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  color     String        @default("blue")
+  order     Int           @default(0)
+  shiftId   String?
+  shift     ShiftTemplate? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   tasks     Task[]
 }
 
@@ -513,16 +515,17 @@ model ShiftChangeRequest {
 }
 
 model ShiftTemplate {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   name         String
   code         String
   startTime    String
   endTime      String
-  breakMinutes Int      @default(60)
-  color        String   @default("blue")
+  breakMinutes Int        @default(60)
+  color        String     @default("blue")
   branchId     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  taskLists    TaskList[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@unique([code, branchId])
 }
