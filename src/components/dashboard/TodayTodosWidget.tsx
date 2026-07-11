@@ -247,10 +247,6 @@ export function TodayTodosWidget({
         <div className="px-5 py-8 text-center">
           <ClipboardList size={28} className="mx-auto text-slate-200 mb-2" />
           <p className="text-sm text-slate-400">No to-dos for today.</p>
-          <p className="text-xs text-slate-300 mt-1">
-            To-dos are added in{" "}
-            <Link href="/hr/shifts" className="text-blue-500 hover:underline">Shift Management</Link>.
-          </p>
         </div>
       ) : (
         <>
