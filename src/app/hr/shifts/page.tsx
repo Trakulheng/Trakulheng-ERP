@@ -37,6 +37,7 @@ import {
   GripVertical,
   Send,
   Loader2,
+  MapPin,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -884,6 +885,197 @@ function RequestChangeModal({
   );
 }
 
+// ─── EmployeeSelfRequestModal ─────────────────────────────────────────────────
+
+function EmployeeSelfRequestModal({
+  myEmployeeId, branchId, shiftList, monthlyUsed, monthlyLimit, onClose, onSubmit,
+}: {
+  myEmployeeId: string;
+  branchId: string;
+  shiftList: Shift[];
+  monthlyUsed: number;
+  monthlyLimit: number;
+  onClose: () => void;
+  onSubmit: (req: ChangeRequest) => void;
+}) {
+  const [assignments, setAssignments] = useState<CalendarEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [requestedShiftId, setRequestedShiftId] = useState<string | null>(null);
+  const [dayOff, setDayOff] = useState(false);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const future = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
+    fetch(`/api/hr/shifts/assignments?branchId=${branchId}&from=${today}&to=${future}&employeeId=${myEmployeeId}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: CalendarEntry[]) => {
+        setAssignments(data.filter((a) => a.confirmStatus === "confirmed" && !!a.shiftId));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [branchId, myEmployeeId]);
+
+  const selectedAssignment = assignments.find((a) => a.date === selectedDate);
+  const currentShift = selectedAssignment?.shiftId ? shiftList.find((s) => s.id === selectedAssignment.shiftId) : null;
+  const remaining = monthlyLimit - monthlyUsed;
+  const canSubmit = !!(selectedDate && selectedAssignment?.shiftId && reason.trim() && !submitting);
+
+  async function handleSubmit() {
+    if (!canSubmit || !selectedAssignment?.shiftId) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/hr/shifts/change-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: myEmployeeId,
+          date: selectedDate,
+          currentShiftId: selectedAssignment.shiftId,
+          requestedShiftId: dayOff ? null : requestedShiftId,
+          reason: reason.trim(),
+          branchId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to submit."); return; }
+      onSubmit(data);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Request Shift Change</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {remaining > 0
+                ? `${remaining} request${remaining !== 1 ? "s" : ""} remaining this month`
+                : "Monthly limit reached"}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100"><X size={16} className="text-slate-500" /></button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Monthly quota */}
+          <div className={cn("flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium",
+            remaining <= 0 ? "bg-red-50 text-red-700" : remaining === 1 ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-600")}>
+            <CalendarCheck size={12} />
+            {monthlyUsed} of {monthlyLimit} requests used this month
+          </div>
+
+          {/* Date selection */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-2">
+              Select shift date <span className="text-red-400">*</span>
+            </label>
+            {loading ? (
+              <div className="flex items-center gap-2 py-3 text-sm text-slate-400">
+                <Loader2 size={14} className="animate-spin" /> Loading your shifts…
+              </div>
+            ) : assignments.length === 0 ? (
+              <div className="flex items-center gap-2 px-3 py-3 bg-slate-50 rounded-xl text-sm text-slate-400">
+                <MapPin size={14} />
+                No confirmed shifts found in the next 60 days.
+              </div>
+            ) : (
+              <select
+                value={selectedDate ?? ""}
+                onChange={(e) => { setSelectedDate(e.target.value || null); setRequestedShiftId(null); setDayOff(false); }}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
+              >
+                <option value="">— Choose a date —</option>
+                {assignments.map((a) => {
+                  const s = shiftList.find((sh) => sh.id === a.shiftId);
+                  return (
+                    <option key={a.date} value={a.date}>
+                      {fmtLong(a.date)}{s ? ` · ${s.name} (${s.startTime}–${s.endTime})` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+          </div>
+
+          {/* Current shift display */}
+          {currentShift && (
+            <div className={cn("flex items-center gap-2 p-3 rounded-xl text-sm", shiftColorMap[currentShift.color].bg)}>
+              <ArrowLeftRight size={14} className="shrink-0" />
+              <span className="text-slate-600">
+                Current: <span className="font-semibold text-slate-800">{currentShift.name}</span>{" "}
+                {currentShift.startTime}–{currentShift.endTime}
+              </span>
+            </div>
+          )}
+
+          {/* Day off checkbox */}
+          {selectedDate && (
+            <label className={cn("flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors",
+              dayOff ? "border-red-300 bg-red-50" : "border-slate-200 hover:bg-slate-50")}>
+              <input type="checkbox" checked={dayOff} onChange={(e) => { setDayOff(e.target.checked); if (e.target.checked) setRequestedShiftId(null); }} className="w-4 h-4 rounded accent-red-500" />
+              <span className="text-sm font-medium text-slate-700">Request Day Off</span>
+            </label>
+          )}
+
+          {/* Shift selection */}
+          {selectedDate && !dayOff && (
+            <div>
+              <p className="text-xs font-medium text-slate-600 mb-2">Preferred shift (optional)</p>
+              <div className="space-y-2">
+                {shiftList.filter((s) => s.id !== selectedAssignment?.shiftId).map((s) => {
+                  const c = shiftColorMap[s.color];
+                  return (
+                    <label key={s.id} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors",
+                      requestedShiftId === s.id ? `${c.bg} ${c.border} border` : "border-slate-200 hover:bg-slate-50")}>
+                      <input type="radio" name="reqShift" value={s.id} checked={requestedShiftId === s.id} onChange={() => setRequestedShiftId(s.id)} className="sr-only" />
+                      <span className={cn("w-3 h-3 rounded-full", c.dot)} />
+                      <span className="text-sm font-medium text-slate-800 flex-1">{s.name}</span>
+                      <span className="text-xs text-slate-400 font-mono">{s.startTime}–{s.endTime}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Reason */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Reason <span className="text-red-400">*</span></label>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Explain why you need this change…" />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">{error}</div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+          <button
+            disabled={!canSubmit || remaining <= 0}
+            onClick={handleSubmit}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {submitting ? "Submitting…" : "Submit Request"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── WeekCalendar ─────────────────────────────────────────────────────────────
 
 function WeekCalendar({
@@ -1233,20 +1425,25 @@ function MonthCalendar({
 
 function RequestsTab({
   requests, branchEmployees, shiftList, empViewId, onApprove, onReject, canEdit,
+  onNewRequest, monthlyUsed, monthlyLimit,
 }: {
   requests: ChangeRequest[];
-  branchEmployees: typeof allEmployees;
+  branchEmployees: Employee[];
   shiftList: Shift[];
   empViewId: string | null;
   canEdit?: boolean;
-  onApprove: (id: string) => void;
+  onApprove: (id: string, onHoursWarning: (empName: string, hours: number) => void) => void;
   onReject: (id: string, note: string) => void;
+  onNewRequest?: () => void;
+  monthlyUsed?: number;
+  monthlyLimit?: number;
 }) {
   const [filter, setFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"newest" | "oldest" | "shift_date">("newest");
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");
+  const [hoursAlert, setHoursAlert] = useState<{ empName: string; hours: number } | null>(null);
 
   const counts = {
     pending:  requests.filter((r) => r.status === "pending").length,
@@ -1284,6 +1481,23 @@ function RequestsTab({
 
   return (
     <div className="space-y-4">
+      {/* 40h hours alert banner */}
+      {hoursAlert && (
+        <div className="flex items-start justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={15} className="text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">{hoursAlert.empName}</span> will work{" "}
+              <span className="font-semibold">{hoursAlert.hours}h</span> this week — over the 40h limit.
+              The shift change was approved.
+            </p>
+          </div>
+          <button onClick={() => setHoursAlert(null)} className="text-amber-500 hover:text-amber-700 shrink-0">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard label="Pending Review" value={counts.pending} icon={AlertCircle} color="amber" sub="Awaiting decision" />
@@ -1292,7 +1506,7 @@ function RequestsTab({
         <KpiCard label="Avg Response Time" value={avgResponseDays !== null ? `${avgResponseDays}d` : "—"} icon={Timer} color="blue" sub="Days to resolve" />
       </div>
 
-      {/* Search + sort */}
+      {/* Search + sort + new request */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1306,6 +1520,25 @@ function RequestsTab({
           <option value="oldest">Oldest first</option>
           <option value="shift_date">By shift date</option>
         </select>
+        {onNewRequest && (
+          <div className="flex items-center gap-2">
+            {monthlyLimit !== undefined && monthlyUsed !== undefined && (
+              <span className={cn("text-xs px-2.5 py-1.5 rounded-lg border font-medium",
+                monthlyUsed >= monthlyLimit
+                  ? "bg-red-50 text-red-600 border-red-200"
+                  : "bg-slate-50 text-slate-500 border-slate-200")}>
+                {monthlyUsed}/{monthlyLimit} this month
+              </span>
+            )}
+            <button
+              onClick={onNewRequest}
+              disabled={monthlyLimit !== undefined && monthlyUsed !== undefined && monthlyUsed >= monthlyLimit}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={14} /> New Request
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filter pills */}
@@ -1413,7 +1646,7 @@ function RequestsTab({
                           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
                           <XCircle size={11} /> Reject
                         </button>
-                        <button onClick={() => onApprove(req.id)}
+                        <button onClick={() => onApprove(req.id, (empName, hours) => setHoursAlert({ empName, hours }))}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
                           <CheckCircle2 size={11} /> Approve
                         </button>
@@ -1783,7 +2016,7 @@ export default function ShiftsPage() {
   const [shiftModal, setShiftModal] = useState<{ mode: "add" | "edit"; data?: Shift } | null>(null);
   const [cellModal, setCellModal] = useState<{ empId: string; date: string; currentShiftId: string | null; isOverride: boolean; entry?: CalendarEntry } | null>(null);
   const [reqChangeModal, setReqChangeModal] = useState<{ empId: string; date: string; currentShiftId: string } | null>(null);
-  const [empViewId, setEmpViewId] = useState<string | null>(null);
+  const [empViewId] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCopyMenu, setShowCopyMenu] = useState(false);
   const [copying, setCopying] = useState(false);
@@ -1791,6 +2024,9 @@ export default function ShiftsPage() {
   const [resending, setResending] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
+  const [me, setMe] = useState<{ id: string; role: string; employeePrismaId?: string | null } | null>(null);
+  const [monthlyLimit, setMonthlyLimit] = useState(2);
+  const [selfReqModal, setSelfReqModal] = useState(false);
 
   const branchPatterns: EmployeeShift[] = [];
   const departments = useMemo(() => Array.from(new Set(branchEmps.map((e) => e.department))).sort(), [branchEmps]);
@@ -1798,6 +2034,13 @@ export default function ShiftsPage() {
   const pendingConfirmations = overrides.filter((o) => o.branchId === activeBranch?.id && o.confirmStatus === "pending").length;
   const draftCount = overrides.filter((o) => o.branchId === activeBranch?.id && o.confirmStatus === "draft").length;
   const pendingRequests = requests.filter((r) => r.status === "pending").length;
+
+  const isStaff = me && !["admin", "manager"].includes(me.role);
+  const myEmpId = me?.employeePrismaId ?? null;
+  const thisMonthStr = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  const monthlyUsed = myEmpId
+    ? requests.filter((r) => r.employeeId === myEmpId && ["pending", "approved"].includes(r.status) && r.createdAt.startsWith(thisMonthStr)).length
+    : 0;
 
   // Shift → employees mapping for template tab
   const shiftEmpMap = useMemo(() => {
@@ -1864,6 +2107,26 @@ export default function ShiftsPage() {
         .catch(() => {});
     });
   }, [shiftList.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load current user identity
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setMe({ id: d.id, role: d.role, employeePrismaId: d.employeePrismaId }); })
+      .catch(() => {});
+  }, []);
+
+  // Load monthly limit from settings
+  useEffect(() => {
+    fetch("/api/settings/general")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d?.shifts?.maxChangeRequestsPerMonth != null) {
+          setMonthlyLimit(d.shifts.maxChangeRequestsPerMonth);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const prevWeek = () => setMonday((d) => addDays(d, -7));
   const nextWeek = () => setMonday((d) => addDays(d, 7));
@@ -2086,7 +2349,7 @@ export default function ShiftsPage() {
     } catch { /* keep optimistic */ }
   };
 
-  const handleApproveRequest = async (id: string) => {
+  const handleApproveRequest = async (id: string, onHoursWarning: (empName: string, hours: number) => void) => {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
     setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" as const, resolvedAt: new Date().toISOString() } : r));
@@ -2110,8 +2373,12 @@ export default function ShiftsPage() {
       body: JSON.stringify({ status: "approved" }),
     });
     if (res.ok) {
-      const saved: ChangeRequest = await res.json();
+      const saved = await res.json();
       setRequests((prev) => prev.map((r) => r.id === id ? saved : r));
+      if (saved.weeklyHoursWarning && saved.weeklyHoursTotal != null) {
+        const emp = branchEmps.find((e) => e.id === req.employeeId);
+        onHoursWarning(emp?.name ?? "Employee", saved.weeklyHoursTotal);
+      }
     }
     // Save the assignment to DB so it persists across reloads
     const ar = await fetch("/api/hr/shifts/assignments", {
@@ -2666,6 +2933,9 @@ export default function ShiftsPage() {
             canEdit={can("hr_shifts_requests", "edit")}
             onApprove={handleApproveRequest}
             onReject={handleRejectRequest}
+            onNewRequest={myEmpId && activeBranch ? () => setSelfReqModal(true) : undefined}
+            monthlyUsed={monthlyUsed}
+            monthlyLimit={monthlyLimit}
           />
         )}
       </main>
@@ -2696,6 +2966,20 @@ export default function ShiftsPage() {
             const saved = res.ok ? await res.json() : req;
             setRequests((prev) => [saved, ...prev]);
             setReqChangeModal(null);
+          }}
+        />
+      )}
+      {selfReqModal && myEmpId && activeBranch && (
+        <EmployeeSelfRequestModal
+          myEmployeeId={myEmpId}
+          branchId={activeBranch.id}
+          shiftList={shiftList}
+          monthlyUsed={monthlyUsed}
+          monthlyLimit={monthlyLimit}
+          onClose={() => setSelfReqModal(false)}
+          onSubmit={(saved) => {
+            setRequests((prev) => [saved, ...prev]);
+            setSelfReqModal(false);
           }}
         />
       )}

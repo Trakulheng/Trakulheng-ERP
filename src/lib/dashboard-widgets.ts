@@ -25,15 +25,16 @@ export const ALL_WIDGETS: WidgetDef[] = [
   { id: "leave_requests",  label: "Leave Requests",      description: "Pending leave requests to review",              type: "list",  size: "md" },
   { id: "shift_todos",     label: "Today's To-do List",  description: "Shift to-do tasks for today (staff view)",      type: "list",  size: "md" },
   { id: "clock_inout",     label: "Clock In / Out",      description: "GPS-based clock-in and clock-out widget",       type: "list",  size: "md" },
-  { id: "pending_shifts",  label: "Pending Shift Confirmations", description: "Shift assignments waiting for your confirmation", type: "list", size: "md" },
+  { id: "pending_shifts",         label: "Pending Shift Confirmations",  description: "Shift assignments waiting for your confirmation",    type: "list", size: "md" },
+  { id: "shift_change_requests", label: "Shift Change Requests",        description: "Pending employee shift change requests for review",  type: "list", size: "md" },
 ];
 
 const mkDefault = (ids: string[]): WidgetConfig[] =>
   ids.map((id, i) => ({ id, enabled: true, order: i }));
 
 export const DEFAULT_WIDGETS: Record<string, WidgetConfig[]> = {
-  admin:   mkDefault(["pending_shifts","revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","payroll","tasks","leave_requests"]),
-  manager: mkDefault(["pending_shifts","clock_inout","revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","tasks","leave_requests"]),
+  admin:   mkDefault(["pending_shifts","revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","payroll","tasks","leave_requests","shift_change_requests"]),
+  manager: mkDefault(["pending_shifts","clock_inout","revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","tasks","leave_requests","shift_change_requests"]),
   staff:   mkDefault(["pending_shifts","clock_inout","shift_todos","leave_requests","inventory_value","stock_alerts","tasks"]),
   viewer:  mkDefault(["revenue","expenses","inventory_value","tasks"]),
 };

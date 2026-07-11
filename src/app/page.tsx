@@ -4,7 +4,7 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
-import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff, CheckCircle2, XCircle } from "lucide-react";
+import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CheckSquare, CalendarOff, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { getSessionUser } from "@/lib/auth";
@@ -102,6 +102,27 @@ export default async function DashboardPage() {
         take: 5,
         include: { employee: { select: { name: true, employeeId: true } } },
       })
+    : [];
+
+  // For managers/admins: fetch pending shift change requests
+  const pendingShiftChanges = (role === "admin" || role === "manager")
+    ? await prisma.shiftChangeRequest.findMany({
+        where: { status: "pending" },
+        orderBy: { createdAt: "asc" },
+        take: 5,
+      })
+    : [];
+
+  const changeEmpIds = Array.from(new Set(pendingShiftChanges.map((r) => r.employeeId)));
+  const changeEmps = changeEmpIds.length > 0
+    ? await prisma.employee.findMany({ where: { id: { in: changeEmpIds } }, select: { id: true, name: true, employeeId: true } })
+    : [];
+  const changeShiftIds = Array.from(new Set([
+    ...pendingShiftChanges.map((r) => r.currentShiftId),
+    ...pendingShiftChanges.map((r) => r.requestedShiftId).filter(Boolean) as string[],
+  ]));
+  const changeShifts = changeShiftIds.length > 0
+    ? await prisma.shiftTemplate.findMany({ where: { id: { in: changeShiftIds } }, select: { id: true, name: true, code: true } })
     : [];
 
   const kpiIds    = ["revenue", "expenses", "inventory_value", "headcount"];
@@ -332,6 +353,54 @@ export default async function DashboardPage() {
                 <a href="/hr/leave" className="mt-2 inline-block text-sm text-blue-600 hover:underline">Submit a request</a>
               </div>
             ) : null}
+          </div>
+        )}
+
+        {/* Shift Change Requests — manager/admin widget */}
+        {(role === "admin" || role === "manager") && isEnabled(widgets, "shift_change_requests") && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ArrowLeftRight size={16} className="text-violet-500" />
+                <h3 className="text-base font-semibold text-slate-900">
+                  Shift Change Requests
+                  {pendingShiftChanges.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-amber-600">· {pendingShiftChanges.length} pending</span>
+                  )}
+                </h3>
+              </div>
+              <a href="/hr/shifts" className="text-sm text-blue-600 hover:underline">Review</a>
+            </div>
+            {pendingShiftChanges.length === 0 ? (
+              <div className="px-5 py-8 text-center">
+                <ArrowLeftRight size={24} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-sm text-slate-400">No pending shift change requests.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {pendingShiftChanges.map((req) => {
+                  const emp = changeEmps.find((e) => e.id === req.employeeId);
+                  const curShift = changeShifts.find((s) => s.id === req.currentShiftId);
+                  const reqShift = req.requestedShiftId ? changeShifts.find((s) => s.id === req.requestedShiftId) : null;
+                  return (
+                    <div key={req.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">{emp?.name ?? "—"}</p>
+                        <p className="text-xs text-slate-500">
+                          {req.date} · {curShift?.name ?? "—"} → {req.requestedShiftId === null ? "Day Off" : reqShift?.name ?? "No preference"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">
+                          <Clock size={10} /> Pending
+                        </span>
+                        <a href="/hr/shifts" className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium">Review</a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

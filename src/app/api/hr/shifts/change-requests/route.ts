@@ -8,9 +8,13 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const branchId = searchParams.get("branchId");
+  const employeeId = searchParams.get("employeeId");
 
   const requests = await prisma.shiftChangeRequest.findMany({
-    where: branchId ? { branchId } : {},
+    where: {
+      ...(branchId ? { branchId } : {}),
+      ...(employeeId ? { employeeId } : {}),
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -40,6 +44,37 @@ export async function POST(req: Request) {
   if (!employeeId || !date || !currentShiftId || !reason?.trim())
     return NextResponse.json({ error: "employeeId, date, currentShiftId, and reason are required." }, { status: 400 });
 
+  // Read monthly limit from settings (default 2)
+  let maxPerMonth = 2;
+  try {
+    const setting = await prisma.generalSetting.findUnique({ where: { id: "singleton" } });
+    const data = setting?.data as Record<string, unknown> | null;
+    const shifts = data?.shifts as Record<string, unknown> | null;
+    if (typeof shifts?.maxChangeRequestsPerMonth === "number") {
+      maxPerMonth = shifts.maxChangeRequestsPerMonth;
+    }
+  } catch { /* keep default */ }
+
+  // Count this employee's requests this calendar month
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  const thisMonthCount = await prisma.shiftChangeRequest.count({
+    where: {
+      employeeId,
+      status: { in: ["pending", "approved"] },
+      createdAt: { gte: monthStart, lte: monthEnd },
+    },
+  });
+
+  if (thisMonthCount >= maxPerMonth) {
+    return NextResponse.json(
+      { error: `Monthly limit reached. You may only submit ${maxPerMonth} change request${maxPerMonth !== 1 ? "s" : ""} per month.`, limitReached: true },
+      { status: 429 }
+    );
+  }
+
   const record = await prisma.shiftChangeRequest.create({
     data: {
       employeeId,
@@ -62,5 +97,6 @@ export async function POST(req: Request) {
     status:           record.status,
     createdAt:        record.createdAt.toISOString(),
     branchId:         record.branchId ?? undefined,
+    remaining:        maxPerMonth - thisMonthCount - 1,
   }, { status: 201 });
 }

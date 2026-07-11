@@ -162,6 +162,7 @@ export default function GeneralSettingsPage() {
   const [invoice, setInvoice] = useState(initialInvoice);
   const [social, setSocial] = useState(initialSocial);
   const [attendance, setAttendance] = useState({ lateWarningMinutes: 15, clockGpsRadiusMeters: 200 });
+  const [shifts, setShifts] = useState({ maxChangeRequestsPerMonth: 2 });
   const [branding, setBranding] = useState({ appName: "Trakulheng", appSubtitle: "Enterprise System", logoBase64: null as string | null });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -179,6 +180,7 @@ export default function GeneralSettingsPage() {
         if (d.system)     setSettings((s) => ({ ...s, ...d.system }));
         if (d.social)     setSocial(d.social);
         if (d.attendance) setAttendance((a) => ({ ...a, ...d.attendance }));
+        if (d.shifts)     setShifts((s) => ({ ...s, ...d.shifts }));
         if (d.branding)   setBranding((b) => ({ ...b, ...d.branding }));
       })
       .catch(() => {})
@@ -225,6 +227,7 @@ export default function GeneralSettingsPage() {
         },
         social,
         attendance,
+        shifts,
       };
       const res = await fetch("/api/settings/general", {
         method: "POST",
@@ -813,6 +816,27 @@ export default function GeneralSettingsPage() {
                 type="number" min={50} max={5000}
                 value={attendance.clockGpsRadiusMeters}
                 onChange={(e) => setAttendance((a) => ({ ...a, clockGpsRadiusMeters: Math.max(50, parseInt(e.target.value) || 200) }))}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* ── Shift Management Settings ── */}
+        <SectionCard
+          icon={Sliders}
+          title={t("Shift Management")}
+          subtitle={t("Controls for employee shift change requests")}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <Field
+              label={t("Max Shift Change Requests per Month")}
+              hint={t("How many shift change requests each employee can submit per calendar month")}
+            >
+              <input
+                type="number" min={0} max={20}
+                value={shifts.maxChangeRequestsPerMonth}
+                onChange={(e) => setShifts((s) => ({ ...s, maxChangeRequestsPerMonth: Math.max(0, parseInt(e.target.value) || 0) }))}
                 className={inputCls}
               />
             </Field>

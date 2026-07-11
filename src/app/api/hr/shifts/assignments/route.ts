@@ -20,15 +20,17 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const branchId = searchParams.get("branchId");
-  const from     = searchParams.get("from");
-  const to       = searchParams.get("to");
+  const branchId   = searchParams.get("branchId");
+  const from       = searchParams.get("from");
+  const to         = searchParams.get("to");
+  const employeeId = searchParams.get("employeeId");
 
   if (!branchId) return NextResponse.json({ error: "branchId required." }, { status: 400 });
 
   const assignments = await prisma.shiftAssignment.findMany({
     where: {
       branchId,
+      ...(employeeId ? { employeeId } : {}),
       ...(from && to ? { date: { gte: from, lte: to } } : {}),
     },
     orderBy: { date: "asc" },
