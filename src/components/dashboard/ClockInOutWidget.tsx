@@ -94,8 +94,22 @@ export function ClockInOutWidget() {
   const dist = (gps && me?.branch) ? haversineMeters(gps.lat, gps.lng, me.branch.lat, me.branch.lng) : null;
   const withinRadius = dist !== null && dist <= radius;
 
+  const record = me?.record;
+  const status = record?.status ?? "not-yet";
+  const clocked_in  = status === "clocked-in";
+  const completed   = status === "completed";
+
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const isLate = me?.shift ? nowMin > timeToMin(me.shift.startTime) + (me.settings.lateWarningMinutes ?? 15) : false;
+
+  const tooEarlyToClockIn = !!(me?.shift && !clocked_in && !completed
+    && nowMin < timeToMin(me.shift.startTime) - 5);
+  const tooEarlyToClockOut = !!(me?.shift && clocked_in
+    && nowMin < timeToMin(me.shift.endTime));
+
+  function fmtMinAsTime(m: number) {
+    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  }
 
   async function clockIn() {
     if (!gps) return;
@@ -128,11 +142,6 @@ export function ClockInOutWidget() {
     } catch { setActionError("Network error."); }
     finally { setActionLoading(false); }
   }
-
-  const record = me?.record;
-  const status = record?.status ?? "not-yet";
-  const clocked_in  = status === "clocked-in";
-  const completed   = status === "completed";
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -245,6 +254,22 @@ export function ClockInOutWidget() {
                 </div>
               )}
 
+              {/* Too early to clock in */}
+              {tooEarlyToClockIn && me?.shift && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                  <AlertTriangle size={13} className="shrink-0" />
+                  Clock-in opens at {fmtMinAsTime(timeToMin(me.shift.startTime) - 5)} (5 min before shift).
+                </div>
+              )}
+
+              {/* Too early to clock out */}
+              {tooEarlyToClockOut && me?.shift && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                  <AlertTriangle size={13} className="shrink-0" />
+                  Clock-out available from {me.shift.endTime}.
+                </div>
+              )}
+
               {/* Late warning */}
               {!clocked_in && isLate && gpsStatus === "ready" && (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
@@ -262,7 +287,7 @@ export function ClockInOutWidget() {
                 !clocked_in ? (
                   <button
                     onClick={clockIn}
-                    disabled={actionLoading || !withinRadius}
+                    disabled={actionLoading || !withinRadius || tooEarlyToClockIn}
                     className={cn(
                       "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors",
                       isLate
@@ -276,7 +301,7 @@ export function ClockInOutWidget() {
                 ) : (
                   <button
                     onClick={clockOut}
-                    disabled={actionLoading || !withinRadius}
+                    disabled={actionLoading || !withinRadius || tooEarlyToClockOut}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 transition-colors"
                   >
                     {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}

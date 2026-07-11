@@ -40,6 +40,21 @@ export async function POST(req: NextRequest) {
     ? Math.round(haversineMeters(lat, lng, branch.lat, branch.lng))
     : null;
 
+  // Enforce: cannot clock out before shift end time
+  if (existing.shiftId) {
+    const shift = await prisma.shiftTemplate.findUnique({ where: { id: existing.shiftId } });
+    if (shift) {
+      const shiftEnd  = timeToMinutes(shift.endTime);
+      const clockMin  = timeToMinutes(clockOutTime);
+      if (clockMin < shiftEnd) {
+        return NextResponse.json(
+          { error: `Cannot clock out before shift ends at ${shift.endTime}.` },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   // Calculate total worked minutes
   let totalMinutes: number | null = null;
   let overtimeMinutes: number | null = null;

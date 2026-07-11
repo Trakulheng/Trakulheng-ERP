@@ -189,14 +189,28 @@ export default function ClockPage() {
   const radius    = branch?.radiusMeters ?? me?.settings.clockGpsRadiusMeters ?? 200;
   const withinRadius = dist !== null && dist <= radius;
 
-  // Compute live late indicator for clock-in button
-  const isCurrentlyLate = shift
-    ? now.getHours() * 60 + now.getMinutes() > timeToMin(shift.startTime) + grace
-    : false;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
 
   const clockedIn  = record?.clockInTime != null && record?.clockOutTime == null;
   const completed  = record?.status === "completed";
   const shiftClr   = shiftColor[shift?.color ?? "blue"] ?? shiftColor.blue;
+
+  // Compute live late indicator for clock-in button
+  const isCurrentlyLate = shift
+    ? nowMin > timeToMin(shift.startTime) + grace
+    : false;
+
+  // Too early to clock in (before shift start minus 5 min)
+  const tooEarlyToClockIn = !!(shift && !clockedIn && !completed
+    && nowMin < timeToMin(shift.startTime) - 5);
+
+  // Too early to clock out (before shift end)
+  const tooEarlyToClockOut = !!(shift && clockedIn
+    && nowMin < timeToMin(shift.endTime));
+
+  function fmtMinAsTime(m: number) {
+    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  }
 
   // ─── Loading / error states ──────────────────────────────────────────────────
 
@@ -394,6 +408,19 @@ export default function ClockPage() {
             </div>
           )}
 
+          {/* Too early to clock in */}
+          {tooEarlyToClockIn && shift && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-sm text-amber-700">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Too early to clock in</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Your shift starts at {shift.startTime}. Clock-in opens at {fmtMinAsTime(timeToMin(shift.startTime) - 5)}.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Late warning banner (before clocking in) */}
           {!record?.clockInTime && isCurrentlyLate && shift && (
             <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-sm text-red-700">
@@ -403,6 +430,19 @@ export default function ClockPage() {
                 <p className="text-xs text-red-500 mt-0.5">
                   Your shift started at {shift.startTime}. Grace period is {grace} minutes.
                   Clocking in now will mark you as late.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Too early to clock out */}
+          {tooEarlyToClockOut && shift && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-sm text-amber-700">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Shift not finished yet</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Clock-out is available from {shift.endTime}.
                 </p>
               </div>
             </div>
@@ -430,7 +470,7 @@ export default function ClockPage() {
           ) : clockedIn ? (
             <button
               onClick={() => handleClock("out")}
-              disabled={submitting || gpsStatus === "fetching"}
+              disabled={submitting || gpsStatus === "fetching" || tooEarlyToClockOut}
               className="w-full flex items-center justify-center gap-3 py-5 rounded-2xl bg-red-500 hover:bg-red-600 active:bg-red-700 disabled:opacity-50 text-white font-bold text-lg transition-colors shadow-lg shadow-red-100"
             >
               {submitting ? <Loader2 size={22} className="animate-spin" /> : <LogOut size={22} />}
@@ -440,7 +480,7 @@ export default function ClockPage() {
             <>
               <button
                 onClick={() => handleClock("in")}
-                disabled={submitting || gpsStatus === "fetching" || (branchGpsSet && (gpsStatus !== "ready" || !withinRadius))}
+                disabled={submitting || gpsStatus === "fetching" || tooEarlyToClockIn || (branchGpsSet && (gpsStatus !== "ready" || !withinRadius))}
                 className={cn(
                   "w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-bold text-lg transition-colors shadow-lg disabled:opacity-40 text-white",
                   isCurrentlyLate
