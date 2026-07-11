@@ -43,7 +43,7 @@ function permAllowed(permKey: string | undefined, p: PermMatrix): boolean {
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Tasks", href: "/tasks", icon: CheckSquare },
+  { label: "Tasks", href: "/tasks", icon: CheckSquare, roles: ["admin", "manager"] },
   {
     label: "Finance", icon: DollarSign,
     children: [
@@ -188,7 +188,11 @@ export function Sidebar() {
   const visibleNav = useMemo(() => {
     if (!me?.role || me.role === "admin" || Object.keys(perms).length === 0) return sortedNavItems;
     return sortedNavItems.map((item) => {
-      if (!(item as any).children) return item;
+      if (!(item as any).children) {
+        const allowedRoles = (item as any).roles as string[] | undefined;
+        if (allowedRoles && !allowedRoles.includes(me.role)) return null;
+        return item;
+      }
       const children: any[] = (item as any).children;
       const permKeyedChildren = children.filter((c) => c.permKey);
       if (permKeyedChildren.length === 0) return item; // no permKey children — always show
