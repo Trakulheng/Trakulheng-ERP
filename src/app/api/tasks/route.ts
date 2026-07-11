@@ -15,8 +15,7 @@ export async function GET(req: NextRequest) {
         ...(listId === "null" ? { taskListId: null } : listId ? { taskListId: listId } : {}),
       },
       orderBy: [
-        { dueDate: "asc" },
-        { dueTime: "asc" },
+        { order: "asc" },
         { createdAt: "desc" },
       ],
     });

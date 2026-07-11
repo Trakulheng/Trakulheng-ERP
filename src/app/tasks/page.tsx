@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/Header";
 import {
   Plus, Loader2, Trash2, Pencil, X, CheckCircle2, Clock, CircleDot,
   XCircle, CalendarDays, Timer, User, Link2, ChevronDown, AlertTriangle,
-  ListTodo, ChevronRight, FolderOpen, Search, Camera,
+  ListTodo, ChevronRight, FolderOpen, Search, Camera, GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
@@ -27,6 +27,7 @@ interface Task {
   shiftLabel?: string | null;
   taskListId?: string | null;
   requiresPhoto: boolean;
+  order: number;
   createdAt: string;
 }
 
@@ -177,17 +178,35 @@ function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, s
 
 function TaskCard({
   task, onStatusUpdate, onEdit, onDelete,
+  isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd,
 }: {
   task: Task;
   onStatusUpdate: (id: string, status: Status) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: () => void;
+  onDrop?: () => void;
+  onDragEnd?: () => void;
 }) {
   const p = PRIORITY_CONFIG[task.priority];
   const isDone = task.status === "done" || task.status === "cancelled";
 
   return (
-    <div className={cn("bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-opacity", isDone && "opacity-60")}>
+    <div
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); onDragStart?.(); }}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDragOver?.(); }}
+      onDrop={(e) => { e.preventDefault(); onDrop?.(); }}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "bg-white rounded-xl border p-4 shadow-sm transition-all",
+        isDone && "opacity-60",
+        isDragging ? "opacity-30 border-slate-200" : isDragOver ? "border-blue-400 ring-2 ring-blue-200 shadow-md" : "border-slate-200",
+      )}
+    >
       <div className="flex items-start gap-3">
         <span className={cn("mt-1.5 w-2 h-2 rounded-full flex-shrink-0", p.dot)} />
         <div className="flex-1 min-w-0">
@@ -199,10 +218,11 @@ function TaskCard({
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={() => onEdit(task)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+          <GripVertical size={13} className="text-slate-300 hover:text-slate-400 cursor-grab active:cursor-grabbing" />
+          <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <Pencil size={13} />
           </button>
-          <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
             <Trash2 size={13} />
           </button>
         </div>
@@ -594,7 +614,7 @@ function ListModal({
 
 function TaskListSection({
   list, tasks, isExpanded, onToggle,
-  onAddTask, onEditTask, onDeleteTask, onStatusUpdate,
+  onAddTask, onEditTask, onDeleteTask, onStatusUpdate, onReorder,
   onEditList, onDeleteList,
 }: {
   list: TaskList | null;
@@ -605,9 +625,27 @@ function TaskListSection({
   onEditTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onStatusUpdate: (id: string, status: Status) => void;
+  onReorder?: (ids: string[]) => void;
   onEditList?: (list: TaskList) => void;
   onDeleteList?: (id: string) => void;
 }) {
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const handleDrop = (targetId: string) => {
+    if (!draggedId || draggedId === targetId || !onReorder) return;
+    const ids = tasks.map((t) => t.id);
+    const fromIdx = ids.indexOf(draggedId);
+    const toIdx = ids.indexOf(targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const reordered = [...ids];
+    reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, draggedId);
+    onReorder(reordered);
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   const colorCfg = list ? (LIST_COLORS[list.color] ?? LIST_COLORS.blue) : null;
 
   return (
@@ -684,6 +722,12 @@ function TaskListSection({
                   onStatusUpdate={onStatusUpdate}
                   onEdit={onEditTask}
                   onDelete={onDeleteTask}
+                  isDragging={draggedId === task.id}
+                  isDragOver={dragOverId === task.id && draggedId !== task.id}
+                  onDragStart={() => setDraggedId(task.id)}
+                  onDragOver={() => { if (draggedId && draggedId !== task.id) setDragOverId(task.id); }}
+                  onDrop={() => handleDrop(task.id)}
+                  onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
                 />
               ))}
             </div>
@@ -771,7 +815,9 @@ export default function TasksPage() {
   // ── Computed ──
   const filteredTasks = filterStatus === "all" ? tasks : tasks.filter((t) => t.status === filterStatus);
   const tasksByList = (listId: string | null) =>
-    filteredTasks.filter((t) => listId === null ? !t.taskListId : t.taskListId === listId);
+    filteredTasks
+      .filter((t) => listId === null ? !t.taskListId : t.taskListId === listId)
+      .sort((a, b) => (a.order || Infinity) - (b.order || Infinity) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const totalCounts = STATUS_TABS.reduce((acc, tab) => {
     acc[tab.value] = tab.value === "all" ? tasks.length : tasks.filter((t) => t.status === tab.value).length;
@@ -838,6 +884,24 @@ export default function TasksPage() {
     try {
       await fetch(`/api/tasks/${id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
+      });
+    } catch { fetchTasks(); }
+  };
+
+  const handleReorder = async (newIds: string[]) => {
+    setTasks((prev) => {
+      const updated = [...prev];
+      newIds.forEach((id, i) => {
+        const idx = updated.findIndex((t) => t.id === id);
+        if (idx >= 0) updated[idx] = { ...updated[idx], order: i + 1 };
+      });
+      return updated;
+    });
+    try {
+      await fetch("/api/tasks/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: newIds }),
       });
     } catch { fetchTasks(); }
   };
@@ -975,6 +1039,7 @@ export default function TasksPage() {
                 onEditTask={openEditTask}
                 onDeleteTask={handleDeleteTask}
                 onStatusUpdate={handleStatusUpdate}
+                onReorder={handleReorder}
                 onEditList={openEditList}
                 onDeleteList={handleDeleteList}
               />
@@ -991,6 +1056,7 @@ export default function TasksPage() {
                 onEditTask={openEditTask}
                 onDeleteTask={handleDeleteTask}
                 onStatusUpdate={handleStatusUpdate}
+                onReorder={handleReorder}
               />
             )}
 
