@@ -742,7 +742,11 @@ export default function ExpensesPage() {
         <AddExpenseModal
           onClose={() => setShowNew(false)}
           onSave={handleSave}
-          employees={employees}
+          employees={
+            currentRole === "staff" && myEmpId
+              ? employees.filter((e) => e.id === myEmpId)
+              : employees
+          }
           branches={branches}
           myEmployeeId={myEmpId}
           myLimit={myLimit}
