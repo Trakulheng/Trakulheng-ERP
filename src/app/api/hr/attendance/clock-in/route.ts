@@ -34,6 +34,23 @@ export async function POST(req: NextRequest) {
     : null;
   const gpsValid = distance !== null && distance <= branch.radiusMeters;
 
+  // Enforce radius when branch GPS is configured
+  const branchHasGps = branch.lat !== 0 || branch.lng !== 0;
+  if (branchHasGps) {
+    if (lat == null || lng == null) {
+      return NextResponse.json(
+        { error: "GPS location is required to clock in. Please enable location access." },
+        { status: 403 }
+      );
+    }
+    if (!gpsValid) {
+      return NextResponse.json(
+        { error: `You are ${distance}m from the store. You must be within ${branch.radiusMeters}m to clock in.` },
+        { status: 403 }
+      );
+    }
+  }
+
   // Determine late status from shift template
   let status: string = "clocked-in";
   let lateMinutes: number | null = null;

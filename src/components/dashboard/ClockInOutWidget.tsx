@@ -24,7 +24,7 @@ interface MeData {
   settings: { lateWarningMinutes: number; clockGpsRadiusMeters: number };
 }
 
-interface GpsCoords { lat: number; lng: number; isDemo?: boolean }
+interface GpsCoords { lat: number; lng: number }
 
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000;
@@ -85,15 +85,7 @@ export function ClockInOutWidget() {
         setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setGpsStatus("ready");
       },
-      () => {
-        // fallback demo coords near branch
-        if (me?.branch) {
-          setGps({ lat: me.branch.lat + (Math.random() - 0.5) * 0.001, lng: me.branch.lng + (Math.random() - 0.5) * 0.001, isDemo: true });
-          setGpsStatus("ready");
-        } else {
-          setGpsStatus("denied");
-        }
-      },
+      () => setGpsStatus("denied"),
       { enableHighAccuracy: true }
     );
   }
@@ -233,7 +225,9 @@ export function ClockInOutWidget() {
               )}
 
               {gpsStatus === "denied" && (
-                <p className="text-xs text-red-500 text-center">GPS unavailable — please allow location access.</p>
+                <p className="text-xs text-red-500 text-center">
+                  Location access denied — enable GPS in your browser to clock in.
+                </p>
               )}
 
               {gpsStatus === "ready" && dist !== null && (
@@ -246,7 +240,6 @@ export function ClockInOutWidget() {
                   <span className="flex items-center gap-1.5 font-medium">
                     {withinRadius ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
                     {withinRadius ? "Within store radius" : "Outside store radius"}
-                    {gps?.isDemo && <span className="opacity-60">(demo)</span>}
                   </span>
                   <span>{fmtDist(dist)} / {fmtDist(radius)}</span>
                 </div>

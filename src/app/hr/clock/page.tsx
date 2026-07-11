@@ -141,23 +141,19 @@ export default function ClockPage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // Demo GPS fallback when denied — only use branch coords if they're actually set
-  const effectiveGps = (gpsStatus === "denied" && me?.branch && (me.branch.lat !== 0 || me.branch.lng !== 0))
-    ? { lat: me.branch.lat + (Math.random() - 0.5) * 0.001, lng: me.branch.lng + (Math.random() - 0.5) * 0.001, accuracy: 999, isDemo: true }
-    : gps;
-
   const branchGpsSet = !!(me?.branch && (me.branch.lat !== 0 || me.branch.lng !== 0));
-  const dist = (effectiveGps && me?.branch && branchGpsSet)
-    ? Math.round(haversineMeters(effectiveGps.lat, effectiveGps.lng, me.branch.lat, me.branch.lng))
+  const dist = (gps && me?.branch && branchGpsSet)
+    ? Math.round(haversineMeters(gps.lat, gps.lng, me.branch.lat, me.branch.lng))
     : null;
 
   // ── Clock action ─────────────────────────────────────────────────────────────
 
+  const [clockError, setClockError] = useState("");
+
   const handleClock = async (action: "in" | "out") => {
     if (!me || submitting) return;
     setSubmitting(true);
-    const coords = effectiveGps ?? (me.branch ? { lat: me.branch.lat, lng: me.branch.lng, accuracy: 999, isDemo: true } : null);
-
+    setClockError("");
     try {
       const endpoint = action === "in" ? "/api/hr/attendance/clock-in" : "/api/hr/attendance/clock-out";
       const res = await fetch(endpoint, {
@@ -169,12 +165,15 @@ export default function ClockPage() {
           date:       me.date,
           shiftId:    me.assignment?.shiftId ?? null,
           ...(action === "in" ? { clockInTime: fmtHHMM(now) } : { clockOutTime: fmtHHMM(now) }),
-          lat: coords?.lat ?? null,
-          lng: coords?.lng ?? null,
+          lat: gps?.lat ?? null,
+          lng: gps?.lng ?? null,
         }),
       });
       if (res.ok) {
         await fetchMe();
+      } else {
+        const d = await res.json();
+        setClockError(d.error ?? "Action failed. Please try again.");
       }
     } finally {
       setSubmitting(false);
@@ -326,11 +325,11 @@ export default function ClockPage() {
                 </span>
               )}
               {gpsStatus === "denied" && (
-                <span className="text-xs text-amber-600 font-medium">Location denied — demo mode</span>
+                <span className="text-xs text-red-600 font-medium">Location access denied</span>
               )}
-              {gpsStatus === "ready" && effectiveGps && (
+              {gpsStatus === "ready" && gps && (
                 <span className="text-xs text-slate-400 font-mono">
-                  {effectiveGps.lat.toFixed(5)}, {effectiveGps.lng.toFixed(5)}
+                  {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}
                 </span>
               )}
             </div>
@@ -341,7 +340,12 @@ export default function ClockPage() {
                 Branch GPS not configured — clock-in allowed from any location
               </div>
             ) : dist !== null ? (
-              <GpsBadge dist={dist} radius={radius} isDemo={effectiveGps?.isDemo} />
+              <GpsBadge dist={dist} radius={radius} />
+            ) : gpsStatus === "denied" ? (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+                <AlertTriangle size={15} className="shrink-0" />
+                Location access denied. Enable GPS in your browser to clock in.
+              </div>
             ) : (
               <div className="h-10 bg-slate-50 rounded-xl animate-pulse" />
             )}
@@ -405,6 +409,13 @@ export default function ClockPage() {
           )}
 
           {/* Action buttons */}
+          {clockError && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-sm text-red-700">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              {clockError}
+            </div>
+          )}
+
           {completed ? (
             <div className="flex items-center justify-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-6">
               <CheckCircle2 size={24} className="text-emerald-500" />
@@ -426,25 +437,31 @@ export default function ClockPage() {
               {submitting ? "Saving…" : "Clock Out"}
             </button>
           ) : (
-            <button
-              onClick={() => handleClock("in")}
-              disabled={submitting || gpsStatus === "fetching"}
-              className={cn(
-                "w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-bold text-lg transition-colors shadow-lg disabled:opacity-50 text-white",
-                isCurrentlyLate
-                  ? "bg-amber-500 hover:bg-amber-600 active:bg-amber-700 shadow-amber-100"
-                  : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-blue-100"
+            <>
+              <button
+                onClick={() => handleClock("in")}
+                disabled={submitting || gpsStatus === "fetching" || (branchGpsSet && (gpsStatus !== "ready" || !withinRadius))}
+                className={cn(
+                  "w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-bold text-lg transition-colors shadow-lg disabled:opacity-40 text-white",
+                  isCurrentlyLate
+                    ? "bg-amber-500 hover:bg-amber-600 active:bg-amber-700 shadow-amber-100"
+                    : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-blue-100"
+                )}
+              >
+                {submitting ? <Loader2 size={22} className="animate-spin" /> : <LogIn size={22} />}
+                {submitting ? "Saving…" : isCurrentlyLate ? "Clock In (Late)" : "Clock In"}
+              </button>
+              {branchGpsSet && gpsStatus === "ready" && !withinRadius && dist !== null && (
+                <p className="text-center text-xs text-red-500 font-medium">
+                  You are {fmtDist(dist)} from the store — must be within {radius}m to clock in.
+                </p>
               )}
-            >
-              {submitting ? <Loader2 size={22} className="animate-spin" /> : <LogIn size={22} />}
-              {submitting ? "Saving…" : isCurrentlyLate ? "Clock In (Late)" : "Clock In"}
-            </button>
-          )}
-
-          {!withinRadius && dist !== null && !completed && (
-            <p className="text-center text-xs text-slate-400">
-              You are {fmtDist(dist)} from the store. Clock-in will still be recorded but GPS will be flagged.
-            </p>
+              {branchGpsSet && gpsStatus === "denied" && (
+                <p className="text-center text-xs text-red-500 font-medium">
+                  Enable location access to clock in.
+                </p>
+              )}
+            </>
           )}
 
         </div>
