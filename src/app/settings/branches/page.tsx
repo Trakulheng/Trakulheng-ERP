@@ -850,7 +850,7 @@ export default function BranchesPage() {
   const [saving,      setSaving]      = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((me) => {
+    fetch("/api/auth/me").then((r) => { if (r.status === 401) { window.location.href = "/auth/login"; return null; } return r.ok ? r.json() : null; }).then((me) => {
       if (me?.role) setCurrentRole(me.role as UserRole);
     }).catch(() => {});
     fetch("/api/branches")
@@ -876,7 +876,7 @@ export default function BranchesPage() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(b),
       });
-      if (!res.ok) throw new Error("Failed to save branch");
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } throw new Error("Failed to save branch"); }
       const saved: Branch = await res.json();
       setList((prev) => {
         if (isNew) return [...prev, saved];

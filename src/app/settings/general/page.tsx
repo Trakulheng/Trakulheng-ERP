@@ -171,7 +171,10 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     fetch("/api/settings/general")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => {
+        if (r.status === 401) { window.location.href = "/auth/login"; return null; }
+        return r.ok ? r.json() : null;
+      })
       .then((d) => {
         if (!d) return;
         if (d.company)    setSettings((s) => ({ ...s, ...d.company }));
@@ -235,6 +238,7 @@ export default function GeneralSettingsPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
+        if (res.status === 401) { window.location.href = "/auth/login"; return; }
         const d = await res.json();
         setSaveError(d.error ?? "Failed to save.");
         return;

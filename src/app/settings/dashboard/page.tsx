@@ -44,7 +44,7 @@ export default function DashboardSettingsPage() {
   useEffect(() => {
     (async () => {
       const [meRes, ...configResults] = await Promise.all([
-        fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
+        fetch("/api/auth/me").then((r) => { if (r.status === 401) { window.location.href = "/auth/login"; return null; } return r.ok ? r.json() : null; }),
         ...ROLES.map((r) =>
           fetch(`/api/settings/dashboard-config?role=${r.id}`)
             .then((res) => res.ok ? res.json() : null)
@@ -112,6 +112,7 @@ export default function DashboardSettingsPage() {
         body:    JSON.stringify({ role: activeRole, widgets: configs[activeRole] }),
       });
       if (!res.ok) {
+        if (res.status === 401) { window.location.href = "/auth/login"; return; }
         const d = await res.json();
         setSaveError(d.error ?? "Failed to save layout.");
       } else {

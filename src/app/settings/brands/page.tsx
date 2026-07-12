@@ -102,7 +102,7 @@ export default function BrandsPage() {
         body:    JSON.stringify(data),
       });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Failed to save."); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } setSaveError(json.error ?? "Failed to save."); return; }
       setBrands((prev) => {
         const idx = prev.findIndex((b) => b.id === json.id);
         if (idx >= 0) { const n = [...prev]; n[idx] = json; return n; }
@@ -118,7 +118,7 @@ export default function BrandsPage() {
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(`/api/settings/brands/${id}`, { method: "DELETE" });
-      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } const d = await res.json(); alert(d.error); return; }
       setBrands((prev) => prev.filter((b) => b.id !== id));
       setDeleteId(null);
     } catch { alert("Failed to delete."); }

@@ -444,7 +444,7 @@ export default function UserManagementPage() {
         body: JSON.stringify(u),
       });
       const data = await res.json();
-      if (!res.ok) { setSaveError(data.error ?? "Failed to save user."); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } setSaveError(data.error ?? "Failed to save user."); return; }
 
       setUsers((prev) => {
         const idx = prev.findIndex((x) => x.id === data.id);
@@ -463,7 +463,7 @@ export default function UserManagementPage() {
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(`/api/settings/users/${id}`, { method: "DELETE" });
-      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } const d = await res.json(); alert(d.error); return; }
       setUsers((prev) => prev.filter((u) => u.id !== id));
       setDeleteId(null);
     } catch {

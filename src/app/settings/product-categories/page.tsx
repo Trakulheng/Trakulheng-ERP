@@ -86,7 +86,7 @@ export default function ProductCategoriesPage() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Failed to save."); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } setSaveError(json.error ?? "Failed to save."); return; }
       await fetchCats();
       setModal(null);
     } catch { setSaveError("Something went wrong."); }

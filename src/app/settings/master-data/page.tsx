@@ -126,7 +126,7 @@ function CategoryTab({ apiBase, noun, icon: Icon, emptyHint }: {
       const res = await fetch(url, { method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Failed to save."); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } setSaveError(json.error ?? "Failed to save."); return; }
       await fetch_(); setModal(null);
     } catch { setSaveError("Something went wrong."); }
     finally { setSaving(false); }
@@ -277,7 +277,7 @@ function LookupTab({ lookupType, noun, icon: Icon, defaultSeedLabel }: {
       const res = await fetch(url, { method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Failed to save."); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } setSaveError(json.error ?? "Failed to save."); return; }
       await fetch_(); setModal(null);
     } catch { setSaveError("Something went wrong."); }
     finally { setSaving(false); }
@@ -498,7 +498,7 @@ function LeaveTypesTab() {
       const res = await fetch(url, { method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Failed to save."); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } setSaveError(json.error ?? "Failed to save."); return; }
       await fetch_(); setModal(null);
     } catch { setSaveError("Something went wrong."); }
     finally { setSaving(false); }

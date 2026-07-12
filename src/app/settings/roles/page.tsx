@@ -430,7 +430,7 @@ export default function RolePermissionsPage() {
   // Load saved permissions and menu orders from DB on mount
   useEffect(() => {
     fetch("/api/settings/role-permissions")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => { if (r.status === 401) { window.location.href = "/auth/login"; return null; } return r.ok ? r.json() : null; })
       .then((d) => {
         if (!d || typeof d !== "object") return;
         if (d.permissions && typeof d.permissions === "object") {
@@ -491,6 +491,7 @@ export default function RolePermissionsPage() {
         body:    JSON.stringify({ roles: perms, menuOrders }),
       });
       if (!res.ok) {
+        if (res.status === 401) { window.location.href = "/auth/login"; return; }
         const d = await res.json();
         setSaveError(d.error ?? "Failed to save.");
         return;

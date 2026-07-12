@@ -95,7 +95,7 @@ export default function DepartmentsPage() {
         body:    JSON.stringify(data),
       });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Failed to save."); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } setSaveError(json.error ?? "Failed to save."); return; }
       setDepts((prev) => {
         const idx = prev.findIndex((d) => d.id === json.id);
         if (idx >= 0) { const n = [...prev]; n[idx] = json; return n; }
@@ -111,7 +111,7 @@ export default function DepartmentsPage() {
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(`/api/settings/departments/${id}`, { method: "DELETE" });
-      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      if (!res.ok) { if (res.status === 401) { window.location.href = "/auth/login"; return; } const d = await res.json(); alert(d.error); return; }
       setDepts((prev) => prev.filter((d) => d.id !== id));
       setDeleteId(null);
     } catch { alert("Failed to delete."); }
