@@ -314,9 +314,6 @@ export default async function DashboardPage() {
                     </div>
                   )];
 
-                case "tasks":
-                  return [<MyTasksWidget key="tasks" userName={user?.name} />];
-
                 case "leave_requests":
                   return [(
                     <div key="leave_requests" className="bg-white rounded-xl border border-slate-200 shadow-sm">
