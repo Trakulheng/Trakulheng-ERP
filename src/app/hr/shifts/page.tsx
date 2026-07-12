@@ -605,6 +605,14 @@ function ShiftCard({
 
 // ─── ShiftModal ───────────────────────────────────────────────────────────────
 
+interface TaskListItem { id: string; name: string; color: string; shiftId: string | null; }
+
+const LIST_COLOR_DOT: Record<string, string> = {
+  blue: "bg-blue-400", green: "bg-emerald-400", red: "bg-red-400",
+  yellow: "bg-amber-400", purple: "bg-violet-400", orange: "bg-orange-400",
+  pink: "bg-pink-400", teal: "bg-teal-400",
+};
+
 function ShiftModal({ state, onClose, onSave }: {
   state: { mode: "add" | "edit"; data?: Shift };
   onClose: () => void;
@@ -617,18 +625,61 @@ function ShiftModal({ state, onClose, onSave }: {
   const set = <K extends keyof Shift>(k: K, v: Shift[K]) => setForm((p) => ({ ...p, [k]: v }));
   const preview = calcWorkHours(form.startTime, form.endTime, form.breakMinutes);
 
+  // Task list linkage (edit mode only)
+  const isEdit = state.mode === "edit" && !!state.data?.id;
+  const [allLists, setAllLists] = useState<TaskListItem[]>([]);
+  const [linkedIds, setLinkedIds] = useState<Set<string>>(new Set());
+  const [origLinkedIds, setOrigLinkedIds] = useState<Set<string>>(new Set());
+  const [listsLoading, setListsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    setListsLoading(true);
+    fetch("/api/tasks/lists")
+      .then((r) => r.ok ? r.json() : [])
+      .then((lists: TaskListItem[]) => {
+        setAllLists(lists);
+        const linked = new Set(lists.filter((l) => l.shiftId === state.data!.id).map((l) => l.id));
+        setLinkedIds(linked);
+        setOrigLinkedIds(linked);
+        setListsLoading(false);
+      })
+      .catch(() => setListsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleList = (id: string) => {
+    setLinkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.code.trim()) { setError("Name and code are required."); return; }
     setSaving(true); setError("");
-    const err = await onSave({ ...form, id: form.id || "", code: form.code.toUpperCase().slice(0, 3) });
+    const savedShift = { ...form, id: form.id || "", code: form.code.toUpperCase().slice(0, 3) };
+    const err = await onSave(savedShift);
+    if (err) { setSaving(false); setError(err); return; }
+
+    // Batch-update task list linkages for changed items
+    const shiftId = savedShift.id || state.data?.id || "";
+    if (shiftId && isEdit) {
+      const toLink   = allLists.filter((l) => linkedIds.has(l.id) && !origLinkedIds.has(l.id));
+      const toUnlink = allLists.filter((l) => !linkedIds.has(l.id) && origLinkedIds.has(l.id));
+      await Promise.all([
+        ...toLink.map((l) => fetch(`/api/tasks/lists/${l.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shiftId }) })),
+        ...toUnlink.map((l) => fetch(`/api/tasks/lists/${l.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shiftId: null }) })),
+      ]);
+    }
     setSaving(false);
-    if (err) setError(err);
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h3 className="text-base font-semibold text-slate-900">
               {state.mode === "add" ? "New Shift Template" : "Edit Shift Template"}
@@ -639,7 +690,7 @@ function ShiftModal({ state, onClose, onSave }: {
             <X size={16} className="text-slate-500" />
           </button>
         </div>
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="block text-xs font-medium text-slate-600 mb-1">Name</label>
@@ -693,13 +744,57 @@ function ShiftModal({ state, onClose, onSave }: {
               {form.code || "---"}
             </span>
           </div>
+
+          {/* Linked Task Lists — edit mode only */}
+          {isEdit && (
+            <div className="border-t border-slate-100 pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardList size={14} className="text-slate-400" />
+                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Linked Task Lists</span>
+                <span className="text-xs text-slate-400 ml-1">· shown to assigned employees</span>
+              </div>
+              {listsLoading ? (
+                <div className="flex items-center gap-2 py-3 text-xs text-slate-400">
+                  <Loader2 size={13} className="animate-spin" /> Loading task lists…
+                </div>
+              ) : allLists.length === 0 ? (
+                <p className="text-xs text-slate-400 py-2">No task lists yet. Create one in the Tasks page.</p>
+              ) : (
+                <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                  {allLists.map((list) => {
+                    const checked = linkedIds.has(list.id);
+                    const takenByOther = !checked && list.shiftId !== null && list.shiftId !== state.data?.id;
+                    return (
+                      <label key={list.id} className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors select-none",
+                        checked ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent",
+                        takenByOther && "opacity-50 cursor-not-allowed"
+                      )}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={takenByOther}
+                          onChange={() => !takenByOther && toggleList(list.id)}
+                          className="accent-blue-600 w-4 h-4 shrink-0"
+                        />
+                        <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", LIST_COLOR_DOT[list.color] ?? "bg-slate-300")} />
+                        <span className="text-sm text-slate-800 flex-1 leading-tight">{list.name}</span>
+                        {takenByOther && <span className="text-xs text-slate-400">linked to another shift</span>}
+                        {checked && <span className="text-xs text-blue-600 font-medium">linked</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {error && (
-          <div className="mx-6 mb-2 px-3 py-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mx-6 mb-2 px-3 py-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg shrink-0">
             {error}
           </div>
         )}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50">Cancel</button>
           <button
             onClick={handleSubmit}
