@@ -197,8 +197,8 @@ function TaskCard({
 }: {
   task: Task;
   onStatusUpdate: (id: string, status: Status) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (id: string) => void;
   isDragging?: boolean;
   isDragOver?: boolean;
   onDragStart?: () => void;
@@ -211,7 +211,7 @@ function TaskCard({
 
   return (
     <div
-      draggable
+      draggable={!!onEdit}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); onDragStart?.(); }}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDragOver?.(); }}
       onDrop={(e) => { e.preventDefault(); onDrop?.(); }}
@@ -232,15 +232,17 @@ function TaskCard({
             <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{task.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <GripVertical size={13} className="text-slate-300 hover:text-slate-400 cursor-grab active:cursor-grabbing" />
-          <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-            <Pencil size={13} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
-            <Trash2 size={13} />
-          </button>
-        </div>
+        {(onEdit || onDelete) && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {onEdit && <GripVertical size={13} className="text-slate-300 hover:text-slate-400 cursor-grab active:cursor-grabbing" />}
+            {onEdit && <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+              <Pencil size={13} />
+            </button>}
+            {onDelete && <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+              <Trash2 size={13} />
+            </button>}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 ml-5">
@@ -659,8 +661,8 @@ function TaskRow({
 }: {
   task: Task;
   onStatusUpdate: (id: string, status: Status) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (id: string) => void;
   isDragging?: boolean;
   isDragOver?: boolean;
   onDragStart?: () => void;
@@ -673,7 +675,7 @@ function TaskRow({
 
   return (
     <div
-      draggable
+      draggable={!!onEdit}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); onDragStart?.(); }}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDragOver?.(); }}
       onDrop={(e) => { e.preventDefault(); onDrop?.(); }}
@@ -721,14 +723,16 @@ function TaskRow({
         <StatusSelect task={task} onUpdate={onStatusUpdate} />
       </div>
 
-      <div className="flex items-center gap-0.5 flex-shrink-0">
-        <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-          <Pencil size={12} />
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
-          <Trash2 size={12} />
-        </button>
-      </div>
+      {(onEdit || onDelete) && (
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          {onEdit && <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <Pencil size={12} />
+          </button>}
+          {onDelete && <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+            <Trash2 size={12} />
+          </button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -744,9 +748,9 @@ function TaskListSection({
   tasks: Task[];
   isExpanded: boolean;
   onToggle: () => void;
-  onAddTask: (listId: string | null) => void;
-  onEditTask: (task: Task) => void;
-  onDeleteTask: (id: string) => void;
+  onAddTask?: (listId: string | null) => void;
+  onEditTask?: (task: Task) => void;
+  onDeleteTask?: (id: string) => void;
   onStatusUpdate: (id: string, status: Status) => void;
   onReorder?: (ids: string[]) => void;
   onEditList?: (list: TaskList) => void;
@@ -805,30 +809,30 @@ function TaskListSection({
           {tasks.length}
         </span>
 
-        {list !== null && (
+        {list !== null && (onEditList || onDeleteList) && (
           <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => onEditList!(list)}
+            {onEditList && <button
+              onClick={() => onEditList(list)}
               className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <Pencil size={12} />
-            </button>
-            <button
-              onClick={() => onDeleteList!(list.id)}
+            </button>}
+            {onDeleteList && <button
+              onClick={() => onDeleteList(list.id)}
               className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
             >
               <Trash2 size={12} />
-            </button>
+            </button>}
           </div>
         )}
 
-        <button
+        {onAddTask && <button
           onClick={(e) => { e.stopPropagation(); onAddTask(list?.id ?? null); }}
           className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
           title="Add task to this list"
         >
           <Plus size={15} />
-        </button>
+        </button>}
       </div>
 
       {/* Tasks */}
@@ -837,12 +841,12 @@ function TaskListSection({
           {tasks.length === 0 ? (
             <div className="py-6 text-center">
               <p className="text-xs text-slate-400">No tasks here.</p>
-              <button
+              {onAddTask && <button
                 onClick={() => onAddTask(list?.id ?? null)}
                 className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
               >
                 + Add a task
-              </button>
+              </button>}
             </div>
           ) : viewMode === "list" ? (
             <div>
@@ -925,7 +929,7 @@ export default function TasksPage() {
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [expandedHistoryRows, setExpandedHistoryRows] = useState<Set<string>>(new Set());
-  const [userRole, setUserRole] = useState<string>("staff");
+  const [userRole, setUserRole] = useState<string>("");
 
   // ── Fetch ──
   const fetchTasks = useCallback(async () => {
@@ -1137,6 +1141,8 @@ export default function TasksPage() {
 
   const loading = tasksLoading || listsLoading;
   const showUnassigned = tasksByList(null).length > 0;
+  // While userRole is loading ("") be permissive so buttons don't flash away for admins
+  const canManageTasks = !userRole || userRole !== "staff";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -1179,7 +1185,7 @@ export default function TasksPage() {
                 <List size={15} />
               </button>
             </div>}
-            {!showHistory && <>
+            {!showHistory && canManageTasks && <>
               <button
                 onClick={openCreateList}
                 className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm border border-slate-200"
@@ -1335,13 +1341,13 @@ export default function TasksPage() {
                 tasks={tasksByList(list.id)}
                 isExpanded={expandedLists.has(list.id)}
                 onToggle={() => toggleList(list.id)}
-                onAddTask={openCreateTask}
-                onEditTask={openEditTask}
-                onDeleteTask={handleDeleteTask}
+                onAddTask={canManageTasks ? openCreateTask : undefined}
+                onEditTask={canManageTasks ? openEditTask : undefined}
+                onDeleteTask={canManageTasks ? handleDeleteTask : undefined}
                 onStatusUpdate={handleStatusUpdate}
-                onReorder={handleReorder}
-                onEditList={openEditList}
-                onDeleteList={handleDeleteList}
+                onReorder={canManageTasks ? handleReorder : undefined}
+                onEditList={canManageTasks ? openEditList : undefined}
+                onDeleteList={canManageTasks ? handleDeleteList : undefined}
                 viewMode={viewMode}
               />
             ))}
@@ -1353,11 +1359,11 @@ export default function TasksPage() {
                 tasks={tasksByList(null)}
                 isExpanded={expandedLists.has("__unassigned__")}
                 onToggle={() => toggleList("__unassigned__")}
-                onAddTask={openCreateTask}
-                onEditTask={openEditTask}
-                onDeleteTask={handleDeleteTask}
+                onAddTask={canManageTasks ? openCreateTask : undefined}
+                onEditTask={canManageTasks ? openEditTask : undefined}
+                onDeleteTask={canManageTasks ? handleDeleteTask : undefined}
                 onStatusUpdate={handleStatusUpdate}
-                onReorder={handleReorder}
+                onReorder={canManageTasks ? handleReorder : undefined}
                 viewMode={viewMode}
               />
             )}
@@ -1369,8 +1375,8 @@ export default function TasksPage() {
                   <ListTodo size={22} className="text-slate-400" />
                 </div>
                 <p className="text-sm font-medium text-slate-700">No tasks yet</p>
-                <p className="text-xs text-slate-400 mt-1">Create a list to group related tasks, or add a task directly.</p>
-                <div className="flex gap-2 mt-4">
+                <p className="text-xs text-slate-400 mt-1">{canManageTasks ? "Create a list to group related tasks, or add a task directly." : "No tasks have been assigned."}</p>
+                {canManageTasks && <div className="flex gap-2 mt-4">
                   <button onClick={openCreateList}
                     className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
                     New List
@@ -1379,7 +1385,7 @@ export default function TasksPage() {
                     className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                     New Task
                   </button>
-                </div>
+                </div>}
               </div>
             )}
           </div>

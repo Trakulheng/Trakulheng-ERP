@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,6 +29,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  if (user.role === "staff") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   try {
     const { title, description, dueDate, dueTime, priority, assigneeName, shiftLabel, taskListId, requiresPhoto } = await req.json();
 
