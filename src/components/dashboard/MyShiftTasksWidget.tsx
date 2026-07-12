@@ -33,6 +33,7 @@ interface ShiftTasksData {
   shift: ShiftInfo | null;
   noShift?: boolean;
   noEmployee?: boolean;
+  clockedIn?: boolean;
 }
 
 const STATUS_OPTIONS = [
@@ -78,6 +79,8 @@ export function MyShiftTasksWidget({ employeeId }: { employeeId?: string | null 
 
   const isToday = selectedDate === TODAY;
   const isPast  = selectedDate < TODAY;
+  const clockedIn = data?.clockedIn ?? true; // permissive while loading
+  const readOnly = isPast || (isToday && !clockedIn);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -98,7 +101,7 @@ export function MyShiftTasksWidget({ employeeId }: { employeeId?: string | null 
   }, [load]);
 
   const updateStatus = async (taskId: string, status: string) => {
-    if (isPast) return;
+    if (readOnly) return;
     setUpdating(taskId);
     setData((prev) =>
       prev ? { ...prev, tasks: prev.tasks.map((t) => t.id === taskId ? { ...t, status } : t) } : prev
@@ -156,21 +159,29 @@ export function MyShiftTasksWidget({ employeeId }: { employeeId?: string | null 
         </div>
       </div>
 
-      {/* Date label + shift badge */}
-      {(isPast || data?.shift) && (
-        <div className="flex items-center gap-2 px-5 pt-3 pb-0">
-          {isPast && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium border border-amber-200">
-              {fmtDate(selectedDate)}
-            </span>
-          )}
-          {data?.shift && (
-            <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", COLOR_BADGE[data.shift.color] ?? "bg-slate-100 text-slate-600")}>
-              {data.shift.code} · {data.shift.startTime}–{data.shift.endTime}
-            </span>
-          )}
-          {isPast && (
-            <span className="text-xs text-slate-400 ml-auto">Read-only</span>
+      {/* Date label + shift badge + clock-in notice */}
+      {(isPast || isToday && !clockedIn || data?.shift) && (
+        <div className="flex flex-col gap-1.5 px-5 pt-3 pb-0">
+          <div className="flex items-center gap-2">
+            {isPast && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium border border-amber-200">
+                {fmtDate(selectedDate)}
+              </span>
+            )}
+            {data?.shift && (
+              <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", COLOR_BADGE[data.shift.color] ?? "bg-slate-100 text-slate-600")}>
+                {data.shift.code} · {data.shift.startTime}–{data.shift.endTime}
+              </span>
+            )}
+            {isPast && (
+              <span className="text-xs text-slate-400 ml-auto">Read-only</span>
+            )}
+          </div>
+          {isToday && !clockedIn && data && !data.noShift && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Clock in to update task status
+            </div>
           )}
         </div>
       )}
@@ -220,8 +231,8 @@ export function MyShiftTasksWidget({ employeeId }: { employeeId?: string | null 
                     <p className="text-xs text-slate-400 mt-0.5">{task.listName}</p>
                   </div>
 
-                  {/* Status — dropdown for today, badge for past */}
-                  {!isPast ? (
+                  {/* Status — dropdown when clocked in, badge when read-only */}
+                  {!readOnly ? (
                     <div className="relative shrink-0">
                       {updating === task.id ? (
                         <Loader2 size={14} className="animate-spin text-slate-400 mt-1" />
@@ -262,7 +273,7 @@ export function MyShiftTasksWidget({ employeeId }: { employeeId?: string | null 
       </div>
 
       {/* Footer */}
-      {!isPast && data?.tasks && data.tasks.length > 0 && (
+      {data?.tasks && data.tasks.length > 0 && (
         <div className="px-5 py-3 border-t border-slate-100">
           <div className="w-full bg-slate-100 rounded-full h-1.5">
             <div

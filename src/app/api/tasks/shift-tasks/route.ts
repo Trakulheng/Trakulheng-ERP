@@ -35,17 +35,30 @@ export async function GET(req: NextRequest) {
     select: { id: true, name: true, code: true, startTime: true, endTime: true, color: true },
   });
 
-  // Get all task lists linked to this shift, with their tasks
-  const taskLists = await prisma.taskList.findMany({
-    where: { shiftId: assignment.shiftId },
-    orderBy: { order: "asc" },
-    include: {
-      tasks: {
-        orderBy: { order: "asc" },
-        select: { id: true, title: true, description: true, priority: true, requiresPhoto: true, order: true },
+  // Get all task lists linked to this shift, with their tasks; check clock-in in parallel
+  const today = new Date().toISOString().split("T")[0];
+  const [taskLists, attendanceRecord] = await Promise.all([
+    prisma.taskList.findMany({
+      where: { shiftId: assignment.shiftId },
+      orderBy: { order: "asc" },
+      include: {
+        tasks: {
+          orderBy: { order: "asc" },
+          select: { id: true, title: true, description: true, priority: true, requiresPhoto: true, order: true },
+        },
       },
-    },
-  });
+    }),
+    // Only need clock-in check for today
+    date === today
+      ? prisma.attendanceRecord.findUnique({
+          where: { employeeId_date: { employeeId, date } },
+          select: { clockInTime: true },
+        })
+      : null,
+  ]);
+
+  // For today: require clock-in to interact; for past dates: always readable
+  const clockedIn = date !== today || !!(attendanceRecord?.clockInTime);
 
   const allTaskIds = taskLists.flatMap((l) => l.tasks.map((t) => t.id));
 
@@ -74,7 +87,7 @@ export async function GET(req: NextRequest) {
     }))
   );
 
-  return NextResponse.json({ tasks, shift, noShift: false });
+  return NextResponse.json({ tasks, shift, noShift: false, clockedIn });
 }
 
 // PATCH /api/tasks/shift-tasks  body: { taskId, date, status }
@@ -91,6 +104,20 @@ export async function PATCH(req: NextRequest) {
   const isManager = user.role === "admin" || user.role === "manager";
   const employeeId = (isManager && bodyEmpId) ? bodyEmpId : (user.employeeRecordId ?? null);
   if (!employeeId) return NextResponse.json({ error: "No employee record linked to this account." }, { status: 400 });
+
+  // Staff must have clocked in before updating today's task status
+  if (!isManager) {
+    const today = new Date().toISOString().split("T")[0];
+    if (date === today) {
+      const attendance = await prisma.attendanceRecord.findUnique({
+        where: { employeeId_date: { employeeId, date } },
+        select: { clockInTime: true },
+      });
+      if (!attendance?.clockInTime) {
+        return NextResponse.json({ error: "You must clock in before updating task status." }, { status: 403 });
+      }
+    }
+  }
 
   const log = await prisma.taskStatusLog.upsert({
     where:  { taskId_date_employeeId: { taskId, date, employeeId } },
