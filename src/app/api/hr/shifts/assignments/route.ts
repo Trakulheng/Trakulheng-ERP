@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { canDoAction } from "@/lib/server-permissions";
 
 function mapAssignment(a: any) {
   return {
@@ -42,6 +43,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+
+  if (!(await canDoAction(user.role, "hr_shifts_calendar", "edit"))) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
 
   const { branchId, employeeId, shiftId, date, note } = await req.json();
   if (!branchId || !employeeId || !date) {

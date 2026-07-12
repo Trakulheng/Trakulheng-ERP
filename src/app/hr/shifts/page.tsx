@@ -1083,7 +1083,7 @@ function EmployeeSelfRequestModal({
 
 function WeekCalendar({
   monday, branchEmployees, patterns, overrides, shiftList,
-  empViewId, deptFilter, onCellClick, onConfirm, onRequestChange, onAddToDay,
+  empViewId, deptFilter, canEdit, onCellClick, onConfirm, onRequestChange, onAddToDay,
 }: {
   monday: Date;
   branchEmployees: Employee[];
@@ -1092,6 +1092,7 @@ function WeekCalendar({
   shiftList: Shift[];
   empViewId: string | null;
   deptFilter: string;
+  canEdit?: boolean;
   onCellClick: (empId: string, date: string, currentShiftId: string | null, isOverride: boolean, entry?: CalendarEntry) => void;
   onConfirm: (entryId: string) => void;
   onRequestChange: (empId: string, date: string, shiftId: string) => void;
@@ -1199,9 +1200,9 @@ function WeekCalendar({
                   const shift = shiftId ? shiftList.find((s) => s.id === shiftId) : null;
                   const c = shift ? shiftColorMap[shift.color] : null;
                   const isOv = !!override;
-                  const canAct = !isOtherEmp && !isPast && !isFutureLocked;
-                  // Managers can always click cells that already have an override, even past dates
-                  const canActOnOv = !isOtherEmp && !isFutureLocked;
+                  const canAct = !isOtherEmp && !isPast && !isFutureLocked && canEdit !== false;
+                  // Override cells stay clickable even on past dates (e.g. to fix a confirmed past shift)
+                  const canActOnOv = !isOtherEmp && !isFutureLocked && canEdit !== false;
                   const isWeeklyDayOff = !isOv && !shift && ((emp as any).weeklyDaysOff as number[] | undefined)?.includes(d.getDay());
 
                   return (
@@ -2808,6 +2809,7 @@ export default function ShiftsPage() {
                 shiftList={shiftList}
                 empViewId={empViewId}
                 deptFilter={deptFilter}
+                canEdit={can("hr_shifts_calendar", "edit")}
                 onCellClick={(empId, date, currentShiftId, isOv, entry) => {
                   if (empViewId || !can("hr_shifts_calendar", "edit")) return;
                   setCellModal({ empId, date, currentShiftId, isOverride: isOv, entry });
