@@ -6,6 +6,7 @@ import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
 import { ShiftScheduleWidget } from "@/components/dashboard/ShiftScheduleWidget";
 import { MyTasksWidget } from "@/components/dashboard/MyTasksWidget";
+import { MyShiftTasksWidget } from "@/components/dashboard/MyShiftTasksWidget";
 import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CalendarOff, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
@@ -437,6 +438,11 @@ export default async function DashboardPage() {
 
                 case "shift_schedule":
                   return [<ShiftScheduleWidget key="shift_schedule" days={shiftSchedule} />];
+
+                case "tasks":
+                  return role === "staff"
+                    ? [<MyShiftTasksWidget key="tasks" employeeId={user?.employeeRecordId} />]
+                    : [<MyTasksWidget key="tasks" userName={user?.name} />];
 
                 default:
                   return [];

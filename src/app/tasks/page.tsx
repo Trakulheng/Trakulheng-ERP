@@ -5,8 +5,8 @@ import { Header } from "@/components/layout/Header";
 import {
   Plus, Loader2, Trash2, Pencil, X, CheckCircle2, Clock, CircleDot,
   XCircle, CalendarDays, Timer, User, Link2, ChevronDown, AlertTriangle,
-  ListTodo, ChevronRight, FolderOpen, Search, Camera, GripVertical,
-  LayoutGrid, List,
+  ListTodo, ChevronRight, ChevronLeft, FolderOpen, Search, Camera, GripVertical,
+  LayoutGrid, List, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
@@ -66,6 +66,17 @@ const EMPTY_TASK_FORM: TaskForm = {
 };
 
 const EMPTY_LIST_FORM: ListForm = { name: "", color: "blue", shiftId: "" };
+
+const TODAY_STR = new Date().toISOString().split("T")[0];
+
+interface HistoryTaskRow {
+  id: string; title: string; priority: string; listName: string; listColor: string; status: string;
+}
+interface HistoryRow {
+  employeeId: string; employeeName: string; employeeNo: string;
+  shiftName: string; shiftCode: string; shiftColor: string;
+  tasks: HistoryTaskRow[]; doneCount: number; totalCount: number;
+}
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
@@ -908,6 +919,14 @@ export default function TasksPage() {
   // View mode
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  // History
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyDate, setHistoryDate] = useState(TODAY_STR);
+  const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [expandedHistoryRows, setExpandedHistoryRows] = useState<Set<string>>(new Set());
+  const [userRole, setUserRole] = useState<string>("staff");
+
   // ── Fetch ──
   const fetchTasks = useCallback(async () => {
     setTasksLoading(true);
@@ -919,6 +938,19 @@ export default function TasksPage() {
       setTasksLoading(false);
     }
   }, []);
+
+  const fetchHistory = useCallback(async (date: string) => {
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams({ date });
+      if (activeBranch?.id) params.set("branchId", activeBranch.id);
+      const res = await fetch(`/api/tasks/shift-tasks/history?${params}`);
+      const data = await res.json();
+      setHistoryRows(data?.rows ?? []);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [activeBranch?.id]);
 
   const fetchLists = useCallback(async () => {
     setListsLoading(true);
@@ -940,6 +972,10 @@ export default function TasksPage() {
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
   useEffect(() => { fetchLists(); }, [fetchLists]);
+  useEffect(() => {
+    fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((d) => { if (d?.role) setUserRole(d.role); });
+  }, []);
+  useEffect(() => { if (showHistory) fetchHistory(historyDate); }, [showHistory, historyDate, fetchHistory]);
   useEffect(() => {
     fetch("/api/hr/shifts").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setShifts(d); });
   }, []);
@@ -1109,8 +1145,19 @@ export default function TasksPage() {
         subtitle="Manage and track team tasks"
         actions={
           <div className="flex items-center gap-2">
+            {/* History toggle */}
+            <button
+              onClick={() => setShowHistory((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors shadow-sm border",
+                showHistory ? "bg-violet-600 text-white border-violet-600" : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+              )}
+            >
+              <History size={15} />
+              <span>History</span>
+            </button>
             {/* View toggle */}
-            <div className="flex items-center bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+            {!showHistory && <div className="flex items-center bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
               <button
                 onClick={() => setViewMode("grid")}
                 title="Grid view"
@@ -1131,21 +1178,23 @@ export default function TasksPage() {
               >
                 <List size={15} />
               </button>
-            </div>
-            <button
-              onClick={openCreateList}
-              className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm border border-slate-200"
-            >
-              <ListTodo size={15} />
-              <span>New List</span>
-            </button>
-            <button
-              onClick={() => openCreateTask()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
-            >
-              <Plus size={16} />
-              <span>New Task</span>
-            </button>
+            </div>}
+            {!showHistory && <>
+              <button
+                onClick={openCreateList}
+                className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm border border-slate-200"
+              >
+                <ListTodo size={15} />
+                <span>New List</span>
+              </button>
+              <button
+                onClick={() => openCreateTask()}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+              >
+                <Plus size={16} />
+                <span>New Task</span>
+              </button>
+            </>}
           </div>
         }
       />
@@ -1160,8 +1209,95 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Filter tabs */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+        {/* History panel */}
+        {showHistory && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                <History size={16} className="text-violet-500" />
+                Task Completion History
+              </h3>
+              <div className="flex items-center gap-0.5 bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => { const d = new Date(historyDate + "T00:00:00"); d.setDate(d.getDate() - 1); setHistoryDate(d.toISOString().split("T")[0]); }}
+                  className="p-1.5 hover:bg-slate-100 text-slate-500">
+                  <ChevronLeft size={14} />
+                </button>
+                <input type="date" value={historyDate} max={TODAY_STR}
+                  onChange={(e) => e.target.value && setHistoryDate(e.target.value)}
+                  className="px-2 py-1.5 text-xs bg-transparent focus:outline-none cursor-pointer w-[110px]" />
+                <button
+                  onClick={() => { if (historyDate < TODAY_STR) { const d = new Date(historyDate + "T00:00:00"); d.setDate(d.getDate() + 1); setHistoryDate(d.toISOString().split("T")[0]); } }}
+                  disabled={historyDate >= TODAY_STR}
+                  className="p-1.5 hover:bg-slate-100 text-slate-500 disabled:opacity-30">
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 size={24} className="animate-spin text-slate-300" />
+              </div>
+            ) : historyRows.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <CalendarDays size={24} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-sm text-slate-400">No shift task records for {historyDate}.</p>
+                {userRole === "staff" && <p className="text-xs text-slate-400 mt-1">Records only appear when a shift with linked task lists is assigned.</p>}
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {historyRows.map((row) => (
+                  <div key={row.employeeId}>
+                    <button
+                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors text-left"
+                      onClick={() => setExpandedHistoryRows((prev) => {
+                        const n = new Set(prev);
+                        n.has(row.employeeId) ? n.delete(row.employeeId) : n.add(row.employeeId);
+                        return n;
+                      })}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800">{row.employeeName}</p>
+                        <p className="text-xs text-slate-400">{row.shiftName} · {row.shiftCode}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {row.totalCount > 0 ? (
+                          <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full",
+                            row.doneCount === row.totalCount ? "bg-emerald-100 text-emerald-700" :
+                            row.doneCount > 0 ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500")}>
+                            {row.doneCount}/{row.totalCount} done
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">No tasks</span>
+                        )}
+                        {row.tasks.length > 0 && <ChevronDown size={14} className={cn("text-slate-400 transition-transform", expandedHistoryRows.has(row.employeeId) && "rotate-180")} />}
+                      </div>
+                    </button>
+                    {expandedHistoryRows.has(row.employeeId) && row.tasks.length > 0 && (
+                      <div className="bg-slate-50/60 border-t border-slate-100 px-8 py-2 space-y-1">
+                        {row.tasks.map((t) => (
+                          <div key={t.id} className="flex items-center gap-2 py-1">
+                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0",
+                              t.priority === "high" ? "bg-red-400" : t.priority === "medium" ? "bg-amber-400" : "bg-slate-300")} />
+                            <span className={cn("text-xs flex-1 truncate", t.status === "done" ? "line-through text-slate-400" : "text-slate-600")}>{t.title}</span>
+                            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0",
+                              t.status === "done"        ? "bg-emerald-100 text-emerald-600" :
+                              t.status === "in_progress" ? "bg-blue-100 text-blue-600" :
+                              t.status === "skipped"     ? "bg-slate-100 text-slate-500" : "bg-slate-50 text-slate-400")}>
+                              {t.status.replace("_", " ")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Filter tabs — hidden in history mode */}
+        {!showHistory && <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -1182,10 +1318,10 @@ export default function TasksPage() {
               </span>
             </button>
           ))}
-        </div>
+        </div>}
 
         {/* Content */}
-        {loading ? (
+        {!showHistory && (loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={28} className="animate-spin text-slate-300" />
           </div>
@@ -1247,7 +1383,7 @@ export default function TasksPage() {
               </div>
             )}
           </div>
-        )}
+        ))}
       </div>
 
       {/* Task Modal */}

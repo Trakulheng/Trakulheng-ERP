@@ -443,6 +443,21 @@ model Task {
   updatedAt    DateTime  @updatedAt
 
   @@index([taskListId])
+  statusLogs TaskStatusLog[]
+}
+
+model TaskStatusLog {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId String
+  date       String
+  status     String   @default("pending")
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@unique([taskId, date, employeeId])
+  @@index([employeeId, date])
+  @@map("task_status_log")
 }
 
 model ShiftAssignment {
