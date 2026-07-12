@@ -9,32 +9,34 @@ export async function GET() {
   let employeePrismaId: string | null = null;
   let employeeName: string | null = null;
 
+  let employmentType: string | null = null;
+
   if (user.employeeRecordId) {
     // Primary: user account is explicitly linked to an employee record
     const emp = await prisma.employee.findUnique({
       where: { id: user.employeeRecordId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, employmentType: true },
     });
-    if (emp) { employeePrismaId = emp.id; employeeName = emp.name; }
+    if (emp) { employeePrismaId = emp.id; employeeName = emp.name; employmentType = emp.employmentType; }
   }
 
   if (!employeePrismaId && user.email) {
     // Fallback 1: find employee whose work or personal email matches the login email
     const emp = await prisma.employee.findFirst({
       where: { OR: [{ workEmail: user.email }, { personalEmail: user.email }] },
-      select: { id: true, name: true },
+      select: { id: true, name: true, employmentType: true },
     });
-    if (emp) { employeePrismaId = emp.id; employeeName = emp.name; }
+    if (emp) { employeePrismaId = emp.id; employeeName = emp.name; employmentType = emp.employmentType; }
   }
 
   if (!employeePrismaId && user.name) {
     // Fallback 2: match by display name (only when unique — avoids ambiguity)
     const matches = await prisma.employee.findMany({
       where: { name: user.name },
-      select: { id: true, name: true },
+      select: { id: true, name: true, employmentType: true },
       take: 2,
     });
-    if (matches.length === 1) { employeePrismaId = matches[0].id; employeeName = matches[0].name; }
+    if (matches.length === 1) { employeePrismaId = matches[0].id; employeeName = matches[0].name; employmentType = matches[0].employmentType; }
   }
 
   return NextResponse.json({
@@ -44,5 +46,6 @@ export async function GET() {
     role: user.role,
     employeePrismaId,
     employeeName,
+    employmentType,
   });
 }

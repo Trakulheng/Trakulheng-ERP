@@ -15,6 +15,9 @@ import {
   LogOut,
   X,
   RefreshCw,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -170,6 +173,8 @@ export default function AttendancePage() {
   const [modal, setModal]             = useState<ModalState | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState(today);
+  const isToday = selectedDate === today;
 
   // Live clock
   useEffect(() => {
@@ -177,7 +182,14 @@ export default function AttendancePage() {
     return () => clearInterval(id);
   }, []);
 
-  // Fetch all data when branch changes
+  const shiftDate = (days: number) => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    const next = d.toISOString().split("T")[0];
+    if (next <= today) setSelectedDate(next);
+  };
+
+  // Fetch all data when branch or selected date changes
   const fetchAll = useCallback(async () => {
     if (!activeBranch) return;
     setPageLoading(true);
@@ -185,8 +197,8 @@ export default function AttendancePage() {
       const [empRes, shiftRes, assignRes, recRes] = await Promise.all([
         fetch(`/api/employees?branchId=${activeBranch.id}&status=active`),
         fetch(`/api/hr/shifts?branchId=${activeBranch.id}`),
-        fetch(`/api/hr/shifts/assignments?branchId=${activeBranch.id}&from=${today}&to=${today}`),
-        fetch(`/api/hr/attendance?branchId=${activeBranch.id}&date=${today}`),
+        fetch(`/api/hr/shifts/assignments?branchId=${activeBranch.id}&from=${selectedDate}&to=${selectedDate}`),
+        fetch(`/api/hr/attendance?branchId=${activeBranch.id}&date=${selectedDate}`),
       ]);
       const [empData, shiftData, assignData, recData] = await Promise.all([
         empRes.json(), shiftRes.json(), assignRes.json(), recRes.json(),
@@ -198,9 +210,15 @@ export default function AttendancePage() {
     } finally {
       setPageLoading(false);
     }
-  }, [activeBranch, today]);
+  }, [activeBranch, selectedDate]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Pull-to-refresh event from global PullToRefresh component
+  useEffect(() => {
+    window.addEventListener("pull-refresh", fetchAll);
+    return () => window.removeEventListener("pull-refresh", fetchAll);
+  }, [fetchAll]);
 
   if (!activeBranch) {
     return (
@@ -228,7 +246,7 @@ export default function AttendancePage() {
       let displayStatus: AttendanceStatus = "not-yet";
       if (record) {
         displayStatus = record.status as AttendanceStatus;
-      } else if (shift) {
+      } else if (shift && isToday) {
         const nowMin   = now.getHours() * 60 + now.getMinutes();
         const [sh, sm] = shift.startTime.split(":").map(Number);
         if (nowMin > sh * 60 + sm + 15) displayStatus = "late";
@@ -288,7 +306,7 @@ export default function AttendancePage() {
         body: JSON.stringify({
           branchId:   activeBranch.id,
           employeeId: modal.employeeId,
-          date:       today,
+          date:       selectedDate,
           shiftId:    row?.assignment?.shiftId ?? null,
           ...(modal.action === "in" ? { clockInTime: timeStr } : { clockOutTime: timeStr }),
           lat: modal.gps.lat,
@@ -328,6 +346,42 @@ export default function AttendancePage() {
         subtitle={activeBranch.name}
         actions={
           <div className="flex items-center gap-2">
+            {/* Date picker */}
+            <div className="flex items-center bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+              <button
+                onClick={() => shiftDate(-1)}
+                className="p-2 hover:bg-slate-50 text-slate-500 transition-colors border-r border-slate-200"
+                title="Previous day"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <div className="relative flex items-center">
+                <CalendarDays size={13} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={today}
+                  onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                  className="pl-8 pr-3 py-2 text-sm text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                />
+              </div>
+              <button
+                onClick={() => shiftDate(1)}
+                disabled={isToday}
+                className="p-2 hover:bg-slate-50 text-slate-500 transition-colors border-l border-slate-200 disabled:opacity-30"
+                title="Next day"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+            {!isToday && (
+              <button
+                onClick={() => setSelectedDate(today)}
+                className="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                Today
+              </button>
+            )}
             <button
               onClick={fetchAll}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
@@ -345,9 +399,14 @@ export default function AttendancePage() {
       <main className="flex-1 p-6 space-y-6">
         {/* Live clock bar */}
         <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-5 py-3 text-sm text-slate-600">
-          <span className="font-medium text-slate-800">
-            {now.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-slate-800">
+              {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+            </span>
+            {!isToday && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Historical</span>
+            )}
+          </div>
           <span className="text-2xl font-mono font-bold text-slate-900 tabular-nums">
             {String(now.getHours()).padStart(2, "0")}:
             {String(now.getMinutes()).padStart(2, "0")}:
@@ -378,7 +437,7 @@ export default function AttendancePage() {
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100">
             <h2 className="text-sm font-semibold text-slate-800">
-              Today&apos;s Attendance — {activeBranch.name}
+              {isToday ? "Today's" : new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} Attendance — {activeBranch.name}
             </h2>
           </div>
           <div className="overflow-x-auto">
@@ -401,7 +460,7 @@ export default function AttendancePage() {
                 {!pageLoading && rows.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-4 py-12 text-center text-slate-400">
-                      No shift assignments found for {activeBranch.name} today. Assign shifts on the Shift Management page.
+                      No shift assignments found for {activeBranch.name} on {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.
                     </td>
                   </tr>
                 )}
@@ -462,7 +521,9 @@ export default function AttendancePage() {
                     </td>
 
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {displayStatus === "completed" ? (
+                      {!isToday ? (
+                        <span className="text-xs text-slate-300">—</span>
+                      ) : displayStatus === "completed" ? (
                         <CheckCircle2 size={16} className="text-emerald-500" />
                       ) : displayStatus === "clocked-in" ? (
                         <button

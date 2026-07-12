@@ -6,6 +6,7 @@ import {
   Plus, Loader2, Trash2, Pencil, X, CheckCircle2, Clock, CircleDot,
   XCircle, CalendarDays, Timer, User, Link2, ChevronDown, AlertTriangle,
   ListTodo, ChevronRight, FolderOpen, Search, Camera, GripVertical,
+  LayoutGrid, List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
@@ -639,12 +640,94 @@ function ListModal({
   );
 }
 
+// ─── TaskRow (list view) ───────────────────────────────────────────────────
+
+function TaskRow({
+  task, onStatusUpdate, onEdit, onDelete,
+  isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd,
+}: {
+  task: Task;
+  onStatusUpdate: (id: string, status: Status) => void;
+  onEdit: (task: Task) => void;
+  onDelete: (id: string) => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: () => void;
+  onDrop?: () => void;
+  onDragEnd?: () => void;
+}) {
+  const p = PRIORITY_CONFIG[task.priority];
+  const isDone = task.status === "done" || task.status === "cancelled";
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); onDragStart?.(); }}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onDragOver?.(); }}
+      onDrop={(e) => { e.preventDefault(); onDrop?.(); }}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 border-b border-slate-50 last:border-b-0 transition-all",
+        isDone && "opacity-60",
+        isDragging ? "opacity-30 bg-slate-50" : isDragOver ? "bg-blue-50 border-b-blue-200" : "bg-white hover:bg-slate-50/60",
+      )}
+    >
+      <GripVertical size={13} className="text-slate-300 hover:text-slate-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
+      <span className={cn("w-2 h-2 rounded-full flex-shrink-0", p.dot)} />
+
+      {/* Title + description */}
+      <div className="flex-1 min-w-0">
+        <span className={cn("text-sm font-medium text-slate-800 truncate block", isDone && "line-through text-slate-400")}>
+          {task.title}
+        </span>
+        {task.description && (
+          <span className="text-xs text-slate-400 truncate block leading-snug">{task.description}</span>
+        )}
+      </div>
+
+      {/* Meta — hidden on very small screens */}
+      <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
+        {task.shiftLabel && (
+          <span className="inline-flex items-center gap-1 text-xs text-blue-600 whitespace-nowrap">
+            <Link2 size={10} />{task.shiftLabel}
+          </span>
+        )}
+        {task.assigneeName && (
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap">
+            <User size={10} />{task.assigneeName}
+          </span>
+        )}
+        {task.dueDate && (
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap">
+            <CalendarDays size={10} />
+            {new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+          </span>
+        )}
+      </div>
+
+      <div className="flex-shrink-0">
+        <StatusSelect task={task} onUpdate={onStatusUpdate} />
+      </div>
+
+      <div className="flex items-center gap-0.5 flex-shrink-0">
+        <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+          <Pencil size={12} />
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+          <Trash2 size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── TaskListSection ───────────────────────────────────────────────────────
 
 function TaskListSection({
   list, tasks, isExpanded, onToggle,
   onAddTask, onEditTask, onDeleteTask, onStatusUpdate, onReorder,
-  onEditList, onDeleteList,
+  onEditList, onDeleteList, viewMode,
 }: {
   list: TaskList | null;
   tasks: Task[];
@@ -657,6 +740,7 @@ function TaskListSection({
   onReorder?: (ids: string[]) => void;
   onEditList?: (list: TaskList) => void;
   onDeleteList?: (id: string) => void;
+  viewMode?: "grid" | "list";
 }) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -738,7 +822,7 @@ function TaskListSection({
 
       {/* Tasks */}
       {isExpanded && (
-        <div className="border-t border-slate-100 p-3 space-y-2.5">
+        <div className={cn("border-t border-slate-100", viewMode === "list" ? "" : "p-3 space-y-2.5")}>
           {tasks.length === 0 ? (
             <div className="py-6 text-center">
               <p className="text-xs text-slate-400">No tasks here.</p>
@@ -748,6 +832,24 @@ function TaskListSection({
               >
                 + Add a task
               </button>
+            </div>
+          ) : viewMode === "list" ? (
+            <div>
+              {tasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  onStatusUpdate={onStatusUpdate}
+                  onEdit={onEditTask}
+                  onDelete={onDeleteTask}
+                  isDragging={draggedId === task.id}
+                  isDragOver={dragOverId === task.id && draggedId !== task.id}
+                  onDragStart={() => setDraggedId(task.id)}
+                  onDragOver={() => { if (draggedId && draggedId !== task.id) setDragOverId(task.id); }}
+                  onDrop={() => handleDrop(task.id)}
+                  onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+                />
+              ))}
             </div>
           ) : (
             <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -802,6 +904,9 @@ export default function TasksPage() {
 
   // Expanded sections
   const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set(["__unassigned__"]));
+
+  // View mode
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // ── Fetch ──
   const fetchTasks = useCallback(async () => {
@@ -1004,6 +1109,29 @@ export default function TasksPage() {
         subtitle="Manage and track team tasks"
         actions={
           <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+              <button
+                onClick={() => setViewMode("grid")}
+                title="Grid view"
+                className={cn(
+                  "p-2 transition-colors",
+                  viewMode === "grid" ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                <LayoutGrid size={15} />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                title="List view"
+                className={cn(
+                  "p-2 transition-colors",
+                  viewMode === "list" ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                <List size={15} />
+              </button>
+            </div>
             <button
               onClick={openCreateList}
               className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm border border-slate-200"
@@ -1078,6 +1206,7 @@ export default function TasksPage() {
                 onReorder={handleReorder}
                 onEditList={openEditList}
                 onDeleteList={handleDeleteList}
+                viewMode={viewMode}
               />
             ))}
 
@@ -1093,6 +1222,7 @@ export default function TasksPage() {
                 onDeleteTask={handleDeleteTask}
                 onStatusUpdate={handleStatusUpdate}
                 onReorder={handleReorder}
+                viewMode={viewMode}
               />
             )}
 

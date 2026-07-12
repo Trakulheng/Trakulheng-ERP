@@ -38,7 +38,7 @@ interface LeaveRow {
 interface Employee { prismaId: string; id: string; name: string; }
 interface LeaveTypeOption { id: string; name: string; color: string; daysPerYear: number; isPaid: boolean; requireDoc: boolean; }
 interface BalanceItem { id: string; name: string; color: string; daysPerYear: number; used: number; pending: number; remaining: number | null; }
-interface Me { id: string; name: string; email: string; role: string; employeePrismaId?: string | null; employeeName?: string | null; }
+interface Me { id: string; name: string; email: string; role: string; employeePrismaId?: string | null; employeeName?: string | null; employmentType?: string | null; }
 
 function calcDays(from: string, to: string) {
   if (!from || !to) return 0;
@@ -382,7 +382,7 @@ export default function LeavePage() {
   // Load current user
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((d) => {
-      if (d) setMe({ id: d.id, name: d.name ?? "", email: d.email ?? "", role: d.role, employeePrismaId: d.employeePrismaId, employeeName: d.employeeName });
+      if (d) setMe({ id: d.id, name: d.name ?? "", email: d.email ?? "", role: d.role, employeePrismaId: d.employeePrismaId, employeeName: d.employeeName, employmentType: d.employmentType });
     }).catch(() => {});
   }, []);
 
@@ -555,8 +555,8 @@ export default function LeavePage() {
         {/* MY LEAVE TAB ─────────────────── */}
         {tab === "mine" && (
           <>
-            {/* Balance cards */}
-            {myBalance.length > 0 && (
+            {/* Balance cards — full-time employees only */}
+            {myBalance.length > 0 && (isManager || me?.employmentType === "full-time") && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {myBalance.map((b) => {
                   const lt = leaveTypes.find((t) => t.name === b.name);

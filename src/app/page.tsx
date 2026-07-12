@@ -5,6 +5,7 @@ import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
 import { ShiftScheduleWidget } from "@/components/dashboard/ShiftScheduleWidget";
+import { MyTasksWidget } from "@/components/dashboard/MyTasksWidget";
 import { DollarSign, TrendingDown, Package, Users, AlertTriangle, Clock, CalendarOff, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
 import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
@@ -313,7 +314,7 @@ export default async function DashboardPage() {
                   )];
 
                 case "tasks":
-                  return [<TodayTodosWidget key="tasks" employeeId={user?.employeeRecordId} />];
+                  return [<MyTasksWidget key="tasks" userName={user?.name} />];
 
                 case "leave_requests":
                   return [(

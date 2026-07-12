@@ -744,10 +744,16 @@ function CellAssignModal({
         </div>
         <div className="px-6 py-5 space-y-4">
           {isOverride && confirmStatus && (
-            <div className={cn("flex items-center gap-2 p-3 rounded-xl text-sm",
-              confirmStatus === "confirmed" ? "bg-emerald-50 text-emerald-700" : confirmStatus === "pending" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700")}>
-              {confirmStatus === "confirmed" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-              Employee {confirmStatus} this assignment
+            <div className={cn("flex items-start gap-2 p-3 rounded-xl text-sm",
+              confirmStatus === "confirmed" ? "bg-emerald-50 text-emerald-700" : confirmStatus === "pending" ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-600")}>
+              {confirmStatus === "confirmed" ? <CheckCircle2 size={14} className="mt-0.5 shrink-0" /> : <AlertCircle size={14} className="mt-0.5 shrink-0" />}
+              <span>
+                {confirmStatus === "confirmed"
+                  ? "Employee confirmed this shift. Saving changes will reset their confirmation to pending."
+                  : confirmStatus === "pending"
+                  ? "Awaiting employee confirmation."
+                  : "Draft — not yet sent to employee."}
+              </span>
             </div>
           )}
           {date > MAX_FUTURE && (
@@ -785,12 +791,9 @@ function CellAssignModal({
           </div>
         </div>
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
-          <div>{isOverride && onRemoveOverride && (<button onClick={onRemoveOverride} className="text-xs text-red-500 hover:underline">Revert to recurring pattern</button>)}</div>
+          <div>{isOverride && onRemoveOverride && (<button onClick={onRemoveOverride} className="text-xs text-red-500 hover:underline">Remove assignment</button>)}</div>
           <div className="flex gap-3">
-            <button
-              onClick={isOverride && onRemoveOverride ? onRemoveOverride : onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
-            >
+            <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
               Cancel
             </button>
             <button onClick={() => onSave(dayOff ? null : selectedId, note)} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Save Assignment</button>
@@ -1197,6 +1200,8 @@ function WeekCalendar({
                   const c = shift ? shiftColorMap[shift.color] : null;
                   const isOv = !!override;
                   const canAct = !isOtherEmp && !isPast && !isFutureLocked;
+                  // Managers can always click cells that already have an override, even past dates
+                  const canActOnOv = !isOtherEmp && !isFutureLocked;
                   const isWeeklyDayOff = !isOv && !shift && ((emp as any).weeklyDaysOff as number[] | undefined)?.includes(d.getDay());
 
                   return (
@@ -1205,14 +1210,14 @@ function WeekCalendar({
                         <div className="flex flex-col gap-1 items-center">
                           <button
                             title={`${shift.name} ${shift.startTime}–${shift.endTime}`}
-                            onClick={() => canAct && !empViewId && onCellClick(emp.id, dateStr, shiftId, isOv, override)}
+                            onClick={() => (isOv ? canActOnOv : canAct) && !empViewId && onCellClick(emp.id, dateStr, shiftId, isOv, override)}
                             className={cn("w-full px-1 py-1.5 rounded-lg text-xs font-semibold transition-colors relative group",
                               isOv && override?.confirmStatus === "confirmed"
                                 ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-400"
                                 : isOv && override?.confirmStatus === "draft"
                                   ? cn(c.badge, "ring-2 ring-offset-1 ring-dashed ring-slate-400 opacity-70")
                                   : cn(c.badge, isOv && "ring-2 ring-offset-1", isOv && override?.confirmStatus === "pending" ? "ring-amber-400" : isOv ? "ring-slate-300" : ""),
-                              !empViewId && canAct ? "hover:opacity-75 cursor-pointer" : "cursor-default")}>
+                              !empViewId && (isOv ? canActOnOv : canAct) ? "hover:opacity-75 cursor-pointer" : "cursor-default")}>
                             {shift.code}
                             {isOv && (
                               <span className="absolute -top-1.5 -right-1.5">
@@ -1238,23 +1243,45 @@ function WeekCalendar({
                                 className="flex-1 py-0.5 text-xs bg-amber-100 text-amber-700 rounded font-bold hover:bg-amber-200">↕</button>
                             </div>
                           )}
+                          {isOv && override?.confirmStatus && (
+                            <span className={cn("text-[9px] font-medium leading-none",
+                              override.confirmStatus === "confirmed" ? "text-emerald-600" :
+                              override.confirmStatus === "pending" ? "text-amber-500" : "text-slate-400")}>
+                              {override.confirmStatus === "confirmed" ? "✓ confirmed" :
+                               override.confirmStatus === "pending" ? "awaiting" : "draft"}
+                            </span>
+                          )}
                         </div>
                       ) : isOv && override?.shiftId === null ? (
                         /* Day-off override — show OFF badge */
-                        <button
-                          title="Day off (click to edit)"
-                          onClick={() => canAct && !empViewId && onCellClick(emp.id, dateStr, null, true, override)}
-                          className={cn("w-full h-10 rounded-lg border-2 flex items-center justify-center gap-1 text-xs font-semibold transition-colors relative",
-                            canAct && !empViewId ? "cursor-pointer hover:opacity-80" : "cursor-default",
-                            "border-red-200 bg-red-50 text-red-400",
-                            override?.confirmStatus === "pending" && "ring-2 ring-offset-1 ring-amber-400")}>
-                          OFF
-                          {override?.confirmStatus === "pending" && (
-                            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-amber-400 rounded-full flex items-center justify-center">
-                              <span className="w-1.5 h-1.5 bg-white rounded-full" />
+                        <div className="flex flex-col gap-0.5 items-center">
+                          <button
+                            title="Day off (click to edit)"
+                            onClick={() => canActOnOv && !empViewId && onCellClick(emp.id, dateStr, null, true, override)}
+                            className={cn("w-full h-10 rounded-lg border-2 flex items-center justify-center gap-1 text-xs font-semibold transition-colors relative",
+                              canActOnOv && !empViewId ? "cursor-pointer hover:opacity-80" : "cursor-default",
+                              "border-red-200 bg-red-50 text-red-400",
+                              override?.confirmStatus === "confirmed" && "border-emerald-300 ring-2 ring-offset-1 ring-emerald-400",
+                              override?.confirmStatus === "pending" && "ring-2 ring-offset-1 ring-amber-400")}>
+                            OFF
+                            {override?.confirmStatus === "pending" && (
+                              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-amber-400 rounded-full flex items-center justify-center">
+                                <span className="w-1.5 h-1.5 bg-white rounded-full" />
+                              </span>
+                            )}
+                            {override?.confirmStatus === "confirmed" && (
+                              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-emerald-500 rounded-full flex items-center justify-center text-white text-[8px]">✓</span>
+                            )}
+                          </button>
+                          {override?.confirmStatus && (
+                            <span className={cn("text-[9px] font-medium leading-none",
+                              override.confirmStatus === "confirmed" ? "text-emerald-600" :
+                              override.confirmStatus === "pending" ? "text-amber-500" : "text-slate-400")}>
+                              {override.confirmStatus === "confirmed" ? "✓ confirmed" :
+                               override.confirmStatus === "pending" ? "awaiting" : "draft"}
                             </span>
                           )}
-                        </button>
+                        </div>
                       ) : isWeeklyDayOff ? (
                         /* Weekly recurring day off — grey, admin can still override */
                         <button
@@ -2298,7 +2325,7 @@ export default function ShiftsPage() {
       shiftId,
       date: cellModal.date,
       branchId: activeBranch?.id ?? "",
-      confirmStatus: "draft",
+      confirmStatus: cellModal.entry?.confirmStatus === "confirmed" ? "pending" : "draft",
       note: note || undefined,
     };
     setOverrides((prev) => {
@@ -2313,7 +2340,7 @@ export default function ShiftsPage() {
       const res = await fetch(url, {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId: cellModal.empId, shiftId: shiftId ?? null, date: cellModal.date, branchId: activeBranch?.id, note: note || null }),
+        body: JSON.stringify({ employeeId: cellModal.empId, shiftId: shiftId ?? null, date: cellModal.date, branchId: activeBranch?.id, note: note || null, ...(cellModal.entry?.confirmStatus === "confirmed" ? { confirmStatus: "pending" } : {}) }),
       });
       if (res.ok) {
         const saved = await res.json();

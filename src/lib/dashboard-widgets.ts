@@ -36,6 +36,6 @@ const mkDefault = (ids: string[]): WidgetConfig[] =>
 export const DEFAULT_WIDGETS: Record<string, WidgetConfig[]> = {
   admin:   mkDefault(["pending_shifts","revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","payroll","tasks","leave_requests","shift_change_requests"]),
   manager: mkDefault(["pending_shifts","clock_inout","revenue","expenses","inventory_value","headcount","revenue_chart","recent_invoices","stock_alerts","tasks","leave_requests","shift_change_requests"]),
-  staff:   mkDefault(["clock_inout","shift_schedule","shift_todos","pending_shifts","leave_requests","inventory_value","stock_alerts","tasks"]),
+  staff:   mkDefault(["clock_inout","shift_todos","shift_schedule","tasks","pending_shifts","leave_requests"]),
   viewer:  mkDefault(["revenue","expenses","inventory_value","tasks"]),
 };
