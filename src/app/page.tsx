@@ -1,7 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
-import { TodayTodosWidget } from "@/components/dashboard/TodayTodosWidget";
 import { ClockInOutWidget } from "@/components/dashboard/ClockInOutWidget";
 import { PendingShiftsWidget } from "@/components/dashboard/PendingShiftsWidget";
 import { ShiftScheduleWidget } from "@/components/dashboard/ShiftScheduleWidget";
@@ -429,9 +428,6 @@ export default async function DashboardPage() {
 
                 case "clock_inout":
                   return [<ClockInOutWidget key="clock_inout" />];
-
-                case "shift_todos":
-                  return [<TodayTodosWidget key="shift_todos" employeeId={user?.employeeRecordId} />];
 
                 case "shift_schedule":
                   return [<ShiftScheduleWidget key="shift_schedule" days={shiftSchedule} />];
