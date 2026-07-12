@@ -58,6 +58,9 @@ export async function sendVerificationEmail(email: string, name: string, token: 
 </html>`;
 
   if (!process.env.RESEND_API_KEY) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("RESEND_API_KEY is not configured. Email cannot be sent.");
+    }
     console.log(`\n[DEV] Verification link for ${email}:\n${url}\n`);
     return;
   }
@@ -114,6 +117,9 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
 </html>`;
 
   if (!process.env.RESEND_API_KEY) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("RESEND_API_KEY is not configured. Email cannot be sent.");
+    }
     console.log(`\n[DEV] Password reset link for ${email}:\n${url}\n`);
     return;
   }
@@ -186,6 +192,9 @@ export async function sendInviteEmail(email: string, name: string, token: string
 </html>`;
 
   if (!process.env.RESEND_API_KEY) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("RESEND_API_KEY is not configured. Email cannot be sent.");
+    }
     console.log(`\n[DEV] Invite link for ${email}:\n${url}\n`);
     return;
   }
