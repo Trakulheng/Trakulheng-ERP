@@ -95,9 +95,10 @@ function AddEditModal({ initial, editId, onClose, onSave, nextSku, brandSuggesti
   const valid = form.name.trim() && form.unitPrice > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40">
+      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-slate-900">{editId ? "Edit Product" : "Add New Product"}</h2>
             {!editId && <p className="text-xs text-slate-400 mt-0.5">New SKU: <span className="font-mono font-medium text-blue-600">{nextSku}</span></p>}
@@ -105,7 +106,7 @@ function AddEditModal({ initial, editId, onClose, onSave, nextSku, brandSuggesti
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Name */}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Product Name *</label>
@@ -215,13 +216,14 @@ function AddEditModal({ initial, editId, onClose, onSave, nextSku, brandSuggesti
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <button onClick={() => onSave(form, editId)} disabled={!valid}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
             {editId ? "Save Changes" : "Add Product"}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -344,9 +346,10 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
   const anyProduct = product as Record<string, unknown>;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40">
+      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center"><Package size={20} className="text-blue-600" /></div>
             <div>
@@ -365,7 +368,7 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
           </div>
         </div>
 
-        <div className="p-6 grid grid-cols-3 gap-6">
+        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-3 gap-6">
           <div className="col-span-1 space-y-4">
             <div className="bg-slate-50 rounded-xl p-4 space-y-3 text-sm">
               <div><p className="text-xs text-slate-400">Category</p><p className="font-medium text-slate-800">{product.category}</p></div>
@@ -488,6 +491,7 @@ function DetailModal({ product, movements, onClose, onEdit, onAdjust }: DetailMo
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

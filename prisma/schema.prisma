@@ -138,6 +138,13 @@ model Supplier {
   phone          String?
   category       String?
   rating         Float           @default(0)
+  address        String?
+  country        String?
+  taxId          String?
+  paymentTerms   String?
+  notes          String?
+  status         String          @default("active")
+  contacts       Json?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   purchaseOrders PurchaseOrder[]

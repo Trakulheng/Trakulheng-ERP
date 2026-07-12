@@ -114,9 +114,10 @@ function SupplierModal({ initial, nextId, apiCategories, apiPaymentTerms, onClos
   const canSave = form.name && contacts[0]?.name && contacts[0]?.email;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40">
+      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit Supplier" : "New Supplier"}</h2>
             <p className="text-xs text-slate-400 mt-0.5 font-mono">{form.id}</p>
@@ -124,7 +125,7 @@ function SupplierModal({ initial, nextId, apiCategories, apiPaymentTerms, onClos
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Company Info */}
           <div className="space-y-3">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Company Info</p>
@@ -255,7 +256,7 @@ function SupplierModal({ initial, nextId, apiCategories, apiPaymentTerms, onClos
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <button
             disabled={!canSave}
@@ -264,6 +265,7 @@ function SupplierModal({ initial, nextId, apiCategories, apiPaymentTerms, onClos
             {isEdit ? "Save Changes" : "Add Supplier"}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -287,9 +289,10 @@ function DetailModal({ supplier, onClose, onEdit }: DetailModalProps) {
     : [{ name: supplier.contact ?? "", email: supplier.email ?? "", phone: supplier.phone ?? "" }];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40">
+      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-700 text-lg">
               {supplier.name[0]}
@@ -319,7 +322,7 @@ function DetailModal({ supplier, onClose, onEdit }: DetailModalProps) {
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="grid grid-cols-3 gap-4">
             {[
               { label: "Total POs",   value: String(myPOs.length),       icon: <FileText size={16} className="text-blue-600" />,   bg: "bg-blue-50" },
@@ -449,6 +452,7 @@ function DetailModal({ supplier, onClose, onEdit }: DetailModalProps) {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
