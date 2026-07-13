@@ -7,7 +7,7 @@ import { useBranch } from "@/context/BranchContext";
 import { cn } from "@/lib/utils";
 import {
   Users, UserCheck, Shield, UserPlus, Search, Pencil, Trash2, X,
-  ChevronDown, Check, Mail, RefreshCw, Clock,
+  ChevronDown, Check, Mail, RefreshCw, Clock, Copy, Link,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -403,6 +403,8 @@ export default function UserManagementPage() {
   const [saveError,    setSaveError]   = useState("");
   const [toast,        setToast]       = useState("");
   const [resending,    setResending]   = useState<string | null>(null);
+  const [inviteLink,   setInviteLink]  = useState<{ name: string; link: string } | null>(null);
+  const [copied,       setCopied]      = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -479,13 +481,26 @@ export default function UserManagementPage() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ action: "resend-invite" }),
       });
-      if (res.ok) setToast(`Invitation resent to ${u.email}`);
-      else { const d = await res.json(); alert(d.error); }
+      if (res.ok) {
+        const data = await res.json();
+        setInviteLink({ name: u.name, link: data.inviteLink });
+        if (data.emailSent) setToast(`Invitation email sent to ${u.email}`);
+      } else {
+        const d = await res.json(); alert(d.error);
+      }
     } catch {
       alert("Failed to resend invitation.");
     } finally {
       setResending(null);
     }
+  };
+
+  const handleCopyLink = () => {
+    if (!inviteLink) return;
+    navigator.clipboard.writeText(inviteLink.link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (
@@ -667,6 +682,39 @@ export default function UserManagementPage() {
               <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => void handleDelete(deleteId!)} className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {inviteLink && (
+        <div className="fixed inset-0 h-screen z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Link size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Invite Link</h3>
+                  <p className="text-xs text-slate-500">{inviteLink.name}</p>
+                </div>
+              </div>
+              <button onClick={() => { setInviteLink(null); setCopied(false); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">Share this link with the user. It expires in 7 days.</p>
+            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 mb-4">
+              <span className="text-xs text-slate-600 break-all flex-1 font-mono leading-relaxed">{inviteLink.link}</span>
+            </div>
+            <button
+              onClick={handleCopyLink}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                copied ? "bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"
+              )}
+            >
+              {copied ? <Check size={15} /> : <Copy size={15} />}
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
           </div>
         </div>
       )}

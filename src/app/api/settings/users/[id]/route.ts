@@ -72,12 +72,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (user.emailVerified) return NextResponse.json({ error: "User has already accepted the invite." }, { status: 400 });
 
     const token = await createInviteToken(user.id);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://erp.trakulheng.com";
+    const inviteLink = `${appUrl}/auth/accept-invite?token=${token}`;
+
+    let emailSent = false;
     try {
       await sendInviteEmail(user.email, user.name ?? user.email, token);
+      emailSent = true;
     } catch (err) {
       console.error("[resend-invite]", err);
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, emailSent, inviteLink });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });
