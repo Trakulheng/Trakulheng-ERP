@@ -695,13 +695,15 @@ function HouseBrandsTab() {
 
   const handleSave = async (data: Partial<HouseBrand>) => {
     setError(""); setSaving(true);
-    const isEdit = modal && modal !== "new";
-    const url  = isEdit ? `/api/settings/brands/${(modal as HouseBrand).id}` : "/api/settings/brands";
-    const meth = isEdit ? "PATCH" : "POST";
-    const r = await fetch(url, { method: meth, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    if (r.ok) { setModal(null); load(); }
-    else { const d = await r.json(); setError(d.error ?? "Save failed."); }
-    setSaving(false);
+    try {
+      const isEdit = modal && modal !== "new";
+      const url  = isEdit ? `/api/settings/brands/${(modal as HouseBrand).id}` : "/api/settings/brands";
+      const meth = isEdit ? "PATCH" : "POST";
+      const r = await fetch(url, { method: meth, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (r.ok) { setModal(null); load(); }
+      else { const d = await r.json(); setError(d.error ?? "Save failed."); }
+    } catch { setError("Network error. Please try again."); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
