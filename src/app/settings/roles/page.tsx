@@ -281,9 +281,9 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
               <Shield size={15} className="text-blue-600" />
@@ -296,7 +296,7 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
           {/* Name */}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Role Name *</label>
@@ -399,7 +399,7 @@ function CreateRoleModal({ existingRoles, existingPerms, onClose, onSave }: Crea
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <button disabled={!canSave} onClick={handleSave}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">

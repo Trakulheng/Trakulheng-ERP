@@ -789,8 +789,8 @@ function EmployeeSelfRequestModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h3 className="text-base font-semibold text-slate-900">Request Shift Change</h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -802,7 +802,7 @@ function EmployeeSelfRequestModal({
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100"><X size={16} className="text-slate-500" /></button>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-5 space-y-4">
           {/* Monthly quota */}
           <div className={cn("flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium",
             remaining <= 0 ? "bg-red-50 text-red-700" : remaining === 1 ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-600")}>
@@ -897,7 +897,7 @@ function EmployeeSelfRequestModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <button
             disabled={!canSubmit || remaining <= 0}

@@ -194,16 +194,16 @@ function LeaveModal({ leaveTypes, defaultEmployeeId, employeeName, myLeaveRows, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <h2 className="text-base font-bold text-slate-900">New Leave Request</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-5">
             {/* Employee (read-only — always the requester) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -290,7 +290,7 @@ function LeaveModal({ leaveTypes, defaultEmployeeId, employeeName, myLeaveRows, 
             {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
           </div>
 
-          <div className="flex gap-3 px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+          <div className="flex gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
             <button type="button" onClick={onClose}
               className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
               Cancel

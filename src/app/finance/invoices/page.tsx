@@ -87,8 +87,8 @@ function NewInvoiceModal({ nextId, onClose, onSave }: NewInvoiceModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-slate-900">New Invoice</h2>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -100,7 +100,7 @@ function NewInvoiceModal({ nextId, onClose, onSave }: NewInvoiceModalProps) {
         </div>
 
         {/* Step indicators */}
-        <div className="flex items-center gap-3 px-6 py-3 bg-slate-50 border-b border-slate-100">
+        <div className="flex items-center gap-3 px-6 py-3 bg-slate-50 border-b border-slate-100 shrink-0">
           {[1, 2].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
@@ -113,7 +113,7 @@ function NewInvoiceModal({ nextId, onClose, onSave }: NewInvoiceModalProps) {
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6">
           {step === 1 && (
             <div className="space-y-5">
               <div>
@@ -267,7 +267,7 @@ function NewInvoiceModal({ nextId, onClose, onSave }: NewInvoiceModalProps) {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <div className="flex gap-3">
             {step === 2 && <button onClick={() => setStep(1)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">← Back</button>}
@@ -308,8 +308,8 @@ function DetailModal({ inv, items, onClose, onMarkPaid, onCancel }: DetailModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center"><FileText size={20} className="text-blue-600" /></div>
             <div>
@@ -337,7 +337,7 @@ function DetailModal({ inv, items, onClose, onMarkPaid, onCancel }: DetailModalP
           </div>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 text-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1"><User size={11} /> Customer</p>

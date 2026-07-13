@@ -1202,9 +1202,9 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete, canEdit }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col">
         {/* Hero */}
-        <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 px-6 pt-6 pb-5 rounded-t-2xl">
+        <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 px-6 pt-6 pb-5 rounded-t-2xl shrink-0">
           <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><X size={16} /></button>
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/20 flex items-center justify-center text-white text-2xl font-bold shrink-0">
@@ -1258,7 +1258,7 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete, canEdit }: 
           </div>
         </div>
 
-        <div className="px-6 pb-6 space-y-5">
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6 space-y-5">
           {/* Personal */}
           <section className="space-y-3">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Personal</p>

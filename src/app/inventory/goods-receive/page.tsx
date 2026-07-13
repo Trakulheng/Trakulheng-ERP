@@ -238,9 +238,9 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
               <PackageCheck size={20} className="text-emerald-600" />
@@ -253,7 +253,7 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
           {/* PO context */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
@@ -647,7 +647,7 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 sticky bottom-0 bg-white">
+        <div className="border-t border-slate-100 shrink-0">
           {/* Checklist */}
           <div className="px-6 py-2 flex items-center gap-4 text-xs border-b border-slate-50">
             <span className={cn("flex items-center gap-1", gpsStatus === "ok" ? "text-emerald-600" : "text-slate-400")}>
@@ -696,9 +696,9 @@ function GRNSuccess({ grn, onClose }: GRNSuccessProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* GRN Header */}
-        <div className="bg-emerald-600 text-white px-6 py-5 rounded-t-2xl">
+        <div className="bg-emerald-600 text-white px-6 py-5 rounded-t-2xl shrink-0">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
               <CheckCircle2 size={22} className="text-white" />
@@ -710,7 +710,7 @@ function GRNSuccess({ grn, onClose }: GRNSuccessProps) {
           </div>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-5">
           {/* GRN details */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="bg-slate-50 rounded-xl p-4 space-y-2">

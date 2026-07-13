@@ -154,8 +154,8 @@ function CustomerModal({ initial, nextId, businessTypes, onClose, onSave }: Cust
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit Customer" : "New Customer"}</h2>
             <p className="text-xs text-slate-400 font-mono mt-0.5">{initial?.id ?? nextId}</p>
@@ -189,7 +189,7 @@ function CustomerModal({ initial, nextId, businessTypes, onClose, onSave }: Cust
           </div>
         )}
 
-        <div className="p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-5">
           {/* Individual fields */}
           {type === "individual" && (
             <div className="space-y-4">
@@ -343,7 +343,7 @@ function CustomerModal({ initial, nextId, businessTypes, onClose, onSave }: Cust
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <button disabled={!canSave} onClick={handleSave}
             className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
@@ -380,8 +380,8 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white text-lg",
               isInd ? "bg-blue-500" : "bg-violet-500")}>
@@ -412,7 +412,7 @@ function DetailModal({ profile, onClose, onEdit }: DetailModalProps) {
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
           {/* Stats */}
           <div className="grid grid-cols-4 gap-3">
             {[

@@ -188,9 +188,9 @@ function NewPOModal({ nextId, currentRole, canSeePrice, onClose, onSave }: NewPO
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-slate-900">New Purchase Order</h2>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -202,13 +202,13 @@ function NewPOModal({ nextId, currentRole, canSeePrice, onClose, onSave }: NewPO
         </div>
 
         {/* Info banner */}
-        <div className="mx-6 mt-4 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+        <div className="mx-6 mt-4 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 shrink-0">
           <Bell size={12} className="shrink-0" />
           After saving, this PO will be sent to the branch manager for approval before going to the supplier.
         </div>
 
         {/* Step indicators */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50 mt-3">
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50 mt-3 shrink-0">
           {[1, 2].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
@@ -221,7 +221,7 @@ function NewPOModal({ nextId, currentRole, canSeePrice, onClose, onSave }: NewPO
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6">
           {step === 1 && (
             <div className="space-y-5">
               <div>
@@ -362,7 +362,7 @@ function NewPOModal({ nextId, currentRole, canSeePrice, onClose, onSave }: NewPO
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
           <div className="flex gap-3">
             {step === 2 && (
@@ -411,8 +411,8 @@ function DetailModal({ po, lines, currentRole, canSeePrice, onClose, onStatusCha
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
               <FileText size={20} className="text-blue-600" />
@@ -445,7 +445,7 @@ function DetailModal({ po, lines, currentRole, canSeePrice, onClose, onStatusCha
           </div>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-5">
           {/* Approval workflow */}
           {po.approvalStatus === "pending_approval" && (
             <div className={cn("rounded-xl p-4 border", overdue ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200")}>
