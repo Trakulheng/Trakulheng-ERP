@@ -55,6 +55,7 @@ export async function POST(req: Request) {
 
   const data = await req.json();
 
+  try {
   const branch = await prisma.branch.create({
     data: {
       code:               String(data.code ?? "").toUpperCase(),
@@ -74,8 +75,8 @@ export async function POST(req: Request) {
       manager:            data.manager || null,
       startDate:          data.startDate || null,
       assignedEmployees:  data.assignedEmployees ?? [],
-      lat:                data.lat ?? 0,
-      lng:                data.lng ?? 0,
+      lat:                typeof data.lat === "number" ? data.lat : (parseFloat(String(data.lat ?? "")) || 0),
+      lng:                typeof data.lng === "number" ? data.lng : (parseFloat(String(data.lng ?? "")) || 0),
       radiusMeters:       data.radiusMeters ?? 200,
       rentFrom:           data.rentFrom || null,
       rentTo:             data.rentTo || null,
@@ -91,4 +92,7 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json(mapBranch(branch), { status: 201 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message ?? "Failed to create branch." }, { status: 500 });
+  }
 }

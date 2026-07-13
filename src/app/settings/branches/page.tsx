@@ -882,8 +882,8 @@ export default function BranchesPage() {
         if (isNew) return [...prev, saved];
         return prev.map((x) => x.id === saved.id ? saved : x);
       });
-      await refetch();
       setShowModal(false);
+      void refetch();
     } catch {
       setToast("Failed to save branch. Please try again.");
     } finally {
