@@ -108,6 +108,7 @@ const navItems = [
       { label: "Audit Log",         href: "/settings/audit",          icon: History,        permKey: "set_audit"         },
       { label: "Notifications",     href: "/settings/notifications",  icon: Bell,           permKey: "set_notifications" },
       { label: "Appearance",        href: "/settings/appearance",     icon: Sliders,        permKey: "set_appearance"    },
+      { label: "Backup & Restore",  href: "/settings/backup",         icon: Database,       permKey: "set_general"       },
     ],
   },
 ];
@@ -147,7 +148,10 @@ export function Sidebar() {
 
   function loadMe() {
     fetch("/api/user/profile")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => {
+        if (r.status === 401) { window.location.href = "/auth/login"; return null; }
+        return r.ok ? r.json() : null;
+      })
       .then((data) => { if (data?.email) setMe(data); })
       .catch(() => {});
   }

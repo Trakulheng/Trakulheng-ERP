@@ -593,3 +593,13 @@ model LookupValue {
   @@unique([type, label])
   @@index([type])
 }
+
+model BackupSnapshot {
+  id        String   @id @default(cuid())
+  label     String
+  sizeBytes Int
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

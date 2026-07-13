@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, Loader2, Eye, EyeOff, ChevronLeft, CheckCircle2, UserCircle2 } from "lucide-react";
+import { X, Loader2, Eye, EyeOff, ChevronLeft, CheckCircle2, UserCircle2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SwitchUser {
@@ -39,7 +39,7 @@ function initials(name: string | null, email: string) {
   return email.slice(0, 2).toUpperCase();
 }
 
-type Step = "list" | "auth" | "success";
+type Step = "list" | "auth" | "add" | "success";
 
 interface Props {
   onClose: () => void;
@@ -56,6 +56,9 @@ export function UserSwitcher({ onClose }: Props) {
   const [showPw, setShowPw] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addPassword, setAddPassword] = useState("");
+  const [showAddPw, setShowAddPw] = useState(false);
 
   useEffect(() => {
     fetch("/api/users")
@@ -110,6 +113,31 @@ export function UserSwitcher({ onClose }: Props) {
     }
   };
 
+  const handleAddAccount = async () => {
+    if (!addEmail) { setError("Please enter an email address."); return; }
+    if (!addPassword) { setError("Please enter a password."); return; }
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: addEmail, password: addPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Authentication failed. Check your credentials.");
+        return;
+      }
+      setStep("success");
+      setTimeout(() => { window.location.href = "/"; }, 1200);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
@@ -120,9 +148,9 @@ export function UserSwitcher({ onClose }: Props) {
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 flex-shrink-0">
-          {step === "auth" && (
+          {(step === "auth" || step === "add") && (
             <button
-              onClick={() => { setStep("list"); setSelected(null); setError(""); }}
+              onClick={() => { setStep("list"); setSelected(null); setError(""); setAddEmail(""); setAddPassword(""); }}
               className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 -ml-1"
             >
               <ChevronLeft size={18} />
@@ -130,13 +158,15 @@ export function UserSwitcher({ onClose }: Props) {
           )}
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-slate-900">
-              {step === "list" ? "Switch User" : step === "auth" ? selected?.name ?? selected?.email : "Switching…"}
+              {step === "list" ? "Switch User" : step === "auth" ? selected?.name ?? selected?.email : step === "add" ? "Add Account" : "Switching…"}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {step === "list"
                 ? "Select an account to switch to"
                 : step === "auth"
                 ? selected?.email
+                : step === "add"
+                ? "Sign in to another account"
                 : "Signing you in"}
             </p>
           </div>
@@ -202,6 +232,69 @@ export function UserSwitcher({ onClose }: Props) {
                   </button>
                 ))
               )}
+
+              {/* Add account button */}
+              <div className="border-t border-slate-100 mt-2 pt-2 px-5 pb-3">
+                <button
+                  onClick={() => { setStep("add"); setError(""); setAddEmail(""); setAddPassword(""); }}
+                  className="w-full flex items-center gap-2.5 py-2.5 px-3 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <UserPlus size={15} className="text-blue-600" />
+                  </div>
+                  Add account
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step: add ── */}
+          {step === "add" && (
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                <input
+                  type="email"
+                  autoFocus
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                <div className="relative">
+                  <input
+                    type={showAddPw ? "text" : "password"}
+                    value={addPassword}
+                    onChange={(e) => setAddPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddAccount()}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showAddPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3.5 py-2.5">{error}</p>
+              )}
+
+              <button
+                onClick={handleAddAccount}
+                disabled={submitting || !addEmail || !addPassword}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
+              >
+                {submitting && <Loader2 size={14} className="animate-spin" />}
+                {submitting ? "Signing in…" : "Sign In"}
+              </button>
             </div>
           )}
 

@@ -106,7 +106,7 @@ const STEPS = [
 
 function StepBar({ current }: { current: Step }) {
   return (
-    <div className="flex items-center gap-0 px-6 py-4 border-b border-slate-100">
+    <div className="flex items-center gap-0 px-6 py-4 border-b border-slate-100 shrink-0">
       {STEPS.map((s, i) => {
         const done    = current > s.num;
         const active  = current === s.num;
@@ -387,7 +387,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-2">
+        <div className="flex items-center justify-between px-6 pt-5 pb-2 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit Employee" : "Add New Employee"}</h2>
             <p className="text-xs text-slate-400 font-mono">{initial?.id ?? nextId}</p>
@@ -398,7 +398,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
         <StepBar current={step} />
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-4">
 
           {/* ── Step 1: Personal ─────────────────────────── */}
           {step === 1 && (
@@ -1138,7 +1138,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
           <button onClick={step === 1 ? onClose : () => setStep(s => (s - 1) as Step)}
             className="flex items-center gap-1.5 px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
             {step === 1 ? "Cancel" : <><ChevronLeft size={14} /> Back</>}
