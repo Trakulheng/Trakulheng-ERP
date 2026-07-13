@@ -344,7 +344,7 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Edit Branch" : "Add New Branch"}</h2>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">{initial?.id ?? nextId}</p>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">{initial?.code ?? nextId}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
@@ -985,7 +985,7 @@ export default function BranchesPage() {
                           {branch.status}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5 font-mono">{branch.id} · {branch.code}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 font-mono">{branch.code}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

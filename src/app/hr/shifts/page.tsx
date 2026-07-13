@@ -1935,9 +1935,16 @@ export default function ShiftsPage() {
   // Load employees from DB when branch changes
   useEffect(() => {
     if (!activeBranch?.id) { setBranchEmps([]); return; }
-    fetch(`/api/employees?branchId=${activeBranch.id}&status=active`)
+    const assignedIds: string[] = (activeBranch as any).assignedEmployeeIds ?? [];
+    fetch(`/api/employees?status=active`)
       .then((r) => r.ok ? r.json() : [])
-      .then((data: Employee[]) => setBranchEmps(data))
+      .then((data: Employee[]) => {
+        if (assignedIds.length > 0) {
+          setBranchEmps(data.filter(e => assignedIds.includes(e.id) || e.branchId === activeBranch.id));
+        } else {
+          setBranchEmps(data.filter(e => e.branchId === activeBranch.id));
+        }
+      })
       .catch(() => {});
   }, [activeBranch?.id]);
 
