@@ -139,7 +139,7 @@ export function UserSwitcher({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 h-screen z-[60] flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
 
       <div

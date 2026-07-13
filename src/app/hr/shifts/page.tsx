@@ -415,7 +415,7 @@ function ShiftModal({ state, onClose, onSave }: {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
@@ -566,7 +566,7 @@ function CellAssignModal({
   const [note, setNote] = useState("");
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
@@ -653,7 +653,7 @@ function RequestChangeModal({
   const daysUntil = daysBetween(TODAY, date);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
@@ -788,7 +788,7 @@ function EmployeeSelfRequestModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
@@ -1523,7 +1523,7 @@ function RequestsTab({
 
       {/* Reject modal */}
       {rejectId && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 h-screen bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h3 className="font-semibold text-slate-900">Reject Request</h3>
             <textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} rows={3}
@@ -1729,7 +1729,7 @@ function DayAssignModal({
   const selectedEmp = available.find((e) => e.id === selectedEmpId);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>

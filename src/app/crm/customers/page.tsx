@@ -128,7 +128,7 @@ function AddCustomerModal({ onClose, onSave, count }: AddCustomerModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen z-50 bg-black/40 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-base font-semibold text-slate-800">Add New Customer</h2>
@@ -257,7 +257,7 @@ function AddPointsModal({ customer, onClose, onConfirm }: AddPointsModalProps) {
     : 0;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen z-[60] bg-black/40 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h2 className="text-sm font-semibold text-slate-800">Add Points</h2>
@@ -329,7 +329,7 @@ function RedeemModal({ customer, onClose, onConfirm }: RedeemModalProps) {
 
   if (confirming && selectedGift) {
     return (
-      <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+      <div className="fixed inset-0 h-screen z-[60] bg-black/40 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h2 className="text-sm font-semibold text-slate-800">Confirm Redemption</h2>
@@ -370,7 +370,7 @@ function RedeemModal({ customer, onClose, onConfirm }: RedeemModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen z-[60] bg-black/40 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
@@ -513,7 +513,7 @@ function CustomerDetailModal({
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 h-screen z-50 bg-black/40 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-5xl shadow-xl flex max-h-[90vh] overflow-hidden">
         {/* Left Panel */}
         <div className="w-1/3 bg-slate-50 border-r border-slate-200 p-6 flex flex-col gap-4 overflow-y-auto">

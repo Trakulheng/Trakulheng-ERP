@@ -80,7 +80,7 @@ function SendDialog({ poId, supplierEmail, onSend, onClose }: SendDialogProps) {
   const [method, setMethod] = useState<"email" | "line">("email");
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 h-screen z-[60] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="px-6 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
@@ -187,7 +187,7 @@ function NewPOModal({ nextId, currentRole, canSeePrice, onClose, onSave }: NewPO
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
@@ -410,7 +410,7 @@ function DetailModal({ po, lines, currentRole, canSeePrice, onClose, onStatusCha
   const approvalCfg = approvalConfig[po.approvalStatus];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
@@ -886,7 +886,7 @@ export default function PurchaseOrdersPage() {
       )}
 
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4"><Trash2 size={22} className="text-red-600" /></div>
             <h2 className="text-base font-semibold text-slate-900 mb-1">Delete Purchase Order</h2>

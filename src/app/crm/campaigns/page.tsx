@@ -268,7 +268,7 @@ export default function CampaignsPage() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 h-screen z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h2 className="text-lg font-semibold text-slate-900">

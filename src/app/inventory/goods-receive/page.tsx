@@ -237,7 +237,7 @@ function ReceiveModal({ po, products, onClose, onConfirm }: ReceiveModalProps) {
   const branch = branches.find((b) => b.id === branchId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
@@ -695,7 +695,7 @@ function GRNSuccess({ grn, onClose }: GRNSuccessProps) {
   }, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* GRN Header */}
         <div className="bg-emerald-600 text-white px-6 py-5 rounded-t-2xl shrink-0">

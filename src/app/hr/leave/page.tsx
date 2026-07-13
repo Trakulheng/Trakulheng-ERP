@@ -192,7 +192,7 @@ function LeaveModal({ leaveTypes, defaultEmployeeId, employeeName, myLeaveRows, 
   const days = calcDays(fromDate, toDate);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -326,7 +326,7 @@ function ReviewModal({ row, onClose, onDone }: { row: LeaveRow; onClose: () => v
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-sm font-bold text-slate-900">Review Leave Request</h2>

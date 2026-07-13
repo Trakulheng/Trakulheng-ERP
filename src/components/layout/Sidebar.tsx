@@ -427,7 +427,7 @@ export function Sidebar() {
 
       {/* Logout confirmation dialog */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 h-screen z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
             <div className="flex flex-col items-center text-center">
               <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-4">

@@ -233,9 +233,21 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
   };
 
   const handlePhotoChange = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => set("photo", ev.target?.result as string);
-    reader.readAsDataURL(file);
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 400;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+      set("photo", canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.src = url;
   };
 
   // ── OCR scanner state ──
@@ -384,7 +396,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-2 shrink-0">
@@ -447,7 +459,7 @@ function EmployeeModal({ initial, allEmployees, nextId, onClose, onSave }: Modal
 
               {/* ── Camera modal ── */}
               {cameraOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+                <div className="fixed inset-0 h-screen z-[60] flex items-center justify-center bg-black/80 p-4">
                   <div className="bg-black rounded-2xl overflow-hidden w-full max-w-sm shadow-2xl">
                     <div className="flex items-center justify-between px-4 py-3 bg-slate-900">
                       <span className="text-white text-sm font-semibold flex items-center gap-2">
@@ -1201,7 +1213,7 @@ function DetailModal({ emp, allEmployees, onClose, onEdit, onDelete, canEdit }: 
     ) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col">
         {/* Hero */}
         <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 px-6 pt-6 pb-5 rounded-t-2xl shrink-0">
@@ -1782,7 +1794,7 @@ export default function EmployeesPage() {
 
       {/* Delete confirmation */}
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 h-screen z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
               <Trash2 size={22} className="text-red-600" />
