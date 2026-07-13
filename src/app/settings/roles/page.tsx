@@ -427,7 +427,7 @@ export default function RolePermissionsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [deleteId,   setDeleteId]   = useState<string | null>(null);
 
-  // Load saved permissions and menu orders from DB on mount
+  // Load saved permissions, menu orders, and custom role definitions from DB on mount
   useEffect(() => {
     fetch("/api/settings/role-permissions")
       .then((r) => { if (r.status === 401) { window.location.href = "/auth/login"; return null; } return r.ok ? r.json() : null; })
@@ -438,7 +438,6 @@ export default function RolePermissionsPage() {
             const merged = { ...prev };
             for (const [roleId, savedPerms] of Object.entries(d.permissions)) {
               if (savedPerms && typeof savedPerms === "object") {
-                // Merge on top of defaults so newly-added modules keep their defaults
                 merged[roleId] = { ...(prev[roleId] ?? {}), ...(savedPerms as PermMatrix) };
               }
             }
@@ -453,6 +452,23 @@ export default function RolePermissionsPage() {
             }
             return merged;
           });
+        }
+        if (d.roleDefs && typeof d.roleDefs === "object") {
+          const customRoles: RoleDef[] = Object.entries(d.roleDefs)
+            .filter(([id]) => !SYSTEM_ROLES.find((r) => r.id === id))
+            .map(([id, def]: [string, any]) => ({
+              id,
+              label:  def.label  ?? id,
+              color:  def.color  ?? "text-slate-700",
+              badge:  def.badge  ?? "bg-slate-100 text-slate-700",
+              custom: true,
+            }));
+          if (customRoles.length > 0) {
+            setRoles((prev) => {
+              const existingIds = new Set(prev.map((r) => r.id));
+              return [...prev, ...customRoles.filter((r) => !existingIds.has(r.id))];
+            });
+          }
         }
       })
       .catch(() => {})
@@ -485,10 +501,14 @@ export default function RolePermissionsPage() {
     setSaving(true);
     setSaveError("");
     try {
+      const roleDefs: Record<string, { label: string; color: string; badge: string }> = {};
+      for (const r of roles) {
+        if (r.custom) roleDefs[r.id] = { label: r.label, color: r.color, badge: r.badge };
+      }
       const res = await fetch("/api/settings/role-permissions", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ roles: perms, menuOrders }),
+        body:    JSON.stringify({ roles: perms, menuOrders, roleDefs }),
       });
       if (!res.ok) {
         if (res.status === 401) { window.location.href = "/auth/login"; return; }

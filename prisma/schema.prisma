@@ -485,6 +485,7 @@ model ShiftAssignment {
 model RolePermission {
   id          String   @id @default(cuid())
   role        String   @unique
+  roleDef     Json?
   permissions Json
   menuOrder   Json?
   createdAt   DateTime @default(now())
