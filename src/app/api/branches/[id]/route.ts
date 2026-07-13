@@ -38,6 +38,7 @@ function mapBranch(b: any) {
     lessorContactEmail:   b.lessorContactEmail ?? "",
     lessorContactLineId:  b.lessorContactLineId ?? "",
     rentalDocs:           (b.rentalDocs as string[]) ?? [],
+    businessHours:        b.businessHours ?? null,
   };
 }
 
@@ -80,6 +81,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(data.lessorContactEmail !== undefined && { lessorContactEmail: data.lessorContactEmail || null }),
       ...(data.lessorContactLineId !== undefined && { lessorContactLineId: data.lessorContactLineId || null }),
       ...(data.rentalDocs !== undefined && { rentalDocs:         data.rentalDocs }),
+      ...(data.businessHours !== undefined && { businessHours:   data.businessHours }),
     },
   });
 

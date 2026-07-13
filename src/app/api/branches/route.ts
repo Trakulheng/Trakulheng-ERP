@@ -38,6 +38,7 @@ function mapBranch(b: any) {
     lessorContactEmail:   b.lessorContactEmail ?? "",
     lessorContactLineId:  b.lessorContactLineId ?? "",
     rentalDocs:           (b.rentalDocs as string[]) ?? [],
+    businessHours:        b.businessHours ?? null,
   };
 }
 
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
       lessorContactEmail: data.lessorContactEmail || null,
       lessorContactLineId:data.lessorContactLineId || null,
       rentalDocs:         data.rentalDocs ?? [],
+      businessHours:      data.businessHours ?? null,
     },
   });
 

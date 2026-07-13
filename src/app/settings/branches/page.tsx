@@ -689,10 +689,10 @@ function BranchModal({ initial, currentRole, nextId, onClose, onSave, onToast }:
             </div>
           </section>
 
-          {/* Business Hours */}
+          {/* Operating Hours */}
           <section className="space-y-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
-              <Clock size={13} className="text-slate-400" /> Business Hours
+              <Clock size={13} className="text-slate-400" /> Operating Hours
             </p>
             <div className="space-y-2">
               {(["mon","tue","wed","thu","fri","sat","sun"] as const).map((day) => {
