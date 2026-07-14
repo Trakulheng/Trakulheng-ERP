@@ -8,7 +8,9 @@ export async function apiFetch(url: string, options?: RequestInit): Promise<Resp
   try {
     const res = await fetch(url, options);
     if (res.status === 401) {
-      window.location.href = "/auth/login";
+      if (!window.location.pathname.startsWith("/auth")) {
+        window.location.href = "/auth/login";
+      }
       return null;
     }
     return res;

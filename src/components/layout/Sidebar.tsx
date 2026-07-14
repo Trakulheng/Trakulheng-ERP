@@ -149,7 +149,10 @@ export function Sidebar() {
   function loadMe() {
     fetch("/api/user/profile")
       .then((r) => {
-        if (r.status === 401) { window.location.href = "/auth/login"; return null; }
+        if (r.status === 401) {
+          if (!window.location.pathname.startsWith("/auth")) window.location.href = "/auth/login";
+          return null;
+        }
         return r.ok ? r.json() : null;
       })
       .then((data) => { if (data?.email) setMe(data); })
