@@ -200,17 +200,9 @@ export default function ClockPage() {
     ? nowMin > timeToMin(shift.startTime) + grace
     : false;
 
-  // Too early to clock in (before shift start minus 5 min)
-  const tooEarlyToClockIn = !!(shift && !clockedIn && !completed
-    && nowMin < timeToMin(shift.startTime) - 5);
-
   // Too early to clock out (before shift end)
   const tooEarlyToClockOut = !!(shift && clockedIn
     && nowMin < timeToMin(shift.endTime));
-
-  function fmtMinAsTime(m: number) {
-    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  }
 
   // ─── Loading / error states ──────────────────────────────────────────────────
 
@@ -408,18 +400,6 @@ export default function ClockPage() {
             </div>
           )}
 
-          {/* Too early to clock in */}
-          {tooEarlyToClockIn && shift && (
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-sm text-amber-700">
-              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">Too early to clock in</p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  Your shift starts at {shift.startTime}. Clock-in opens at {fmtMinAsTime(timeToMin(shift.startTime) - 5)}.
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Late warning banner (before clocking in) */}
           {!record?.clockInTime && isCurrentlyLate && shift && (
@@ -480,7 +460,7 @@ export default function ClockPage() {
             <>
               <button
                 onClick={() => handleClock("in")}
-                disabled={submitting || gpsStatus === "fetching" || tooEarlyToClockIn || (branchGpsSet && (gpsStatus !== "ready" || !withinRadius))}
+                disabled={submitting || gpsStatus === "fetching" || (branchGpsSet && (gpsStatus !== "ready" || !withinRadius))}
                 className={cn(
                   "w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-bold text-lg transition-colors shadow-lg disabled:opacity-40 text-white",
                   isCurrentlyLate

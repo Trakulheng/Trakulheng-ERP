@@ -103,14 +103,8 @@ export function ClockInOutWidget() {
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const isLate = me?.shift ? nowMin > timeToMin(me.shift.startTime) + (me.settings.lateWarningMinutes ?? 15) : false;
 
-  const tooEarlyToClockIn = !!(me?.shift && !clocked_in && !completed
-    && nowMin < timeToMin(me.shift.startTime) - 5);
   const tooEarlyToClockOut = !!(me?.shift && clocked_in
     && nowMin < timeToMin(me.shift.endTime));
-
-  function fmtMinAsTime(m: number) {
-    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  }
 
   function fmtHHMM(d: Date) {
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -276,14 +270,6 @@ export function ClockInOutWidget() {
                 </div>
               )}
 
-              {/* Too early to clock in */}
-              {tooEarlyToClockIn && me?.shift && (
-                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
-                  <AlertTriangle size={13} className="shrink-0" />
-                  Clock-in opens at {fmtMinAsTime(timeToMin(me.shift.startTime) - 5)} (5 min before shift).
-                </div>
-              )}
-
               {/* Too early to clock out */}
               {tooEarlyToClockOut && me?.shift && (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
@@ -309,7 +295,7 @@ export function ClockInOutWidget() {
                 !clocked_in ? (
                   <button
                     onClick={clockIn}
-                    disabled={actionLoading || !withinRadius || tooEarlyToClockIn}
+                    disabled={actionLoading || !withinRadius}
                     className={cn(
                       "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors",
                       isLate

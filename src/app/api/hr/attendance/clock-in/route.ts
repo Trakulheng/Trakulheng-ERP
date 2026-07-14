@@ -60,15 +60,8 @@ export async function POST(req: NextRequest) {
       const shiftStart = timeToMinutes(shift.startTime);
       const clockMin   = timeToMinutes(clockInTime);
 
-      // Too early: must be within 5 minutes of shift start
-      if (clockMin < shiftStart - 5) {
-        const earliest = `${String(Math.floor((shiftStart - 5) / 60)).padStart(2, "0")}:${String((shiftStart - 5) % 60).padStart(2, "0")}`;
-        return NextResponse.json(
-          { error: `Too early to clock in. Your shift starts at ${shift.startTime}. Clock-in opens at ${earliest}.` },
-          { status: 403 }
-        );
-      }
-
+      // Clock-in is allowed at any time (early or late) so staff can always
+      // access their shift tasks; lateness is only recorded for reporting.
       const late = clockMin - shiftStart;
       if (late > 15) {
         status = "late";
