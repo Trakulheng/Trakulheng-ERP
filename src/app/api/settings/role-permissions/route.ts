@@ -15,7 +15,19 @@ export async function GET() {
   for (const row of rows) {
     permissions[row.role] = row.permissions;
     if (row.menuOrder) menuOrders[row.role] = row.menuOrder;
-    if (row.roleDef)   roleDefs[row.role]   = row.roleDef;
+    if (row.roleDef) {
+      roleDefs[row.role] = row.roleDef;
+    } else if (!SYSTEM_ROLES.has(row.role)) {
+      // Custom role saved without a definition (e.g. from an older client) —
+      // synthesize one from the id so the role never disappears from the UI.
+      const label = row.role
+        .replace(/^custom_/, "")
+        .replace(/_\d+$/, "")
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      roleDefs[row.role] = { label, color: "text-violet-700", badge: "bg-violet-100 text-violet-700" };
+    }
   }
   return NextResponse.json({ permissions, menuOrders, roleDefs });
 }

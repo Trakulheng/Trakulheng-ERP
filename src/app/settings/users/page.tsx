@@ -12,8 +12,10 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-type UserRole   = "admin" | "manager" | "staff" | "viewer";
+type UserRole   = string; // system roles + custom roles from Role Permissions
 type UserStatus = "active" | "inactive" | "pending";
+
+interface RoleOption { id: string; label: string; badge: string }
 
 interface SystemUser {
   id:         string;
@@ -38,19 +40,12 @@ interface Employee {
 
 // ── Constants ─────────────────────────────────────────────────────────
 
-const ROLE_COLORS: Record<UserRole, string> = {
-  admin:   "bg-red-100 text-red-700",
-  manager: "bg-amber-100 text-amber-700",
-  staff:   "bg-blue-100 text-blue-700",
-  viewer:  "bg-slate-100 text-slate-500",
-};
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin:   "Admin",
-  manager: "Manager",
-  staff:   "Staff",
-  viewer:  "Viewer",
-};
+const SYSTEM_ROLE_OPTIONS: RoleOption[] = [
+  { id: "admin",   label: "Admin",   badge: "bg-red-100 text-red-700"     },
+  { id: "manager", label: "Manager", badge: "bg-amber-100 text-amber-700" },
+  { id: "staff",   label: "Staff",   badge: "bg-blue-100 text-blue-700"   },
+  { id: "viewer",  label: "Viewer",  badge: "bg-slate-100 text-slate-500" },
+];
 
 const STATUS_COLORS: Record<UserStatus, string> = {
   active:   "bg-emerald-100 text-emerald-700",
@@ -193,6 +188,7 @@ function BranchMultiSelect({ selected, onChange }: { selected: string[]; onChang
 
 interface UserModalProps {
   initial?: SystemUser;
+  roles: RoleOption[];
   onClose: () => void;
   onSave: (u: SystemUser) => Promise<void>;
   onResendInvite?: () => void;
@@ -201,7 +197,7 @@ interface UserModalProps {
   saveError: string;
 }
 
-function UserModal({ initial, onClose, onSave, onResendInvite, resending, saving, saveError }: UserModalProps) {
+function UserModal({ initial, roles, onClose, onSave, onResendInvite, resending, saving, saveError }: UserModalProps) {
   const isEdit = !!initial;
   const { branches } = useBranch();
 
@@ -307,10 +303,9 @@ function UserModal({ initial, onClose, onSave, onResendInvite, resending, saving
               <label className="block text-xs font-medium text-slate-600 mb-1">Role</label>
               <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
-                <option value="staff">Staff</option>
-                <option value="viewer">Viewer</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -406,6 +401,8 @@ export default function UserManagementPage() {
   const [inviteLink,   setInviteLink]  = useState<{ name: string; link: string } | null>(null);
   const [copied,       setCopied]      = useState(false);
 
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>(SYSTEM_ROLE_OPTIONS);
+
   const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/settings/users");
@@ -415,6 +412,34 @@ export default function UserManagementPage() {
   }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  // Load custom roles created on the Role Permissions page
+  useEffect(() => {
+    fetch("/api/settings/role-permissions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.roleDefs || typeof d.roleDefs !== "object") return;
+        const systemIds = new Set(SYSTEM_ROLE_OPTIONS.map((r) => r.id));
+        const custom: RoleOption[] = Object.entries(d.roleDefs)
+          .filter(([id]) => !systemIds.has(id))
+          .map(([id, def]: [string, any]) => ({
+            id,
+            label: def?.label ?? id,
+            badge: def?.badge ?? "bg-slate-100 text-slate-600",
+          }));
+        if (custom.length > 0) setRoleOptions([...SYSTEM_ROLE_OPTIONS, ...custom]);
+      })
+      .catch(() => {});
+  }, []);
+
+  const roleLabel = useCallback(
+    (role: string) => roleOptions.find((r) => r.id === role)?.label ?? role,
+    [roleOptions]
+  );
+  const roleBadge = useCallback(
+    (role: string) => roleOptions.find((r) => r.id === role)?.badge ?? "bg-slate-100 text-slate-600",
+    [roleOptions]
+  );
 
   const filtered = useMemo(() => users.filter((u) => {
     const q = search.toLowerCase();
@@ -548,10 +573,9 @@ export default function UserManagementPage() {
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
             className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
             <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="staff">Staff</option>
-            <option value="viewer">Viewer</option>
+            {roleOptions.map((r) => (
+              <option key={r.id} value={r.id}>{r.label}</option>
+            ))}
           </select>
         </div>
 
@@ -590,8 +614,8 @@ export default function UserManagementPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", ROLE_COLORS[u.role])}>
-                        {ROLE_LABELS[u.role]}
+                      <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", roleBadge(u.role))}>
+                        {roleLabel(u.role)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -661,6 +685,7 @@ export default function UserManagementPage() {
       {modalOpen && (
         <UserModal
           initial={editingUser}
+          roles={roleOptions}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
           onResendInvite={editingUser ? () => handleResendInvite(editingUser) : undefined}
