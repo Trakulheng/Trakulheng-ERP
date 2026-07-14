@@ -78,7 +78,6 @@ function LoginForm() {
       } else {
         router.push("/");
       }
-      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -128,7 +127,6 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Biometric authentication failed."); return; }
       router.push("/");
-      router.refresh();
     } catch (err: any) {
       if (err?.name === "NotAllowedError") {
         setError("Biometric verification was cancelled or timed out.");

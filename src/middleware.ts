@@ -5,6 +5,7 @@ const PUBLIC_PREFIXES = [
   "/auth/",
   "/api/auth/",
   "/api/admin/",
+  "/api/public/",
   "/consent",
   "/privacy",
   "/terms",
