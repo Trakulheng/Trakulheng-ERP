@@ -5,6 +5,9 @@ import { getSessionUser } from "@/lib/auth";
 export async function GET() {
   const current = await getSessionUser();
   if (!current) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  // The full user directory is sensitive — admins only. The account switcher
+  // uses device-local accounts (src/lib/device-accounts.ts) instead.
+  if (current.role !== "admin") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const users = await prisma.user.findMany({
     where: { emailVerified: true, employeeRecordId: { not: null } },

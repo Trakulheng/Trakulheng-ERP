@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X, Loader2, Eye, EyeOff, ChevronLeft, CheckCircle2, UserCircle2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDeviceAccounts, rememberDeviceAccount } from "@/lib/device-accounts";
 
 interface SwitchUser {
-  id: string;
   name: string | null;
   email: string;
   role: string;
@@ -61,10 +61,33 @@ export function UserSwitcher({ onClose }: Props) {
   const [showAddPw, setShowAddPw] = useState(false);
 
   useEffect(() => {
-    fetch("/api/users")
-      .then((r) => r.json())
-      .then((data) => { setUsers(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => setLoading(false));
+    // Only accounts that have signed in on this device — never the full
+    // user directory. New accounts appear via "Add account".
+    fetch("/api/user/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me) => {
+        const currentEmail: string = me?.email ?? "";
+        const accounts = getDeviceAccounts().map((a) => ({
+          name: a.name,
+          email: a.email,
+          role: a.role,
+          hasPIN: a.hasPIN,
+          isCurrent: a.email.toLowerCase() === currentEmail.toLowerCase(),
+        }));
+        // Ensure the current session's account is always listed
+        if (currentEmail && !accounts.some((a) => a.isCurrent)) {
+          accounts.unshift({
+            name: me?.name ?? null,
+            email: currentEmail,
+            role: me?.role ?? "staff",
+            hasPIN: false,
+            isCurrent: true,
+          });
+        }
+        setUsers(accounts);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const selectUser = (user: SwitchUser) => {
@@ -102,6 +125,14 @@ export function UserSwitcher({ onClose }: Props) {
         return;
       }
 
+      if (data.user) {
+        rememberDeviceAccount({
+          email: data.user.email,
+          name: data.user.name ?? null,
+          role: data.user.role,
+          hasPIN: !!data.user.hasPIN,
+        });
+      }
       setStep("success");
       setTimeout(() => {
         window.location.href = "/";
@@ -128,6 +159,14 @@ export function UserSwitcher({ onClose }: Props) {
       if (!res.ok) {
         setError(data.error || "Authentication failed. Check your credentials.");
         return;
+      }
+      if (data.user) {
+        rememberDeviceAccount({
+          email: data.user.email,
+          name: data.user.name ?? null,
+          role: data.user.role,
+          hasPIN: !!data.user.hasPIN,
+        });
       }
       setStep("success");
       setTimeout(() => { window.location.href = "/"; }, 1200);
@@ -192,7 +231,7 @@ export function UserSwitcher({ onClose }: Props) {
               ) : (
                 users.map((user) => (
                   <button
-                    key={user.id}
+                    key={user.email}
                     onClick={() => !user.isCurrent && selectUser(user)}
                     disabled={user.isCurrent}
                     className={cn(

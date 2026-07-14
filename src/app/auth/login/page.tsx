@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, LayoutDashboard, Fingerprint } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { rememberDeviceAccount } from "@/lib/device-accounts";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_token: "The verification link is invalid.",
@@ -73,6 +74,14 @@ function LoginForm() {
         }
         return;
       }
+      if (data.user) {
+        rememberDeviceAccount({
+          email: data.user.email,
+          name: data.user.name ?? null,
+          role: data.user.role,
+          hasPIN: !!data.user.hasPIN,
+        });
+      }
       if (data.needsConsent) {
         router.push("/consent");
       } else {
@@ -126,6 +135,14 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Biometric authentication failed."); return; }
+      if (data.user) {
+        rememberDeviceAccount({
+          email: data.user.email,
+          name: data.user.name ?? null,
+          role: data.user.role,
+          hasPIN: !!data.user.hasPIN,
+        });
+      }
       router.push("/");
     } catch (err: any) {
       if (err?.name === "NotAllowedError") {
