@@ -25,10 +25,15 @@ export async function GET() {
     return NextResponse.json({ error: "Employee record not found." }, { status: 404 });
   }
 
-  // Get branch for GPS data
-  const branch = employee.branchId
-    ? await prisma.branch.findUnique({ where: { id: employee.branchId } })
-    : null;
+  // Resolve the employee's branches: direct branchId link, or membership in a
+  // branch's assignedEmployees list (branch-centric assignment used by settings).
+  const allBranches = await prisma.branch.findMany();
+  const empBranches = allBranches.filter((b) => {
+    if (employee.branchId && b.id === employee.branchId) return true;
+    const assigned = (b.assignedEmployees as { id: string }[] | null) ?? [];
+    return assigned.some((a) => a.id === employee.employeeId);
+  });
+  const branch = empBranches[0] ?? null;
 
   // Pull attendance config from general settings
   const settingsData = (settings?.data as any) ?? {};
@@ -56,6 +61,13 @@ export async function GET() {
       lng:          branch.lng,
       radiusMeters: clockGpsRadiusMeters,
     } : null,
+    branches: empBranches.map((b) => ({
+      id:           b.id,
+      name:         b.name,
+      lat:          b.lat,
+      lng:          b.lng,
+      radiusMeters: b.radiusMeters ?? settingsData?.attendance?.clockGpsRadiusMeters ?? 200,
+    })),
     shift: shift ? {
       id:           shift.id,
       name:         shift.name,

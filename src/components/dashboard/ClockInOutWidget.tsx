@@ -8,9 +8,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+interface BranchInfo { id: string; name: string; lat: number; lng: number; radiusMeters: number }
+
 interface MeData {
   employee: { id: string; name: string; position: string };
-  branch: { id: string; name: string; lat: number; lng: number; radiusMeters: number } | null;
+  branch: BranchInfo | null;
+  branches?: BranchInfo[];
   shift: { id: string; name: string; startTime: string; endTime: string; color: string } | null;
   date: string;
   record: {
@@ -91,9 +94,35 @@ export function ClockInOutWidget() {
     );
   }
 
-  const radius = me?.branch?.radiusMeters ?? me?.settings.clockGpsRadiusMeters ?? 200;
-  const dist = (gps && me?.branch) ? haversineMeters(gps.lat, gps.lng, me.branch.lat, me.branch.lng) : null;
-  const withinRadius = dist !== null && dist <= radius;
+  // Pick the branch the employee is actually at: nearest of their assigned
+  // branches. Branches without GPS coordinates allow clock-in from anywhere.
+  const branches: BranchInfo[] = me?.branches?.length ? me.branches : (me?.branch ? [me.branch] : []);
+  const branchHasGps = (b: BranchInfo) => b.lat !== 0 || b.lng !== 0;
+  let activeBranch: BranchInfo | null = branches[0] ?? null;
+  let dist: number | null = null;
+  if (gps && branches.length > 0) {
+    const noGpsBranch = branches.find((b) => !branchHasGps(b));
+    let nearest: BranchInfo | null = null;
+    let nearestDist = Infinity;
+    for (const b of branches) {
+      if (!branchHasGps(b)) continue;
+      const d = haversineMeters(gps.lat, gps.lng, b.lat, b.lng);
+      if (d < nearestDist) { nearest = b; nearestDist = d; }
+    }
+    if (nearest && nearestDist <= nearest.radiusMeters) {
+      activeBranch = nearest;
+      dist = nearestDist;
+    } else if (noGpsBranch) {
+      activeBranch = noGpsBranch;
+      dist = null;
+    } else if (nearest) {
+      activeBranch = nearest;
+      dist = nearestDist;
+    }
+  }
+  const radius = activeBranch?.radiusMeters ?? me?.settings.clockGpsRadiusMeters ?? 200;
+  const gpsRequired = activeBranch ? branchHasGps(activeBranch) : false;
+  const withinRadius = !gpsRequired || (dist !== null && dist <= radius);
 
   const record = me?.record;
   const status = record?.status ?? "not-yet";
@@ -118,7 +147,7 @@ export function ClockInOutWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          branchId:    me.branch?.id ?? "",
+          branchId:    activeBranch?.id ?? me.branch?.id ?? "",
           employeeId:  me.employee.id,
           date:        me.date,
           clockInTime: fmtHHMM(new Date()),
@@ -143,7 +172,7 @@ export function ClockInOutWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          branchId:     me.branch?.id ?? "",
+          branchId:     activeBranch?.id ?? me.branch?.id ?? "",
           employeeId:   me.employee.id,
           date:         me.date,
           clockOutTime: fmtHHMM(new Date()),
@@ -255,7 +284,21 @@ export function ClockInOutWidget() {
                 </p>
               )}
 
-              {gpsStatus === "ready" && dist !== null && (
+              {gpsStatus === "ready" && branches.length === 0 && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                  <AlertTriangle size={13} className="shrink-0" />
+                  No branch assigned to you — ask your manager to add you to a branch.
+                </div>
+              )}
+
+              {gpsStatus === "ready" && activeBranch && !gpsRequired && (
+                <div className="flex items-center gap-1.5 rounded-lg px-3 py-2 border text-xs bg-emerald-50 border-emerald-200 text-emerald-700 font-medium">
+                  <CheckCircle2 size={13} />
+                  {activeBranch.name} — clock-in allowed from any location
+                </div>
+              )}
+
+              {gpsStatus === "ready" && gpsRequired && dist !== null && (
                 <div className={cn(
                   "flex items-center justify-between rounded-lg px-3 py-2 border text-xs",
                   withinRadius
@@ -264,7 +307,7 @@ export function ClockInOutWidget() {
                 )}>
                   <span className="flex items-center gap-1.5 font-medium">
                     {withinRadius ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
-                    {withinRadius ? "Within store radius" : "Outside store radius"}
+                    {withinRadius ? `At ${activeBranch?.name}` : `Outside ${activeBranch?.name} radius`}
                   </span>
                   <span>{fmtDist(dist)} / {fmtDist(radius)}</span>
                 </div>

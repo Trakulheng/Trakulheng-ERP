@@ -10,9 +10,12 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface BranchInfo { id: string; name: string; lat: number; lng: number; radiusMeters: number }
+
 interface MeData {
   employee: { id: string; name: string; department: string; position: string; branchId: string | null };
-  branch: { id: string; name: string; lat: number; lng: number; radiusMeters: number } | null;
+  branch: BranchInfo | null;
+  branches?: BranchInfo[];
   shift: { id: string; name: string; startTime: string; endTime: string; breakMinutes: number; color: string } | null;
   assignment: { shiftId: string | null; confirmStatus: string } | null;
   record: {
@@ -141,10 +144,32 @@ export default function ClockPage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  const branchGpsSet = !!(me?.branch && (me.branch.lat !== 0 || me.branch.lng !== 0));
-  const dist = (gps && me?.branch && branchGpsSet)
-    ? Math.round(haversineMeters(gps.lat, gps.lng, me.branch.lat, me.branch.lng))
-    : null;
+  // Pick the branch the employee is actually at: nearest of their assigned
+  // branches by GPS. Branches without coordinates allow clock-in from anywhere.
+  const empBranches: BranchInfo[] = me?.branches?.length ? me.branches : (me?.branch ? [me.branch] : []);
+  const hasGpsCoords = (b: BranchInfo) => b.lat !== 0 || b.lng !== 0;
+  let effBranch: BranchInfo | null = empBranches[0] ?? null;
+  let dist: number | null = null;
+  if (gps && empBranches.length > 0) {
+    const noGpsBranch = empBranches.find((b) => !hasGpsCoords(b));
+    let nearest: BranchInfo | null = null;
+    let nearestDist = Infinity;
+    for (const b of empBranches) {
+      if (!hasGpsCoords(b)) continue;
+      const d = Math.round(haversineMeters(gps.lat, gps.lng, b.lat, b.lng));
+      if (d < nearestDist) { nearest = b; nearestDist = d; }
+    }
+    if (nearest && nearestDist <= nearest.radiusMeters) {
+      effBranch = nearest;
+      dist = nearestDist;
+    } else if (noGpsBranch) {
+      effBranch = noGpsBranch;
+    } else if (nearest) {
+      effBranch = nearest;
+      dist = nearestDist;
+    }
+  }
+  const branchGpsSet = !!(effBranch && hasGpsCoords(effBranch));
 
   // ── Clock action ─────────────────────────────────────────────────────────────
 
@@ -160,7 +185,7 @@ export default function ClockPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          branchId:   me.branch?.id ?? "",
+          branchId:   effBranch?.id ?? me.branch?.id ?? "",
           employeeId: me.employee.id,
           date:       me.date,
           shiftId:    me.assignment?.shiftId ?? null,
@@ -184,7 +209,7 @@ export default function ClockPage() {
 
   const record    = me?.record ?? null;
   const shift     = me?.shift ?? null;
-  const branch    = me?.branch ?? null;
+  const branch    = effBranch ?? me?.branch ?? null;
   const grace     = me?.settings.lateWarningMinutes ?? 15;
   const radius    = branch?.radiusMeters ?? me?.settings.clockGpsRadiusMeters ?? 200;
   const withinRadius = dist !== null && dist <= radius;
