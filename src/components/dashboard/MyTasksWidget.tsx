@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Clock, CircleDot, XCircle, CalendarDays, ListTodo, User } from "lucide-react";
+import { CalendarDays, ListTodo, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface Task {
@@ -14,11 +14,18 @@ interface Task {
   assigneeName?: string | null;
 }
 
-const STATUS_CFG = {
-  pending:     { icon: Clock,        color: "text-amber-600",   bg: "bg-amber-50"   },
-  in_progress: { icon: CircleDot,    color: "text-blue-600",    bg: "bg-blue-50"    },
-  done:        { icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-  cancelled:   { icon: XCircle,      color: "text-slate-400",   bg: "bg-slate-50"   },
+const STATUS_OPTIONS = [
+  { value: "pending",     label: "Pending"     },
+  { value: "in_progress", label: "In Progress" },
+  { value: "done",        label: "Done"        },
+  { value: "cancelled",   label: "Cancelled"   },
+];
+
+const STATUS_SELECT_CLS: Record<string, string> = {
+  pending:     "bg-amber-50 text-amber-700 border-amber-200",
+  in_progress: "bg-blue-50 text-blue-700 border-blue-200",
+  done:        "bg-emerald-50 text-emerald-700 border-emerald-200",
+  cancelled:   "bg-slate-50 text-slate-500 border-slate-200",
 };
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -30,6 +37,25 @@ const PRIORITY_DOT: Record<string, string> = {
 export function MyTasksWidget({ userName }: { userName?: string | null }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const updateStatus = async (taskId: string, status: Task["status"]) => {
+    const prev = tasks;
+    setUpdating(taskId);
+    setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, status } : t)));
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) setTasks(prev);
+    } catch {
+      setTasks(prev);
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/tasks")
@@ -75,8 +101,6 @@ export function MyTasksWidget({ userName }: { userName?: string | null }) {
       ) : (
         <div className="divide-y divide-slate-50">
           {tasks.map((task) => {
-            const s = STATUS_CFG[task.status];
-            const Icon = s.icon;
             const isDone = task.status === "done" || task.status === "cancelled";
             return (
               <div key={task.id} className={cn("flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors", isDone && "opacity-60")}>
@@ -90,10 +114,22 @@ export function MyTasksWidget({ userName }: { userName?: string | null }) {
                     </p>
                   )}
                 </div>
-                <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", s.color, s.bg)}>
-                  <Icon size={10} />
-                  {task.status === "in_progress" ? "In progress" : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-                </span>
+                {updating === task.id ? (
+                  <Loader2 size={14} className="animate-spin text-slate-400 flex-shrink-0" />
+                ) : (
+                  <select
+                    value={task.status}
+                    onChange={(e) => updateStatus(task.id, e.target.value as Task["status"])}
+                    className={cn(
+                      "text-xs font-medium rounded-lg px-2 py-1 border focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer appearance-none pr-5 flex-shrink-0",
+                      STATUS_SELECT_CLS[task.status]
+                    )}
+                  >
+                    {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             );
           })}
