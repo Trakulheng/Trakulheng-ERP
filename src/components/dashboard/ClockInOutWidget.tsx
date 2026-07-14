@@ -125,9 +125,10 @@ export function ClockInOutWidget() {
   const withinRadius = !gpsRequired || (dist !== null && dist <= radius);
 
   const record = me?.record;
-  const status = record?.status ?? "not-yet";
-  const clocked_in  = status === "clocked-in";
-  const completed   = status === "completed";
+  // Derive from the recorded times — status can also be "late", which still
+  // means the employee is clocked in.
+  const clocked_in  = !!(record?.clockInTime && !record?.clockOutTime);
+  const completed   = !!(record?.clockInTime && record?.clockOutTime);
 
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const isLate = me?.shift ? nowMin > timeToMin(me.shift.startTime) + (me.settings.lateWarningMinutes ?? 15) : false;

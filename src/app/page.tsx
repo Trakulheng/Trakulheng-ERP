@@ -83,10 +83,19 @@ export default async function DashboardPage() {
     };
   });
 
+  // Resolve the employee cuid — employeeRecordId may hold the EMP-xxx code,
+  // while leaveRequest.employeeId stores the employee cuid.
+  const myEmployee = user?.employeeRecordId
+    ? await prisma.employee.findFirst({
+        where: { OR: [{ id: user.employeeRecordId }, { employeeId: user.employeeRecordId }] },
+        select: { id: true },
+      })
+    : null;
+
   // Fetch own leave requests for the dashboard widget
-  const myLeaveRequests = user?.employeeRecordId
+  const myLeaveRequests = myEmployee
     ? await prisma.leaveRequest.findMany({
-        where: { employeeId: user.employeeRecordId },
+        where: { employeeId: myEmployee.id },
         orderBy: { createdAt: "desc" },
         take: 5,
         select: { id: true, type: true, fromDate: true, toDate: true, days: true, status: true, note: true },
@@ -98,7 +107,7 @@ export default async function DashboardPage() {
     ? await prisma.leaveRequest.findMany({
         where: {
           status: "pending",
-          ...(user?.employeeRecordId ? { employeeId: { not: user.employeeRecordId } } : {}),
+          ...(myEmployee ? { employeeId: { not: myEmployee.id } } : {}),
         },
         orderBy: { createdAt: "asc" },
         take: 5,

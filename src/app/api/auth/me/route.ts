@@ -12,9 +12,10 @@ export async function GET() {
   let employmentType: string | null = null;
 
   if (user.employeeRecordId) {
-    // Primary: user account is explicitly linked to an employee record
-    const emp = await prisma.employee.findUnique({
-      where: { id: user.employeeRecordId },
+    // Primary: user account is explicitly linked to an employee record.
+    // employeeRecordId may hold either the cuid or the EMP-xxx code.
+    const emp = await prisma.employee.findFirst({
+      where: { OR: [{ id: user.employeeRecordId }, { employeeId: user.employeeRecordId }] },
       select: { id: true, name: true, employmentType: true },
     });
     if (emp) { employeePrismaId = emp.id; employeeName = emp.name; employmentType = emp.employmentType; }

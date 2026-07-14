@@ -10,11 +10,25 @@ export async function GET(req: NextRequest) {
   const branchId   = searchParams.get("branchId");
   const empPrismaId = searchParams.get("employeeId"); // CUID filter for "my leave"
 
+  // Branch filter: employees are assigned to branches via the branch's
+  // assignedEmployees list (employee.branchId is often unset), so resolve
+  // the branch's member employee cuids first.
+  let branchEmployeeIds: string[] | null = null;
+  if (branchId && !empPrismaId) {
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    const assignedCodes = ((branch?.assignedEmployees as { id: string }[] | null) ?? []).map((a) => a.id);
+    const members = await prisma.employee.findMany({
+      where: { OR: [{ branchId }, { employeeId: { in: assignedCodes } }] },
+      select: { id: true },
+    });
+    branchEmployeeIds = members.map((m) => m.id);
+  }
+
   const rows = await prisma.leaveRequest.findMany({
     include: { employee: { select: { id: true, employeeId: true, name: true } } },
     where: {
       ...(empPrismaId ? { employeeId: empPrismaId } : {}),
-      ...(branchId && !empPrismaId ? { employee: { branchId } } : {}),
+      ...(branchEmployeeIds ? { employeeId: { in: branchEmployeeIds } } : {}),
     },
     orderBy: { createdAt: "desc" },
   });
