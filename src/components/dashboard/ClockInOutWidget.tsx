@@ -9,9 +9,10 @@ import {
 import Link from "next/link";
 
 interface MeData {
-  employee: { name: string; position: string };
-  branch: { name: string; lat: number; lng: number; radiusMeters: number } | null;
-  shift: { name: string; startTime: string; endTime: string; color: string } | null;
+  employee: { id: string; name: string; position: string };
+  branch: { id: string; name: string; lat: number; lng: number; radiusMeters: number } | null;
+  shift: { id: string; name: string; startTime: string; endTime: string; color: string } | null;
+  date: string;
   record: {
     clockInTime: string | null;
     clockOutTime: string | null;
@@ -111,34 +112,55 @@ export function ClockInOutWidget() {
     return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   }
 
+  function fmtHHMM(d: Date) {
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
   async function clockIn() {
-    if (!gps) return;
+    if (!gps || !me) return;
     setActionLoading(true); setActionError("");
     try {
       const res = await fetch("/api/hr/attendance/clock-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: gps.lat, lng: gps.lng }),
+        body: JSON.stringify({
+          branchId:    me.branch?.id ?? "",
+          employeeId:  me.employee.id,
+          date:        me.date,
+          clockInTime: fmtHHMM(new Date()),
+          shiftId:     me.shift?.id ?? null,
+          lat: gps.lat,
+          lng: gps.lng,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setActionError(data.error ?? "Clock-in failed."); return; }
       await fetchMe();
+      window.dispatchEvent(new Event("pull-refresh"));
     } catch { setActionError("Network error."); }
     finally { setActionLoading(false); }
   }
 
   async function clockOut() {
-    if (!gps) return;
+    if (!gps || !me) return;
     setActionLoading(true); setActionError("");
     try {
       const res = await fetch("/api/hr/attendance/clock-out", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: gps.lat, lng: gps.lng }),
+        body: JSON.stringify({
+          branchId:     me.branch?.id ?? "",
+          employeeId:   me.employee.id,
+          date:         me.date,
+          clockOutTime: fmtHHMM(new Date()),
+          lat: gps.lat,
+          lng: gps.lng,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setActionError(data.error ?? "Clock-out failed."); return; }
       await fetchMe();
+      window.dispatchEvent(new Event("pull-refresh"));
     } catch { setActionError("Network error."); }
     finally { setActionLoading(false); }
   }
