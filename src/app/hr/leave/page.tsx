@@ -309,9 +309,22 @@ function LeaveModal({ leaveTypes, defaultEmployeeId, employeeName, myLeaveRows, 
 
 // ── Approve / Reject Modal ────────────────────────────────────────────────────
 
+interface BalanceRow {
+  id: string; name: string; color: string; daysPerYear: number;
+  isPaid: boolean; used: number; pending: number; remaining: number | null;
+}
+
 function ReviewModal({ row, onClose, onDone }: { row: LeaveRow; onClose: () => void; onDone: (updated: LeaveRow) => void }) {
   const [reviewNote, setReviewNote] = useState("");
   const [acting, setActing] = useState<"approved" | "rejected" | null>(null);
+  const [balance, setBalance] = useState<BalanceRow[] | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/hr/leave/balance?employeeId=${row.employeeId}&year=${new Date().getFullYear()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (Array.isArray(d)) setBalance(d); })
+      .catch(() => {});
+  }, [row.employeeId]);
 
   const handle = async (status: "approved" | "rejected") => {
     setActing(status);
@@ -338,6 +351,39 @@ function ReviewModal({ row, onClose, onDone }: { row: LeaveRow; onClose: () => v
             <p>{row.fromDate} → {row.toDate} ({row.days} day{row.days !== 1 ? "s" : ""})</p>
             {row.note && <p className="text-slate-400 italic">"{row.note}"</p>}
           </div>
+
+          {/* Leave balance — all types for this employee, current year */}
+          <div>
+            <p className="text-xs font-medium text-slate-600 mb-1.5">Leave Balance ({new Date().getFullYear()})</p>
+            {balance === null ? (
+              <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                <Loader2 size={12} className="animate-spin" /> Loading balance…
+              </div>
+            ) : balance.length === 0 ? (
+              <p className="text-xs text-slate-400 py-1">No leave types configured.</p>
+            ) : (
+              <div className="border border-slate-100 rounded-xl divide-y divide-slate-50 overflow-hidden">
+                {balance.map((b) => {
+                  const isRequested = b.name === row.type;
+                  const wouldExceed = isRequested && b.remaining !== null && b.remaining <= 0;
+                  return (
+                    <div key={b.id} className={cn("flex items-center justify-between px-3 py-1.5 text-xs", isRequested && "bg-blue-50/60")}>
+                      <span className={cn("flex items-center gap-1.5", isRequested ? "font-semibold text-slate-800" : "text-slate-600")}>
+                        {b.name}
+                        {!b.isPaid && <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700">unpaid</span>}
+                      </span>
+                      <span className={cn("tabular-nums", wouldExceed ? "text-red-600 font-semibold" : "text-slate-500")}>
+                        {b.daysPerYear === 0
+                          ? `${b.used} used · no limit`
+                          : `${b.used} used${b.pending > 0 ? ` · ${b.pending} pending` : ""} · ${b.remaining} left of ${b.daysPerYear}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Manager Note <span className="text-slate-400">(optional)</span></label>
             <textarea rows={2} value={reviewNote} onChange={(e) => setReviewNote(e.target.value)}

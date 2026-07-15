@@ -43,6 +43,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     include: { employee: { select: { employeeId: true, name: true } } },
   });
 
+  // On approval, take the employee off their shifts for the leave dates so the
+  // schedule and shift-task views reflect the absence.
+  if (status === "approved") {
+    const dates: string[] = [];
+    const cur = new Date(updated.fromDate);
+    const end = new Date(updated.toDate);
+    for (let i = 0; cur <= end && i < 90; i++) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+    await prisma.shiftAssignment.updateMany({
+      where: { employeeId: updated.employee.employeeId, date: { in: dates } },
+      data: { shiftId: null, note: `On leave — ${updated.type}` },
+    });
+  }
+
   return NextResponse.json({
     id:          updated.id,
     employeeId:  updated.employeeId,
