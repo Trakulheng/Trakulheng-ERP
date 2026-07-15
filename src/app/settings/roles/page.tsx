@@ -113,6 +113,7 @@ const MODULES: { id: string; label: string; group: string; description: string }
   { id: "set_audit",         label: "Audit Log",        group: "Settings",   description: "View system audit trail" },
   { id: "set_notifications", label: "Notifications",    group: "Settings",   description: "Notification preferences" },
   { id: "set_appearance",    label: "Appearance",       group: "Settings",   description: "Theme and display settings" },
+  { id: "set_backup",        label: "Backup & Restore", group: "Settings",   description: "Database backup and restore" },
   // ── Column Visibility ─────────────────────────────────────────────────
   { id: "col_emp_salary",    label: "Employee: Salary",       group: "Column Visibility", description: "Show salary & compensation in employee table" },
   { id: "col_emp_verified",  label: "Employee: Verified",     group: "Column Visibility", description: "Show identity verification status in employee table" },
@@ -142,7 +143,7 @@ function buildDefault(): Record<string, PermMatrix> {
   const admin: PermMatrix = Object.fromEntries(ids.map((id) => [id, { ...FULL }]));
 
   const OVERVIEW_IDS = ["finance_overview","inv_overview","sales_overview","hr_overview","crm_overview"];
-  const SETTINGS_RESTRICTED = ["set_users","set_roles","set_security","set_audit"];
+  const SETTINGS_RESTRICTED = ["set_users","set_roles","set_security","set_audit","set_backup"];
 
   const SHIFT_SUB = ["hr_shifts_templates","hr_shifts_calendar","hr_shifts_requests"];
 

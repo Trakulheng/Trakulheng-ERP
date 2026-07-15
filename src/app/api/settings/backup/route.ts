@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { hasModulePermission } from "@/lib/permissions-server";
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user || user.role !== "admin") {
+  if (!user || !(await hasModulePermission(user, "set_backup", "view"))) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
@@ -87,7 +88,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
-  if (!user || user.role !== "admin") {
+  if (!user || !(await hasModulePermission(user, "set_backup", "edit"))) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 

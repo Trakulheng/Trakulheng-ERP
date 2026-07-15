@@ -108,7 +108,7 @@ const navItems = [
       { label: "Audit Log",         href: "/settings/audit",          icon: History,        permKey: "set_audit"         },
       { label: "Notifications",     href: "/settings/notifications",  icon: Bell,           permKey: "set_notifications" },
       { label: "Appearance",        href: "/settings/appearance",     icon: Sliders,        permKey: "set_appearance"    },
-      { label: "Backup & Restore",  href: "/settings/backup",         icon: Database,       permKey: "set_general"       },
+      { label: "Backup & Restore",  href: "/settings/backup",         icon: Database,       permKey: "set_backup"        },
     ],
   },
 ];
