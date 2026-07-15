@@ -137,6 +137,8 @@ function StatusBadge({ status }: { status: Status }) {
 function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, status: Status) => void }) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const cfg = STATUS_CONFIG[task.status];
   const Icon = cfg.icon;
 
@@ -148,10 +150,21 @@ function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, s
     setLoading(false);
   };
 
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      // Open upward when there isn't room below (menu ≈ 4 items × 33px + padding)
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropUp(window.innerHeight - rect.bottom < 190);
+    }
+    setOpen((v) => !v);
+  };
+
   return (
     <div className="relative">
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        ref={btnRef}
+        onClick={toggle}
         disabled={loading}
         className={cn(
           "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors",
@@ -164,7 +177,10 @@ function StatusSelect({ task, onUpdate }: { task: Task; onUpdate: (id: string, s
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-40">
+        <div className={cn(
+          "absolute right-0 z-30 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-40",
+          dropUp ? "bottom-full mb-1" : "top-full mt-1"
+        )}>
           {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([s, c]) => {
             const I = c.icon;
             return (
