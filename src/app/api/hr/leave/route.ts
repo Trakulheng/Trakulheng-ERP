@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { getManagedEmployeeIds, getOwnEmployeeId } from "@/lib/leave-scope";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser();
@@ -24,11 +25,23 @@ export async function GET(req: NextRequest) {
     branchEmployeeIds = members.map((m) => m.id);
   }
 
+  // Visibility scope: admin sees all; managers see their branches' employees
+  // plus their own requests; everyone else sees only their own requests.
+  const managed = await getManagedEmployeeIds(user);
+  let scopeIds: string[] | null = null; // null = unrestricted
+  if (managed !== null) {
+    const own = await getOwnEmployeeId(user);
+    scopeIds = own ? [...new Set([...managed, own])] : managed;
+  }
+
   const rows = await prisma.leaveRequest.findMany({
     include: { employee: { select: { id: true, employeeId: true, name: true } } },
     where: {
-      ...(empPrismaId ? { employeeId: empPrismaId } : {}),
-      ...(branchEmployeeIds ? { employeeId: { in: branchEmployeeIds } } : {}),
+      AND: [
+        empPrismaId ? { employeeId: empPrismaId } : {},
+        branchEmployeeIds ? { employeeId: { in: branchEmployeeIds } } : {},
+        scopeIds ? { employeeId: { in: scopeIds } } : {},
+      ],
     },
     orderBy: { createdAt: "desc" },
   });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { getManagedEmployeeIds, getOwnEmployeeId } from "@/lib/leave-scope";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getSessionUser();
@@ -12,8 +13,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (status && !["approved", "rejected", "pending"].includes(status))
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });
 
-  if (status && status !== "pending" && !["admin", "manager"].includes(user.role))
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (status && status !== "pending") {
+    if (!["admin", "manager"].includes(user.role))
+      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
+    // Branch managers may only review requests from their branches' employees
+    const managed = await getManagedEmployeeIds(user);
+    if (managed !== null) {
+      const existing = await prisma.leaveRequest.findUnique({
+        where: { id: params.id },
+        select: { employeeId: true },
+      });
+      if (!existing) return NextResponse.json({ error: "Request not found." }, { status: 404 });
+      if (!managed.includes(existing.employeeId))
+        return NextResponse.json(
+          { error: "You can only review leave requests from employees in your branches." },
+          { status: 403 }
+        );
+    }
+  }
 
   const updated = await prisma.leaveRequest.update({
     where: { id: params.id },
@@ -43,6 +61,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+
+  const existing = await prisma.leaveRequest.findUnique({
+    where: { id: params.id },
+    select: { employeeId: true, status: true },
+  });
+  if (!existing) return NextResponse.json({ error: "Request not found." }, { status: 404 });
+
+  if (user.role !== "admin") {
+    const managed = await getManagedEmployeeIds(user);
+    const own = await getOwnEmployeeId(user);
+    const isOwnPending = own === existing.employeeId && existing.status === "pending";
+    const isManaged = managed !== null && managed.includes(existing.employeeId);
+    if (!isOwnPending && !isManaged)
+      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
 
   await prisma.leaveRequest.delete({ where: { id: params.id } });
   return NextResponse.json({ ok: true });

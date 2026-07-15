@@ -11,6 +11,7 @@ import { kpiData, invoices, products, payrollRuns } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getManagedEmployeeIds } from "@/lib/leave-scope";
 import { DEFAULT_WIDGETS, type WidgetConfig } from "@/lib/dashboard-widgets";
 
 const statusColors: Record<string, string> = {
@@ -102,12 +103,19 @@ export default async function DashboardPage() {
       })
     : [];
 
-  // For managers/admins: also fetch pending team requests (other employees)
+  // For managers/admins: pending team requests to review. Requests route to
+  // the branch manager by default — managers only see their branches' staff.
+  const managedIds = (role === "admin" || role === "manager") && user
+    ? await getManagedEmployeeIds(user) // null = admin (all employees)
+    : [];
   const teamPendingLeave = (role === "admin" || role === "manager")
     ? await prisma.leaveRequest.findMany({
         where: {
-          status: "pending",
-          ...(myEmployee ? { employeeId: { not: myEmployee.id } } : {}),
+          AND: [
+            { status: "pending" },
+            ...(managedIds !== null ? [{ employeeId: { in: managedIds } }] : []),
+            ...(myEmployee ? [{ employeeId: { not: myEmployee.id } }] : []),
+          ],
         },
         orderBy: { createdAt: "asc" },
         take: 5,
