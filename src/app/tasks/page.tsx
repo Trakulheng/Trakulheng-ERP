@@ -37,8 +37,8 @@ interface TaskList {
   name: string;
   color: string;
   order: number;
-  shiftId?: string | null;
-  shift?: { id: string; name: string; code: string; startTime: string; endTime: string; color: string } | null;
+  shiftIds?: string[];
+  shifts?: { id: string; name: string; code: string; startTime: string; endTime: string; color: string }[];
   createdAt: string;
 }
 
@@ -57,7 +57,7 @@ interface TaskForm {
 interface ListForm {
   name: string;
   color: string;
-  shiftId: string;
+  shiftIds: string[];
 }
 
 const EMPTY_TASK_FORM: TaskForm = {
@@ -65,7 +65,7 @@ const EMPTY_TASK_FORM: TaskForm = {
   priority: "medium", assigneeName: "", shiftLabel: "", taskListId: "", requiresPhoto: false,
 };
 
-const EMPTY_LIST_FORM: ListForm = { name: "", color: "blue", shiftId: "" };
+const EMPTY_LIST_FORM: ListForm = { name: "", color: "blue", shiftIds: [] };
 
 const TODAY_STR = new Date().toISOString().split("T")[0];
 
@@ -602,27 +602,36 @@ function ListModal({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              <span className="flex items-center gap-1"><Link2 size={13} />Link to Shift (optional)</span>
+              <span className="flex items-center gap-1"><Link2 size={13} />Link to Shifts (optional)</span>
             </label>
-            <select
-              value={form.shiftId}
-              onChange={(e) => {
-                const selectedShift = shifts.find((s) => s.id === e.target.value);
-                setForm((f) => ({
-                  ...f,
-                  shiftId: e.target.value,
-                  name: selectedShift && !f.name ? selectedShift.name : f.name,
-                }));
-              }}
-              className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">— None —</option>
-              {shifts.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.startTime}–{s.endTime})
-                </option>
-              ))}
-            </select>
+            {shifts.length === 0 ? (
+              <p className="text-xs text-slate-400">No shifts yet. Create them under HR → Shifts.</p>
+            ) : (
+              <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-50">
+                {shifts.map((s) => {
+                  const checked = form.shiftIds.includes(s.id);
+                  return (
+                    <label key={s.id} className={cn(
+                      "flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer select-none",
+                      checked ? "bg-blue-50" : "hover:bg-slate-50"
+                    )}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => setForm((f) => ({
+                          ...f,
+                          shiftIds: checked ? f.shiftIds.filter((id) => id !== s.id) : [...f.shiftIds, s.id],
+                          name: !checked && !f.name ? s.name : f.name,
+                        }))}
+                        className="accent-blue-600 w-4 h-4 shrink-0"
+                      />
+                      <span className="flex-1 text-slate-800 truncate">{s.name}</span>
+                      <span className="text-xs text-slate-400 whitespace-nowrap">{s.startTime}–{s.endTime}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div>
@@ -814,9 +823,11 @@ function TaskListSection({
           <span className={cn("text-sm font-semibold truncate", list === null ? "text-slate-500" : colorCfg!.text)}>
             {list === null ? "Unassigned" : list.name}
           </span>
-          {list?.shift && (
+          {list?.shifts && list.shifts.length > 0 && (
             <span className="text-xs text-slate-400 whitespace-nowrap">
-              {list.shift.startTime}–{list.shift.endTime}
+              {list.shifts.length === 1
+                ? `${list.shifts[0].startTime}–${list.shifts[0].endTime}`
+                : `${list.shifts.length} shifts`}
             </span>
           )}
         </div>
@@ -1116,7 +1127,7 @@ export default function TasksPage() {
   };
 
   const openEditList = (list: TaskList) => {
-    setEditingList(list); setListForm({ name: list.name, color: list.color, shiftId: list.shiftId ?? "" }); setListError(""); setShowListModal(true);
+    setEditingList(list); setListForm({ name: list.name, color: list.color, shiftIds: list.shiftIds ?? [] }); setListError(""); setShowListModal(true);
   };
 
   const handleListSubmit = async () => {

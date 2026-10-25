@@ -343,7 +343,7 @@ function ShiftCard({
 
 // ─── ShiftModal ───────────────────────────────────────────────────────────────
 
-interface TaskListItem { id: string; name: string; color: string; shiftId: string | null; }
+interface TaskListItem { id: string; name: string; color: string; shiftIds: string[]; shifts: { id: string; name: string; code: string }[]; }
 
 const LIST_COLOR_DOT: Record<string, string> = {
   blue: "bg-blue-400", green: "bg-emerald-400", red: "bg-red-400",
@@ -354,7 +354,7 @@ const LIST_COLOR_DOT: Record<string, string> = {
 function ShiftModal({ state, onClose, onSave }: {
   state: { mode: "add" | "edit"; data?: Shift };
   onClose: () => void;
-  onSave: (shift: Shift) => Promise<string | null>;
+  onSave: (shift: Shift) => Promise<{ error: string | null; id?: string }>;
 }) {
   const blank: Shift = { id: "", name: "", code: "", startTime: "08:00", endTime: "17:00", breakMinutes: 60, color: "blue" };
   const [form, setForm] = useState<Shift>(state.data ?? blank);
@@ -363,7 +363,7 @@ function ShiftModal({ state, onClose, onSave }: {
   const set = <K extends keyof Shift>(k: K, v: Shift[K]) => setForm((p) => ({ ...p, [k]: v }));
   const preview = calcWorkHours(form.startTime, form.endTime, form.breakMinutes);
 
-  // Task list linkage (edit mode only)
+  // Task list linkage — a list can be linked to any number of shifts
   const isEdit = state.mode === "edit" && !!state.data?.id;
   const [allLists, setAllLists] = useState<TaskListItem[]>([]);
   const [linkedIds, setLinkedIds] = useState<Set<string>>(new Set());
@@ -371,13 +371,12 @@ function ShiftModal({ state, onClose, onSave }: {
   const [listsLoading, setListsLoading] = useState(false);
 
   useEffect(() => {
-    if (!isEdit) return;
     setListsLoading(true);
     fetch("/api/tasks/lists")
       .then((r) => r.ok ? r.json() : [])
       .then((lists: TaskListItem[]) => {
         setAllLists(lists);
-        const linked = new Set(lists.filter((l) => l.shiftId === state.data!.id).map((l) => l.id));
+        const linked = new Set(isEdit ? lists.filter((l) => l.shiftIds.includes(state.data!.id)).map((l) => l.id) : []);
         setLinkedIds(linked);
         setOrigLinkedIds(linked);
         setListsLoading(false);
@@ -398,17 +397,19 @@ function ShiftModal({ state, onClose, onSave }: {
     if (!form.name.trim() || !form.code.trim()) { setError("Name and code are required."); return; }
     setSaving(true); setError("");
     const savedShift = { ...form, id: form.id || "", code: form.code.toUpperCase().slice(0, 3) };
-    const err = await onSave(savedShift);
+    const { error: err, id: savedId } = await onSave(savedShift);
     if (err) { setSaving(false); setError(err); return; }
 
-    // Batch-update task list linkages for changed items
-    const shiftId = savedShift.id || state.data?.id || "";
-    if (shiftId && isEdit) {
+    // Add/remove only this shift's links, leaving links to other shifts untouched
+    const shiftId = savedId || savedShift.id || state.data?.id || "";
+    if (shiftId) {
       const toLink   = allLists.filter((l) => linkedIds.has(l.id) && !origLinkedIds.has(l.id));
       const toUnlink = allLists.filter((l) => !linkedIds.has(l.id) && origLinkedIds.has(l.id));
+      const patch = (id: string, body: object) =>
+        fetch(`/api/tasks/lists/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       await Promise.all([
-        ...toLink.map((l) => fetch(`/api/tasks/lists/${l.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shiftId }) })),
-        ...toUnlink.map((l) => fetch(`/api/tasks/lists/${l.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shiftId: null }) })),
+        ...toLink.map((l) => patch(l.id, { addShiftId: shiftId })),
+        ...toUnlink.map((l) => patch(l.id, { removeShiftId: shiftId })),
       ]);
     }
     setSaving(false);
@@ -483,8 +484,8 @@ function ShiftModal({ state, onClose, onSave }: {
             </span>
           </div>
 
-          {/* Linked Task Lists — edit mode only */}
-          {isEdit && (
+          {/* Linked Task Lists */}
+          {(
             <div className="border-t border-slate-100 pt-4">
               <div className="flex items-center gap-2 mb-3">
                 <ClipboardList size={14} className="text-slate-400" />
@@ -501,23 +502,25 @@ function ShiftModal({ state, onClose, onSave }: {
                 <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
                   {allLists.map((list) => {
                     const checked = linkedIds.has(list.id);
-                    const takenByOther = !checked && list.shiftId !== null && list.shiftId !== state.data?.id;
+                    const others = list.shifts.filter((s) => s.id !== state.data?.id);
                     return (
                       <label key={list.id} className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors select-none",
-                        checked ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent",
-                        takenByOther && "opacity-50 cursor-not-allowed"
+                        checked ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"
                       )}>
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={takenByOther}
-                          onChange={() => !takenByOther && toggleList(list.id)}
+                          onChange={() => toggleList(list.id)}
                           className="accent-blue-600 w-4 h-4 shrink-0"
                         />
                         <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", LIST_COLOR_DOT[list.color] ?? "bg-slate-300")} />
                         <span className="text-sm text-slate-800 flex-1 leading-tight">{list.name}</span>
-                        {takenByOther && <span className="text-xs text-slate-400">linked to another shift</span>}
+                        {others.length > 0 && (
+                          <span className="text-xs text-slate-400" title={others.map((s) => s.name).join(", ")}>
+                            also on {others.length} other shift{others.length > 1 ? "s" : ""}
+                          </span>
+                        )}
                         {checked && <span className="text-xs text-blue-600 font-medium">linked</span>}
                       </label>
                     );
@@ -2110,7 +2113,7 @@ export default function ShiftsPage() {
     }
   };
 
-  const handleSaveShift = async (shift: Shift): Promise<string | null> => {
+  const handleSaveShift = async (shift: Shift): Promise<{ error: string | null; id?: string }> => {
     const isEdit = !!shift.id && shiftList.some((s) => s.id === shift.id);
     const url = isEdit ? `/api/hr/shifts/${shift.id}` : "/api/hr/shifts";
     const body = { ...shift, branchId: activeBranch?.id };
@@ -2121,7 +2124,7 @@ export default function ShiftsPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) return data.error ?? "Failed to save shift.";
+      if (!res.ok) return { error: data.error ?? "Failed to save shift." };
       const saved: Shift = data;
       setShiftList((prev) => {
         const idx = prev.findIndex((s) => s.id === saved.id);
@@ -2129,9 +2132,9 @@ export default function ShiftsPage() {
         return [...prev, saved];
       });
       setShiftModal(null);
-      return null;
+      return { error: null, id: saved.id };
     } catch {
-      return "Network error. Please try again.";
+      return { error: "Network error. Please try again." };
     }
   };
 

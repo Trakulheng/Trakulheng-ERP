@@ -41,9 +41,10 @@ export async function GET(req: NextRequest) {
       select: { id: true, name: true, code: true, color: true },
     }),
     prisma.taskList.findMany({
-      where: { shiftId: { in: shiftIds } },
+      where: { shiftLinks: { some: { shiftId: { in: shiftIds } } } },
       orderBy: { order: "asc" },
       include: {
+        shiftLinks: { select: { shiftId: true } },
         tasks: {
           orderBy: { order: "asc" },
           select: { id: true, title: true, priority: true, order: true },
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
   const rows = assignments.map((a) => {
     const emp = employees.find((e) => e.id === a.employeeId);
     const shift = shifts.find((s) => s.id === a.shiftId);
-    const lists = taskLists.filter((l) => l.shiftId === a.shiftId);
+    const lists = taskLists.filter((l) => l.shiftLinks.some((x) => x.shiftId === a.shiftId));
     const tasks = lists.flatMap((l) =>
       l.tasks.map((t) => {
         const log = logs.find((lg) => lg.taskId === t.id && lg.employeeId === a.employeeId);

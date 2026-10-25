@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   const today = new Date().toISOString().split("T")[0];
   const [taskLists, attendanceRecord] = await Promise.all([
     prisma.taskList.findMany({
-      where: { shiftId: assignment.shiftId },
+      where: { shiftLinks: { some: { shiftId: assignment.shiftId } } },
       orderBy: { order: "asc" },
       include: {
         tasks: {
